@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function emailMatches(value) {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && value is string
+        && request.auth.token.email.lower() == value.lower();
+    }
+
+    function signedInRole() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role is string
+          ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower()
+          : 'guest';
+    }
+
+    function isStaffOrHigher() {
+      return signedInRole() == 'staff'
+        || signedInRole() == 'mechanics personnel'
+        || signedInRole() == 'inventory personnel'
+        || signedInRole() == 'cashier personnel'
+        || signedInRole() == 'front desk personnel'
+        || signedInRole() == 'admin'
+        || signedInRole() == 'superadmin';
+    }
+
+    function isAdminOrHigher() {
+      return signedInRole() == 'admin' || signedInRole() == 'superadmin';
+    }
+
+    function isSuperadmin() {
+      return signedInRole() == 'superadmin';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+      allow delete: if isSuperadmin();
+    }
+
+    match /authorizedAdmin/{docId} {
+      allow read: if isAdminOrHigher()
+        || emailMatches(docId)
+        || emailMatches(resource.data.email)
+        || emailMatches(resource.data.emailAddress)
+        || emailMatches(resource.data.authorizedEmail)
+        || emailMatches(resource.data.userEmail);
+      allow create, update, delete: if isSuperadmin();
+    }
+
+    match /authorizedPersonnel/{docId} {
+      allow read: if isAdminOrHigher()
+        || emailMatches(docId)
+        || emailMatches(resource.data.email)
+        || emailMatches(resource.data.emailAddress)
+        || emailMatches(resource.data.authorizedEmail)
+        || emailMatches(resource.data.userEmail);
+      allow create, update, delete: if isSuperadmin();
+    }
+
+    match /serviceBookings/{docId} {
+      allow read, create, update: if isStaffOrHigher();
+      allow delete: if isAdminOrHigher();
+    }
+
+    match /inventory/{docId} {
+      allow read: if isStaffOrHigher() || resource.data.showInShowroom == true || resource.data.publishedToShowroom == true;
+      allow create, update: if isStaffOrHigher();
+      allow delete: if isAdminOrHigher();
+    }
+
+    match /technicians/{docId} {
+      allow read, create, update: if isStaffOrHigher();
+      allow delete: if isAdminOrHigher();
+    }
+  }
+}

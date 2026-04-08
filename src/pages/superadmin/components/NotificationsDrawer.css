@@ -1,0 +1,29 @@
+.notifications-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.notifications-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 70;
+  height: 100vh;
+  width: min(24rem, 86vw);
+  transform: translateX(105%);
+  transition: transform 0.3s ease;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111111;
+  box-shadow: -20px 0 40px rgba(0, 0, 0, 0.28);
+}
+
+.notifications-drawer.open {
+  transform: translateX(0);
+}
+
+.notification-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1b1b1b;
+}

@@ -1,0 +1,284 @@
+.superadmin-shell {
+  --superadmin-bg: #131313;
+  --superadmin-surface: #1c1b1b;
+  --superadmin-sidebar-bg: #0e0e0e;
+  --superadmin-topbar-bg: rgba(19, 19, 19, 0.82);
+  --superadmin-border: rgba(255, 255, 255, 0.08);
+  --superadmin-text: #e5e2e1;
+  --superadmin-text-muted: rgba(229, 226, 225, 0.72);
+  --superadmin-text-soft: rgba(229, 226, 225, 0.5);
+  min-height: 100vh;
+  background: var(--superadmin-bg);
+  color: var(--superadmin-text);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.superadmin-shell.light-mode {
+  --superadmin-bg: #f4f7fb;
+  --superadmin-surface: #ffffff;
+  --superadmin-sidebar-bg: #ffffff;
+  --superadmin-topbar-bg: rgba(244, 247, 251, 0.92);
+  --superadmin-border: rgba(15, 23, 42, 0.12);
+  --superadmin-text: #0f172a;
+  --superadmin-text-muted: rgba(15, 23, 42, 0.82);
+  --superadmin-text-soft: rgba(15, 23, 42, 0.68);
+  color: var(--superadmin-text);
+}
+
+.superadmin-sidebar {
+  background: var(--superadmin-sidebar-bg);
+  color: var(--superadmin-text);
+  transition: transform 0.3s ease, background-color 0.25s ease, color 0.25s ease;
+}
+
+.superadmin-brand-block {
+  align-items: flex-start;
+}
+
+.superadmin-brand-mark {
+  background: linear-gradient(135deg, #e10100 0%, #8b0000 100%);
+  box-shadow: 0 10px 24px rgba(225, 1, 0, 0.35);
+}
+
+.superadmin-brand-title,
+.superadmin-brand-subtitle,
+.superadmin-nav-item,
+.superadmin-sidebar-action,
+.superadmin-sidebar-close,
+.superadmin-topbar-icon,
+.superadmin-profile-trigger,
+.superadmin-search-input {
+  color: var(--superadmin-text);
+}
+
+.superadmin-brand-subtitle {
+  color: var(--superadmin-text-soft);
+}
+
+.superadmin-nav-item,
+.superadmin-sidebar-action,
+.superadmin-topbar-icon {
+  opacity: 0.88;
+}
+
+.superadmin-nav-item:hover,
+.superadmin-sidebar-action:hover,
+.superadmin-topbar-icon:hover,
+.superadmin-profile-trigger:hover {
+  opacity: 1;
+}
+
+.superadmin-nav-item .MuiSvgIcon-root,
+.superadmin-sidebar-action .MuiSvgIcon-root {
+  color: currentColor;
+}
+
+.superadmin-nav-item.is-active {
+  opacity: 1;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(225, 1, 0, 0.08);
+}
+
+.superadmin-quick-action {
+  letter-spacing: 0.01em;
+}
+
+.superadmin-sidebar.is-open {
+  transform: translateX(0);
+}
+
+.superadmin-sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.superadmin-content {
+  min-height: 100vh;
+  background: var(--superadmin-bg);
+  transition: background-color 0.25s ease;
+}
+
+.superadmin-topbar {
+  background: var(--superadmin-topbar-bg);
+  backdrop-filter: blur(18px);
+  transition: background-color 0.25s ease;
+}
+
+.superadmin-summary-card,
+.dashboard-chart-card,
+.dashboard-crew-card,
+.dashboard-dispatch-card,
+.service-requests-section,
+.inventory-section,
+.technicians-section,
+.analytics-card,
+.user-management-card,
+.profile-card,
+.notification-card {
+  border: 1px solid var(--superadmin-border);
+  background: var(--superadmin-surface);
+  color: var(--superadmin-text);
+}
+
+.service-request-card,
+.inventory-card,
+.technician-card,
+.user-management-note,
+.user-list-item,
+.user-management-empty {
+  border: 1px solid var(--superadmin-border);
+  background: color-mix(in srgb, var(--superadmin-surface) 84%, #000000 16%);
+}
+
+.superadmin-alert {
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.12);
+}
+
+.superadmin-metric-card {
+  min-height: 9.5rem;
+}
+
+.superadmin-shell .text-white {
+  color: var(--superadmin-text) !important;
+}
+
+.superadmin-shell .text-white\/80,
+.superadmin-shell .text-white\/70,
+.superadmin-shell .text-white\/60,
+.superadmin-shell .text-white\/50,
+.superadmin-shell .text-white\/40,
+.superadmin-shell .text-white\/30,
+.superadmin-shell .text-\[\#e5e2e1\]\/60,
+.superadmin-shell .text-\[\#e5e2e1\]\/70,
+.superadmin-shell .text-\[\#e5e2e1\] {
+  color: var(--superadmin-text-muted) !important;
+}
+
+.superadmin-shell .text-\[\#ffb4a8\],
+.superadmin-shell .text-\[\#e10100\] {
+  color: #c1121f !important;
+}
+
+.superadmin-shell .text-black,
+.superadmin-shell .text-neutral-900,
+.superadmin-shell .text-zinc-900,
+.superadmin-shell .text-slate-900 {
+  color: var(--superadmin-text) !important;
+}
+
+.superadmin-shell input,
+.superadmin-shell select,
+.superadmin-shell textarea {
+  color: var(--superadmin-text) !important;
+}
+
+.superadmin-shell.light-mode input,
+.superadmin-shell.light-mode select,
+.superadmin-shell.light-mode textarea {
+  border-color: rgba(15, 23, 42, 0.16) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.superadmin-shell.light-mode .bg-white\/5,
+.superadmin-shell.light-mode .bg-white\/8,
+.superadmin-shell.light-mode .bg-white\/10,
+.superadmin-shell.light-mode .bg-black\/20,
+.superadmin-shell.light-mode .bg-black\/30,
+.superadmin-shell.light-mode .bg-\[\#101010\],
+.superadmin-shell.light-mode .bg-\[\#141414\],
+.superadmin-shell.light-mode .bg-\[\#161616\],
+.superadmin-shell.light-mode .bg-\[\#1f1f1f\],
+.superadmin-shell.light-mode .bg-\[\#353534\] {
+  background: #eef3f9 !important;
+}
+
+.superadmin-shell.light-mode .superadmin-sidebar,
+.superadmin-shell.light-mode .superadmin-topbar,
+.superadmin-shell.light-mode .superadmin-main,
+.superadmin-shell.light-mode .superadmin-content {
+  color: var(--superadmin-text);
+}
+
+.superadmin-shell.light-mode .superadmin-nav-item,
+.superadmin-shell.light-mode .superadmin-sidebar-action,
+.superadmin-shell.light-mode .superadmin-topbar-icon,
+.superadmin-shell.light-mode .superadmin-brand-title,
+.superadmin-shell.light-mode .superadmin-brand-subtitle,
+.superadmin-shell.light-mode .superadmin-profile-trigger {
+  color: var(--superadmin-text) !important;
+  opacity: 1;
+}
+
+.superadmin-shell.light-mode .superadmin-nav-item:not(.is-active),
+.superadmin-shell.light-mode .superadmin-sidebar-action {
+  color: var(--superadmin-text-muted) !important;
+}
+
+.superadmin-shell.light-mode .superadmin-nav-item.is-active {
+  color: #b00017 !important;
+  background: linear-gradient(90deg, rgba(225, 1, 0, 0.08) 0%, rgba(225, 1, 0, 0.02) 100%);
+}
+
+.superadmin-shell.light-mode .superadmin-search-input::placeholder {
+  color: rgba(15, 23, 42, 0.58);
+}
+
+.superadmin-shell.light-mode svg {
+  color: inherit;
+}
+
+.superadmin-shell.light-mode .border-white\/10,
+.superadmin-shell.light-mode .border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.superadmin-shell .notifications-drawer {
+  color: var(--superadmin-text);
+}
+
+.superadmin-shell.light-mode .notifications-drawer {
+  background: #ffffff;
+}
+
+.superadmin-shell.light-mode .notification-card {
+  background: #f8fafc;
+}
+
+.superadmin-mobile-toggle {
+  display: inline-flex;
+}
+
+@media (min-width: 1024px) {
+  .superadmin-mobile-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .superadmin-sidebar {
+    width: min(18rem, 86vw) !important;
+    transform: translateX(-108%);
+  }
+
+  .superadmin-topbar {
+    position: sticky !important;
+    width: 100% !important;
+  }
+
+  .superadmin-main {
+    margin-left: 0 !important;
+    padding-top: 1.5rem !important;
+  }
+}
+
+.superadmin-shell.light-mode .text-\[\#ffb4a8\],
+.superadmin-shell.light-mode .text-\[\#e10100\],
+.superadmin-shell.light-mode .text-red-400,
+.superadmin-shell.light-mode .text-red-500,
+.superadmin-shell.light-mode .text-emerald-300,
+.superadmin-shell.light-mode .text-emerald-400 {
+  filter: saturate(1.1);
+}
