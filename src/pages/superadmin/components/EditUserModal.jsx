@@ -1,0 +1,136 @@
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import './EditUserModal.css'
+
+export default function EditUserModal({
+  open,
+  onClose,
+  editUserForm,
+  setEditUserForm,
+  onSubmit,
+  availableRoles = [],
+  canManageAccess,
+  isSubmitting,
+}) {
+  if (!open) {
+    return null
+  }
+
+  const handleFieldChange = (event) => {
+    const { name, value } = event.target
+
+    setEditUserForm((current) => ({
+      ...current,
+      [name]: value,
+    }))
+  }
+
+  const isActive = editUserForm.status !== 'inactive'
+
+  return (
+    <div className="edit-user-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-user-modal-title">
+      <button type="button" className="edit-user-modal-backdrop" onClick={onClose} aria-label="Close edit user modal" />
+
+      <div className="edit-user-modal-panel">
+        <div className="edit-user-modal-visual">
+          <div>
+            <p className="edit-user-modal-visual-kicker">MODIFY ACCESS</p>
+            <h3>Secure operator profile update</h3>
+            <p>Adjust access level, status, and display details from the control console.</p>
+          </div>
+        </div>
+
+        <div className="edit-user-modal-content">
+          <button type="button" onClick={onClose} className="edit-user-modal-close" aria-label="Close modal">
+            <CloseRoundedIcon sx={{ fontSize: 18 }} />
+          </button>
+
+          <div className="edit-user-modal-header">
+            <p className="edit-user-modal-kicker">User Management</p>
+            <h2 id="edit-user-modal-title" className="edit-user-modal-title">
+              Edit User
+            </h2>
+            <p className="edit-user-modal-copy">
+              Review the assigned role and activation state before applying changes.
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="edit-user-modal-form">
+            <label className="edit-user-field">
+              <span>Full Name</span>
+              <input
+                type="text"
+                name="fullName"
+                value={editUserForm.fullName}
+                onChange={handleFieldChange}
+                placeholder="e.g. Kary Sato"
+                disabled={!canManageAccess || isSubmitting}
+              />
+            </label>
+
+            <label className="edit-user-field">
+              <span>Email Address</span>
+              <input
+                type="email"
+                name="email"
+                value={editUserForm.email}
+                onChange={handleFieldChange}
+                placeholder="user@bykelink.com"
+                readOnly
+                disabled
+              />
+            </label>
+
+            <div className="edit-user-modal-grid">
+              <label className="edit-user-field">
+                <span>Assigned Role</span>
+                <select
+                  name="role"
+                  value={editUserForm.role}
+                  onChange={handleFieldChange}
+                  disabled={!canManageAccess || isSubmitting}
+                >
+                  {availableRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="edit-user-field edit-user-field--toggle">
+                <span>Active</span>
+                <label className="edit-user-switch" aria-label="Toggle user active state">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(event) =>
+                      setEditUserForm((current) => ({
+                        ...current,
+                        status: event.target.checked ? 'active' : 'inactive',
+                      }))
+                    }
+                    disabled={!canManageAccess || isSubmitting}
+                  />
+                  <span className="edit-user-switch-ui" />
+                </label>
+              </div>
+            </div>
+
+            <div className="edit-user-modal-actions">
+              <button
+                type="submit"
+                disabled={!canManageAccess || isSubmitting}
+                className="edit-user-submit"
+              >
+                {isSubmitting ? 'Updating...' : 'Update User'}
+              </button>
+              <button type="button" onClick={onClose} className="edit-user-cancel">
+                Discard Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   onAuthStateChanged,
   sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   updatePassword,
   updateProfile,
@@ -65,18 +67,6 @@ const dashboardRequirements = {
   '/superadmin': 'superadmin',
 }
 
-const parseEmailList = (value, fallback = []) => {
-  const source = value ? value.split(',') : fallback
-
-  return [...new Set(source.map((email) => email.trim().toLowerCase()).filter(Boolean))]
-}
-
-const localRoleHints = {
-  superadmin: parseEmailList(import.meta.env.VITE_SUPERADMIN_EMAILS, ['superadmin@bykelink.com']),
-  admin: parseEmailList(import.meta.env.VITE_ADMIN_EMAILS, ['admin@bykelink.com']),
-  staff: parseEmailList(import.meta.env.VITE_STAFF_EMAILS, ['staff@bykelink.com']),
-}
-
 const defaultAccessProfile = {
   role: 'guest',
   label: 'Guest',
@@ -88,6 +78,39 @@ const defaultAccessProfile = {
   source: 'guest',
 }
 
+const isAuthorizedAccessCollectionSource = (source = '') =>
+  [
+    'authorized-superadmin-collection',
+    'authorized-admin-collection',
+    'authorized-personnel-collection',
+    'authorizedSuperadmin',
+    'authorizedAdmin',
+    'authorizedPersonnel',
+  ].includes(String(source).trim())
+
+const getAuthorizedAccessDocRef = (email = '', source = '') => {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+
+  if (!normalizedEmail) {
+    return null
+  }
+
+  if (source === 'authorized-superadmin-collection' || source === 'authorizedSuperadmin') {
+    return doc(db, 'authorizedSuperadmin', normalizedEmail)
+  }
+
+  if (source === 'authorized-admin-collection' || source === 'authorizedAdmin') {
+    return doc(db, 'authorizedAdmin', normalizedEmail)
+  }
+
+  if (source === 'authorized-personnel-collection' || source === 'authorizedPersonnel') {
+    return doc(db, 'authorizedPersonnel', normalizedEmail)
+  }
+
+  return null
+}
+
+const GOOGLE_AUTH_PERSONA_STORAGE_KEY = 'bykelink-google-auth-persona'
 const VERIFICATION_EMAIL_COOLDOWN_MS = 5 * 60 * 1000
 
 const formatAuthError = (error) => {
@@ -104,6 +127,10 @@ const formatAuthError = (error) => {
       return 'Password must be at least 8 characters long and include uppercase, lowercase, and a number.'
     case 'auth/popup-closed-by-user':
       return 'Google sign-in was canceled before completion.'
+    case 'auth/popup-blocked':
+      return 'Google sign-in was blocked by the browser. Please allow popups or try again.'
+    case 'auth/web-storage-unsupported':
+      return 'This browser mode is blocking Google sign-in storage. Please open the app normally and try again.'
     case 'auth/account-exists-with-different-credential':
       return 'This email already uses a different sign-in method. Try email and password instead.'
     case 'auth/too-many-requests':
@@ -132,16 +159,6 @@ const getNavLabelForPath = (path, hash = '') => {
   if (dashboardRequirements[path]) return 'Dashboard'
 
   return matchedLink?.label || 'Home'
-}
-
-const inferRoleFromEmail = (email = '') => {
-  const normalizedEmail = email.trim().toLowerCase()
-
-  if (localRoleHints.superadmin.includes(normalizedEmail)) return 'superadmin'
-  if (localRoleHints.admin.includes(normalizedEmail)) return 'admin'
-  if (localRoleHints.staff.includes(normalizedEmail)) return 'staff'
-
-  return 'customer'
 }
 
 const canAccessRole = (currentRole, requiredRole) => {
@@ -183,13 +200,16 @@ const isAuthorizedEntryActive = (entry = {}) => {
   return Boolean(rawStatus)
 }
 
-const buildAuthorizedAdminProfile = (entry = {}) => {
+const buildAuthorizedAdminProfile = (
+  entry = {},
+  { fallbackRole = 'admin', source = 'authorized-admin-collection' } = {},
+) => {
   if (!isAuthorizedEntryActive(entry)) {
     return null
   }
 
   const role = normalizeAccessRole(
-    entry.role || entry.assignedRole || entry.accessRole || entry.accountRole || 'admin',
+    entry.role || entry.assignedRole || entry.accessRole || entry.accountRole || fallbackRole,
   )
 
   if (role === 'customer') {
@@ -207,7 +227,7 @@ const buildAuthorizedAdminProfile = (entry = {}) => {
     authorized: true,
     mustChangePassword: Boolean(entry.mustChangePassword),
     firstLoginRequired: Boolean(entry.firstLoginRequired),
-    source: 'authorized-admin-collection',
+    source,
   }
 }
 
@@ -218,15 +238,34 @@ const getAuthorizedAdminProfile = async (email = '') => {
     return null
   }
 
-  const collectionsToCheck = ['authorizedAdmin', 'authorizedPersonnel']
+  const collectionsToCheck = [
+    {
+      name: 'authorizedSuperadmin',
+      fallbackRole: 'superadmin',
+      source: 'authorized-superadmin-collection',
+    },
+    {
+      name: 'authorizedAdmin',
+      fallbackRole: 'admin',
+      source: 'authorized-admin-collection',
+    },
+    {
+      name: 'authorizedPersonnel',
+      fallbackRole: 'staff',
+      source: 'authorized-personnel-collection',
+    },
+  ]
   const emailFields = ['email', 'emailAddress', 'authorizedEmail', 'userEmail']
 
   try {
-    for (const collectionName of collectionsToCheck) {
+    for (const { name: collectionName, fallbackRole, source } of collectionsToCheck) {
       const directSnapshot = await getDoc(doc(db, collectionName, normalizedEmail))
 
       if (directSnapshot.exists()) {
-        const directProfile = buildAuthorizedAdminProfile(directSnapshot.data())
+        const directProfile = buildAuthorizedAdminProfile(directSnapshot.data(), {
+          fallbackRole,
+          source,
+        })
 
         if (directProfile) {
           return directProfile
@@ -241,7 +280,10 @@ const getAuthorizedAdminProfile = async (email = '') => {
         const matchedDocument = filteredSnapshot.docs[0]
 
         if (matchedDocument) {
-          const matchedProfile = buildAuthorizedAdminProfile(matchedDocument.data())
+          const matchedProfile = buildAuthorizedAdminProfile(matchedDocument.data(), {
+            fallbackRole,
+            source,
+          })
 
           if (matchedProfile) {
             return matchedProfile
@@ -258,6 +300,18 @@ const getAuthorizedAdminProfile = async (email = '') => {
 
 const isStrongPassword = (password = '') => {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)
+}
+
+const shouldUseRedirectForGoogleAuth = () => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return (
+    window.matchMedia?.('(display-mode: standalone)')?.matches ||
+    window.navigator?.standalone === true ||
+    /Android|iPhone|iPad|iPod/i.test(window.navigator?.userAgent || '')
+  )
 }
 
 function App() {
@@ -290,6 +344,8 @@ function App() {
     password: '',
     confirmPassword: '',
   })
+  const authPersonaRef = useRef(authPersona)
+  const completeAccessFlowRef = useRef(null)
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -300,6 +356,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    authPersonaRef.current = authPersona
+  }, [authPersona])
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user)
       setIsAccessResolving(Boolean(user))
@@ -307,6 +367,50 @@ function App() {
     })
 
     return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    let isSubscribed = true
+
+    const resolveGoogleRedirect = async () => {
+      try {
+        const credentials = await getRedirectResult(auth)
+
+        if (!credentials?.user || !isSubscribed) {
+          return
+        }
+
+        const requestedRole =
+          window.sessionStorage.getItem(GOOGLE_AUTH_PERSONA_STORAGE_KEY) || authPersonaRef.current || 'customer'
+
+        window.sessionStorage.removeItem(GOOGLE_AUTH_PERSONA_STORAGE_KEY)
+
+        await completeAccessFlowRef.current?.(
+          credentials.user,
+          requestedRole,
+          requestedRole === 'customer'
+            ? 'Google sign-in successful. Your rider account is now connected.'
+            : `${roleLabels[requestedRole]} access verified with Google sign-in.`,
+        )
+      } catch (error) {
+        if (isSubscribed && error?.code !== 'auth/no-auth-event') {
+          setAuthMessage({
+            type: 'error',
+            text: formatAuthError(error),
+          })
+        }
+      } finally {
+        if (isSubscribed) {
+          setGoogleLoading(false)
+        }
+      }
+    }
+
+    resolveGoogleRedirect()
+
+    return () => {
+      isSubscribed = false
+    }
   }, [])
 
   useEffect(() => {
@@ -443,6 +547,14 @@ function App() {
       }
 
       try {
+        const authorizedProfile = await getAuthorizedAdminProfile(currentUser.email || '')
+
+        if (authorizedProfile && isSubscribed) {
+          const shouldChangePassword = Boolean(authorizedProfile.mustChangePassword || authorizedProfile.firstLoginRequired)
+          setRequiresPasswordChange(shouldChangePassword)
+          return
+        }
+
         const userSnapshot = await getDoc(doc(db, 'users', currentUser.uid))
         const userData = userSnapshot.data() || {}
         const shouldChangePassword = Boolean(userData.mustChangePassword || userData.firstLoginRequired)
@@ -462,7 +574,7 @@ function App() {
     return () => {
       isSubscribed = false
     }
-  }, [currentUser?.uid])
+  }, [currentUser])
 
   const customerName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Rider'
 
@@ -537,7 +649,11 @@ function App() {
     setPasswordChangeMessage(null)
   }
 
-  const syncUserDocument = async (user, role) => {
+  const syncUserDocument = async (user, profile = {}) => {
+    if (isAuthorizedAccessCollectionSource(profile?.source)) {
+      return
+    }
+
     try {
       await setDoc(
         doc(db, 'users', user.uid),
@@ -545,7 +661,7 @@ function App() {
           fullName: authForm.fullName.trim() || user.displayName || user.email?.split('@')[0] || 'Rider',
           phone: authForm.phone.trim(),
           email: user.email?.trim().toLowerCase() || '',
-          role,
+          role: profile?.role || 'customer',
           emailVerified: Boolean(user.emailVerified),
           providers: user.providerData.map((provider) => provider.providerId),
           lastSignInProvider: user.providerData[0]?.providerId || 'password',
@@ -565,10 +681,22 @@ function App() {
     }
 
     const { force = false } = options
+    let verificationDocRef = doc(db, 'users', user.uid)
+
+    try {
+      const authorizedProfile = await getAuthorizedAdminProfile(user.email || '')
+      const authorizedDocRef = getAuthorizedAccessDocRef(user.email || '', authorizedProfile?.source)
+
+      if (authorizedDocRef) {
+        verificationDocRef = authorizedDocRef
+      }
+    } catch (error) {
+      console.warn('Unable to resolve the verification email storage location.', error)
+    }
 
     if (!force) {
       try {
-        const userSnapshot = await getDoc(doc(db, 'users', user.uid))
+        const userSnapshot = await getDoc(verificationDocRef)
         const userData = userSnapshot.data() || {}
         const rawLastSentAt = userData.verificationEmailSentAt
         const lastSentAt = rawLastSentAt?.toDate
@@ -593,7 +721,7 @@ function App() {
 
     try {
       await setDoc(
-        doc(db, 'users', user.uid),
+        verificationDocRef,
         {
           email: user.email?.trim().toLowerCase() || '',
           emailVerified: Boolean(user.emailVerified),
@@ -621,11 +749,7 @@ function App() {
       authorizedAdminResult.status === 'fulfilled' ? authorizedAdminResult.value : null
     const cloudData = cloudResult.status === 'fulfilled' ? cloudResult.value?.data ?? null : null
 
-    const candidateRoles = [
-      inferRoleFromEmail(user.email),
-      normalizeAccessRole(cloudData?.role),
-      authorizedAdminProfile?.role,
-    ].filter(Boolean)
+    const candidateRoles = [normalizeAccessRole(cloudData?.role), authorizedAdminProfile?.role].filter(Boolean)
 
     const resolvedRole = candidateRoles.reduce((highestRole, role) => {
       return canAccessRole(role, highestRole) ? role : highestRole
@@ -650,11 +774,7 @@ function App() {
           authorizedAdminProfile?.mustChangePassword ||
           cloudData?.mustChangePassword,
       ),
-      source: authorizedAdminProfile
-        ? 'authorized-admin-collection'
-        : cloudData
-          ? 'cloud-function'
-          : 'client-fallback',
+      source: authorizedAdminProfile?.source || cloudData?.source || 'client-fallback',
     }
   }
 
@@ -666,13 +786,13 @@ function App() {
       setAccessProfile(defaultAccessProfile)
       setAuthMessage({
         type: 'error',
-        text: `This email is not assigned for ${roleLabels[requestedRole]} access. Add it to the \`authorizedAdmin\` collection or your Cloud Functions allowlist first.`,
+        text: `This email is not assigned for ${roleLabels[requestedRole]} access. Add it to the proper authorized Firestore collection first.`,
       })
       navigateTo('/')
       return null
     }
 
-    await syncUserDocument(user, profile.role)
+    await syncUserDocument(user, profile)
     setAccessProfile(profile)
     setAuthMessage({
       type: 'success',
@@ -687,6 +807,8 @@ function App() {
 
     return profile
   }
+
+  completeAccessFlowRef.current = completeAccessFlow
 
   const handleAuthSubmit = async (event) => {
     event.preventDefault()
@@ -723,7 +845,10 @@ function App() {
           })
         }
 
-        await syncUserDocument(credentials.user, 'customer')
+        await syncUserDocument(credentials.user, {
+          role: 'customer',
+          source: 'customer-signup',
+        })
         await sendVerificationEmailWithCooldown(credentials.user, { force: true })
         await signOut(auth)
         setAccessProfile(defaultAccessProfile)
@@ -775,17 +900,36 @@ function App() {
     setGoogleLoading(true)
     setAuthMessage(null)
 
+    const requestedRole = authPersona
+
     try {
+      if (shouldUseRedirectForGoogleAuth()) {
+        window.sessionStorage.setItem(GOOGLE_AUTH_PERSONA_STORAGE_KEY, requestedRole)
+        await signInWithRedirect(auth, googleProvider)
+        return
+      }
+
       const credentials = await signInWithPopup(auth, googleProvider)
 
       await completeAccessFlow(
         credentials.user,
-        authPersona,
-        authPersona === 'customer'
+        requestedRole,
+        requestedRole === 'customer'
           ? 'Google sign-in successful. Your rider account is now connected.'
-          : `${roleLabels[authPersona]} access verified with Google sign-in.`,
+          : `${roleLabels[requestedRole]} access verified with Google sign-in.`,
       )
     } catch (error) {
+      const shouldFallbackToRedirect =
+        error?.code === 'auth/popup-blocked' ||
+        error?.code === 'auth/web-storage-unsupported' ||
+        String(error?.message || '').includes('Cross-Origin-Opener-Policy')
+
+      if (shouldFallbackToRedirect) {
+        window.sessionStorage.setItem(GOOGLE_AUTH_PERSONA_STORAGE_KEY, requestedRole)
+        await signInWithRedirect(auth, googleProvider)
+        return
+      }
+
       setAuthMessage({
         type: 'error',
         text: formatAuthError(error),
@@ -837,6 +981,14 @@ function App() {
 
       const completeFirstLoginSetup = httpsCallable(functions, 'completeFirstLoginSetup')
       await completeFirstLoginSetup({})
+
+      if (auth.currentUser) {
+        try {
+          await auth.currentUser.getIdToken(true)
+        } catch (tokenError) {
+          console.warn('Unable to refresh the auth token after first-login completion.', tokenError)
+        }
+      }
 
       setRequiresPasswordChange(false)
       setPasswordChangeForm({

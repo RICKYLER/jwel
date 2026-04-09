@@ -1,4 +1,3 @@
-import AutorenewRoundedIcon from '@mui/icons-material/AutorenewRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import './NewUserModal.css'
 
@@ -8,7 +7,6 @@ export default function NewUserModal({
   inviteForm,
   setInviteForm,
   onSubmit,
-  onGeneratePassword,
   availableRoles = [],
   canManageAccess,
   isSubmitting,
@@ -118,30 +116,20 @@ export default function NewUserModal({
           </div>
 
           <label className="new-user-field new-user-password-field">
-            <span>Temporary Password</span>
+            <span>Default Password</span>
             <div className="new-user-password-row">
               <input
                 type="text"
                 name="temporaryPassword"
-                value={inviteForm.temporaryPassword}
-                onChange={handleFieldChange}
-                placeholder="••••••••••"
-                disabled={!canManageAccess || isSubmitting}
+                value={inviteForm.temporaryPassword || 'Password123'}
+                readOnly
+                disabled={isSubmitting}
               />
-              <button
-                type="button"
-                onClick={onGeneratePassword}
-                disabled={!canManageAccess || isSubmitting}
-                className="new-user-generate"
-              >
-                <AutorenewRoundedIcon sx={{ fontSize: 16 }} />
-                Generate
-              </button>
             </div>
           </label>
 
           <p className="new-user-modal-note">
-            Operator will be prompted to reset upon first authentication.
+            New operators must verify their email first, then sign in with <strong>Password123</strong> and change it immediately.
           </p>
 
           <div className="new-user-modal-actions">

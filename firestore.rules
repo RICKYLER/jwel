@@ -5,19 +5,72 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function emailMatches(value) {
-      return isSignedIn()
-        && request.auth.token.email != null
-        && value is string
-        && request.auth.token.email.lower() == value.lower();
+    function signedInEmail() {
+      return isSignedIn() && request.auth.token.email is string
+        ? request.auth.token.email.lower()
+        : '';
     }
 
-    function signedInRole() {
+    function emailMatches(value) {
+      return signedInEmail() != ''
+        && value is string
+        && signedInEmail() == value.lower();
+    }
+
+    function tokenRole() {
+      return isSignedIn() && request.auth.token.role is string
+        ? request.auth.token.role.lower()
+        : 'guest';
+    }
+
+    function legacyUserRole() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role is string
           ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower()
           : 'guest';
+    }
+
+    function signedInRole() {
+      return tokenRole() != 'guest'
+        ? tokenRole()
+        : signedInEmail() != ''
+          && exists(/databases/$(database)/documents/authorizedSuperadmin/$(signedInEmail()))
+            ? 'superadmin'
+            : signedInEmail() != ''
+              && exists(/databases/$(database)/documents/authorizedAdmin/$(signedInEmail()))
+                ? 'admin'
+                : signedInEmail() != ''
+                  && exists(/databases/$(database)/documents/authorizedPersonnel/$(signedInEmail()))
+                    ? 'staff'
+                    : legacyUserRole();
+    }
+
+    function isPersonnelRoleValue(value) {
+      return value is string
+        && (
+          value.lower() == 'staff'
+          || value.lower() == 'mechanics personnel'
+          || value.lower() == 'inventory personnel'
+          || value.lower() == 'cashier personnel'
+          || value.lower() == 'front desk personnel'
+        );
+    }
+
+    function requestedPersonnelRole() {
+      return request.resource.data.role is string
+        ? request.resource.data.role.lower()
+        : request.resource.data.personnelRole is string
+          ? request.resource.data.personnelRole.lower()
+          : 'staff';
+    }
+
+    function existingPersonnelRole() {
+      return resource.data.role is string
+        ? resource.data.role.lower()
+        : resource.data.personnelRole is string
+          ? resource.data.personnelRole.lower()
+          : 'staff';
     }
 
     function isStaffOrHigher() {
@@ -44,6 +97,16 @@ service cloud.firestore {
       allow delete: if isSuperadmin();
     }
 
+    match /authorizedSuperadmin/{docId} {
+      allow read: if isSuperadmin()
+        || emailMatches(docId)
+        || emailMatches(resource.data.email)
+        || emailMatches(resource.data.emailAddress)
+        || emailMatches(resource.data.authorizedEmail)
+        || emailMatches(resource.data.userEmail);
+      allow create, update, delete: if isSuperadmin();
+    }
+
     match /authorizedAdmin/{docId} {
       allow read: if isAdminOrHigher()
         || emailMatches(docId)
@@ -61,6 +124,14 @@ service cloud.firestore {
         || emailMatches(resource.data.emailAddress)
         || emailMatches(resource.data.authorizedEmail)
         || emailMatches(resource.data.userEmail);
+      allow create, update: if isSuperadmin()
+        || (signedInRole() == 'admin' && isPersonnelRoleValue(requestedPersonnelRole()));
+      allow delete: if isSuperadmin()
+        || (signedInRole() == 'admin' && isPersonnelRoleValue(existingPersonnelRole()));
+    }
+
+    match /deleteArchived/{docId} {
+      allow read: if isAdminOrHigher();
       allow create, update, delete: if isSuperadmin();
     }
 

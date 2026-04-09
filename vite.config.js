@@ -3,8 +3,19 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const coopHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+  'Cross-Origin-Embedder-Policy': 'unsafe-none',
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    headers: coopHeaders,
+  },
+  preview: {
+    headers: coopHeaders,
+  },
   plugins: [
     react(),
     tailwindcss(),

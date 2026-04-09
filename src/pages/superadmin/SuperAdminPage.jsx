@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
@@ -12,6 +12,7 @@ import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import { db, functions } from '../../firebase'
+import EditUserModal from './components/EditUserModal'
 import NewUserModal from './components/NewUserModal'
 import NotificationsDrawer from './components/NotificationsDrawer'
 import ProfileSection from './components/ProfileSection'
@@ -46,12 +47,21 @@ const sidebarItems = [
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
 
+const DEFAULT_OPERATOR_PASSWORD = 'Password123'
+
 const defaultInviteForm = {
   fullName: '',
   email: '',
   role: 'admin',
   status: 'active',
-  temporaryPassword: '',
+  temporaryPassword: DEFAULT_OPERATOR_PASSWORD,
+}
+
+const defaultEditUserForm = {
+  fullName: '',
+  email: '',
+  role: 'admin',
+  status: 'active',
 }
 
 export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile }) {
@@ -63,6 +73,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [technicians, setTechnicians] = useState([])
   const [authorizedAdmins, setAuthorizedAdmins] = useState([])
   const [authorizedPersonnel, setAuthorizedPersonnel] = useState([])
+  const [archivedUsers, setArchivedUsers] = useState([])
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -70,11 +81,15 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     technicians: true,
     authorizedAdmins: true,
     authorizedPersonnel: true,
+    archivedUsers: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [inviteForm, setInviteForm] = useState(defaultInviteForm)
+  const [editUserForm, setEditUserForm] = useState(defaultEditUserForm)
+  const [selectedUser, setSelectedUser] = useState(null)
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.innerWidth >= 1024,
   )
@@ -228,6 +243,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         collectionName: 'authorizedPersonnel',
         stateKey: 'authorizedPersonnel',
         setter: setAuthorizedPersonnel,
+        shouldSubscribe: canEditOperations,
+      }),
+      subscribeToCollection({
+        collectionName: 'deleteArchived',
+        stateKey: 'archivedUsers',
+        setter: setArchivedUsers,
         shouldSubscribe: canEditOperations,
       }),
     ]
@@ -403,7 +424,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     const alternateCollection = isAdminRole ? 'authorizedPersonnel' : 'authorizedAdmin'
     const accessLevel = normalizedRole === 'superadmin' || normalizedRole === 'admin' ? normalizedRole : 'staff'
 
-    await Promise.all([
+    const writeOperations = [
       setDoc(
         doc(db, collectionName, normalizedEmail),
         {
@@ -418,56 +439,20 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           mustChangePassword: Boolean(extraData.mustChangePassword),
           firstLoginRequired: Boolean(extraData.firstLoginRequired),
           dashboardPath,
-          invitedBy: currentUser?.email || '',
+          invitedBy: extraData.invitedBy || currentUser?.email || '',
           updatedAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
+          createdAt: extraData.createdAt || serverTimestamp(),
         },
         { merge: true },
       ),
-      setDoc(
-        doc(db, alternateCollection, normalizedEmail),
-        {
-          email: normalizedEmail,
-          status: 'inactive',
-          active: false,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      ),
-    ])
+    ]
 
-    const existingUser = users.find(
-      (item) => String(item.email || '').trim().toLowerCase() === normalizedEmail,
-    )
-
-    if (existingUser?.id) {
-      await setDoc(
-        doc(db, 'users', existingUser.id),
-        {
-          fullName: extraData.fullName?.trim() || existingUser.fullName || existingUser.displayName || '',
-          role: normalizedRole,
-          personnelRole: isPersonnelRole ? normalizedRole : '',
-          accessLevel,
-          isPrivileged: normalizedRole !== 'customer',
-          dashboardPath,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      )
+    if (currentAccessRole === 'superadmin') {
+      writeOperations.push(deleteDoc(doc(db, alternateCollection, normalizedEmail)))
     }
-  }
 
-  const createTemporaryPassword = () => {
-    const randomBlock = Math.random().toString(36).slice(2, 6)
-    const numericBlock = Math.random().toString().slice(2, 6)
-    return `Bk!${randomBlock.toUpperCase()}${numericBlock}a`
-  }
+    await Promise.all(writeOperations)
 
-  const handleGenerateTemporaryPassword = () => {
-    setInviteForm((current) => ({
-      ...current,
-      temporaryPassword: createTemporaryPassword(),
-    }))
   }
 
   const handleOpenNewUserModal = () => {
@@ -482,7 +467,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     setInviteForm({
       ...defaultInviteForm,
       role: assignableInviteRoles[0] || defaultInviteForm.role,
-      temporaryPassword: createTemporaryPassword(),
+      temporaryPassword: DEFAULT_OPERATOR_PASSWORD,
     })
     setIsNewUserModalOpen(true)
   }
@@ -492,12 +477,60 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     setInviteForm(defaultInviteForm)
   }
 
+  const handleOpenEditUserModal = (user) => {
+    if (!canManageAccess) {
+      setActionMessage({
+        type: 'error',
+        text: 'Only admin or superadmin can edit user access records.',
+      })
+      return
+    }
+
+    const normalizedRole = normalizeText(user?.role)
+
+    if (currentAccessRole === 'admin' && ['admin', 'superadmin'].includes(normalizedRole)) {
+      setActionMessage({
+        type: 'error',
+        text: 'Admin can edit non-admin users only.',
+      })
+      return
+    }
+
+    setSelectedUser(user)
+    setEditUserForm({
+      fullName: user.fullName || user.displayName || '',
+      email: user.email || '',
+      role: user.role || assignableRoleOptions[0] || 'customer',
+      status: user.status?.toLowerCase() === 'suspended' ? 'inactive' : 'active',
+    })
+    setIsEditUserModalOpen(true)
+  }
+
+  const handleCloseEditUserModal = () => {
+    setSelectedUser(null)
+    setEditUserForm(defaultEditUserForm)
+    setIsEditUserModalOpen(false)
+  }
+
   const saveProfileToFirebase = async () => {
     if (!currentUser?.uid) {
       throw new Error('No authenticated profile is available to update.')
     }
 
     const fullName = profileForm.fullName.trim() || currentUser.displayName || adminName
+    const normalizedRole = normalizeText(accessProfile?.role || 'superadmin')
+    const privilegedCollectionName =
+      normalizedRole === 'superadmin'
+        ? 'authorizedSuperadmin'
+        : normalizedRole === 'admin'
+          ? 'authorizedAdmin'
+          : personnelInviteRoles.includes(normalizedRole) || normalizedRole === 'staff'
+            ? 'authorizedPersonnel'
+            : null
+    const profileDocRef =
+      privilegedCollectionName && currentUser.email
+        ? doc(db, privilegedCollectionName, String(currentUser.email || '').trim().toLowerCase())
+        : doc(db, 'users', currentUser.uid)
 
     if (fullName && fullName !== currentUser.displayName) {
       await updateAuthProfile(currentUser, {
@@ -506,7 +539,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
 
     await setDoc(
-      doc(db, 'users', currentUser.uid),
+      profileDocRef,
       {
         fullName,
         phone: profileForm.phone.trim(),
@@ -515,6 +548,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         bio: profileForm.bio.trim(),
         role: accessProfile?.role || 'superadmin',
         email: currentUser.email || '',
+        active: true,
+        status: 'active',
         updatedAt: serverTimestamp(),
       },
       { merge: true },
@@ -559,6 +594,60 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
+  const handleEditUserSave = async (event) => {
+    event.preventDefault()
+
+    if (!selectedUser?.email) {
+      setActionMessage({
+        type: 'error',
+        text: 'No user record is selected for editing.',
+      })
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      if (!editUserForm.fullName.trim()) {
+        throw new Error('Enter the full name before saving the user profile.')
+      }
+
+      const normalizedRole = normalizeText(editUserForm.role)
+
+      if (!assignableRoleOptions.includes(normalizedRole)) {
+        throw new Error(
+          currentAccessRole === 'admin'
+            ? 'Admin accounts can only assign non-admin roles.'
+            : 'You are not allowed to assign that role from this console.',
+        )
+      }
+
+      await saveAccessAssignment(editUserForm.email, normalizedRole, {
+        fullName: editUserForm.fullName,
+        status: editUserForm.status,
+        temporaryPassword: selectedUser.temporaryPassword || DEFAULT_OPERATOR_PASSWORD,
+        mustChangePassword: Boolean(selectedUser.mustChangePassword || selectedUser.requiresPasswordChange),
+        firstLoginRequired: Boolean(selectedUser.firstLoginRequired || selectedUser.requiresPasswordChange),
+        createdAt: selectedUser.createdAt,
+        invitedBy: selectedUser.invitedBy,
+      })
+
+      setActionMessage({
+        type: 'success',
+        text: `${editUserForm.email} updated successfully.`,
+      })
+      handleCloseEditUserModal()
+    } catch (error) {
+      console.error('Unable to update user', error)
+      setActionMessage({
+        type: 'error',
+        text: `Unable to update the user. ${error.message}`,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleGrantAccess = async (event) => {
     event.preventDefault()
 
@@ -597,7 +686,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         )
       }
 
-      const temporaryPassword = inviteForm.temporaryPassword.trim() || createTemporaryPassword()
+      const temporaryPassword = DEFAULT_OPERATOR_PASSWORD
       const createOperatorAccount = httpsCallable(functions, 'createOperatorAccount')
       const response = await createOperatorAccount({
         ...inviteForm,
@@ -630,61 +719,92 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
-  const handleUserRoleChange = async (user, nextRole) => {
+  const handleArchiveUser = async (user) => {
     if (!canManageAccess) {
       setActionMessage({
         type: 'error',
-        text: 'Only admin or superadmin can change user roles from this console.',
+        text: 'Only admin or superadmin can archive user accounts.',
       })
       return
+    }
+
+    const normalizedRole = normalizeText(user.role)
+
+    if (currentAccessRole === 'admin' && ['admin', 'superadmin'].includes(normalizedRole)) {
+      setActionMessage({
+        type: 'error',
+        text: 'Admin can archive non-admin users only.',
+      })
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Archive ${user.fullName || user.email || 'this user'}?`)
+
+      if (!confirmed) {
+        return
+      }
     }
 
     setIsSubmitting(true)
 
     try {
-      const normalizedNextRole = normalizeText(nextRole)
-
-      if (!assignableRoleOptions.includes(normalizedNextRole)) {
-        throw new Error(
-          currentAccessRole === 'admin'
-            ? 'Admin accounts can only assign non-admin roles.'
-            : 'You are not allowed to assign that role from this console.',
-        )
-      }
-
-      const dashboardPath =
-        normalizedNextRole === 'superadmin'
-          ? '/superadmin'
-          : normalizedNextRole === 'admin'
-            ? '/admin'
-            : personnelInviteRoles.includes(normalizedNextRole) || normalizedNextRole === 'staff'
-              ? '/staff'
-              : null
-
-      await setDoc(
-        doc(db, 'users', user.id),
-        {
-          role: normalizedNextRole,
-          isPrivileged: normalizedNextRole !== 'customer',
-          dashboardPath,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      )
-
-      if (user.email) {
-        await saveAccessAssignment(user.email, normalizedNextRole)
-      }
+      const archiveOperatorAccount = httpsCallable(functions, 'archiveOperatorAccount')
+      const response = await archiveOperatorAccount({
+        email: String(user.email || '').trim().toLowerCase(),
+        role: normalizedRole,
+        fullName: user.fullName || user.displayName || '',
+      })
 
       setActionMessage({
         type: 'success',
-        text: `${user.email || user.id} updated to ${normalizedNextRole}.`,
+        text: response?.data?.message || `${user.email || user.id} moved to Delete Archived.`,
       })
     } catch (error) {
-      console.error('Unable to update user role', error)
+      console.error('Unable to archive user', error)
       setActionMessage({
         type: 'error',
-        text: `Unable to update the user role. ${error.message}`,
+        text: `Unable to archive the user. ${error.message}`,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteArchivedUserPermanently = async (user) => {
+    if (currentAccessRole !== 'superadmin') {
+      setActionMessage({
+        type: 'error',
+        text: 'Only superadmin can permanently delete archived records.',
+      })
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Permanently delete ${user.fullName || user.email || 'this archived user'}?`)
+
+      if (!confirmed) {
+        return
+      }
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const deleteArchivedUserPermanently = httpsCallable(functions, 'deleteArchivedUserPermanently')
+      const response = await deleteArchivedUserPermanently({
+        email: String(user.email || '').trim().toLowerCase(),
+      })
+
+      setActionMessage({
+        type: 'success',
+        text: response?.data?.message || `${user.email || user.id} permanently deleted.`,
+      })
+    } catch (error) {
+      console.error('Unable to permanently delete archived user', error)
+      setActionMessage({
+        type: 'error',
+        text: `Unable to permanently delete the archived user. ${error.message}`,
       })
     } finally {
       setIsSubmitting(false)
@@ -752,16 +872,19 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           <UserManagementSection
             filteredAuthorizedAdmins={filteredAuthorizedAccess}
             filteredUsers={filteredUsers}
+            archivedUsers={archivedUsers}
             canManageAccess={canManageAccess}
+            currentAccessRole={currentAccessRole}
             isSubmitting={isSubmitting}
-            handleCollectionUpdate={handleCollectionUpdate}
-            handleUserRoleChange={handleUserRoleChange}
             roleOptions={assignableRoleOptions}
             formatDate={formatDate}
             getStatusClasses={getStatusClasses}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onOpenNewUserModal={handleOpenNewUserModal}
+            onEditUser={handleOpenEditUserModal}
+            onArchiveUser={handleArchiveUser}
+            onDeleteArchivedUser={handleDeleteArchivedUserPermanently}
           />
         )
       case 'profile':
@@ -803,8 +926,18 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         inviteForm={inviteForm}
         setInviteForm={setInviteForm}
         onSubmit={handleGrantAccess}
-        onGeneratePassword={handleGenerateTemporaryPassword}
         availableRoles={assignableInviteRoles}
+        canManageAccess={canManageAccess}
+        isSubmitting={isSubmitting}
+      />
+
+      <EditUserModal
+        open={isEditUserModalOpen}
+        onClose={handleCloseEditUserModal}
+        editUserForm={editUserForm}
+        setEditUserForm={setEditUserForm}
+        onSubmit={handleEditUserSave}
+        availableRoles={assignableRoleOptions}
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
       />

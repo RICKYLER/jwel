@@ -48,7 +48,7 @@ export default function AnalyticsSection({
         <h3 className="font-['Epilogue'] text-lg font-extrabold uppercase italic tracking-tighter">Health Check</h3>
         <div className="mt-4 space-y-3 text-sm text-white/70">
           <p>• Firebase reads are live for the active console.</p>
-          <p>• Role access is sourced from `authorizedAdmin`, `authorizedPersonnel`, and `users`.</p>
+          <p>• Role access is sourced from `authorizedSuperadmin`, `authorizedAdmin`, and `authorizedPersonnel`.</p>
           <p>• Service, inventory, and technician updates write back to Firestore in real time.</p>
         </div>
       </article>

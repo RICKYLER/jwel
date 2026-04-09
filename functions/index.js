@@ -4,6 +4,8 @@ const admin = require('firebase-admin')
 
 admin.initializeApp()
 
+const DEFAULT_OPERATOR_PASSWORD = 'Password123'
+
 const personnelRoles = [
   'mechanics personnel',
   'inventory personnel',
@@ -20,12 +22,6 @@ const rolePriority = {
   'front desk personnel': 1,
   admin: 2,
   superadmin: 3,
-}
-
-const parseEmailList = (value, fallback = []) => {
-  const source = value ? value.split(',') : fallback
-
-  return [...new Set(source.map((email) => email.trim().toLowerCase()).filter(Boolean))]
 }
 
 const normalizeRole = (value = 'customer') => {
@@ -63,12 +59,6 @@ const isAuthorizedEntryActive = (entry = {}) => {
   return Boolean(rawStatus)
 }
 
-const getAllowedEmails = () => ({
-  superadmin: parseEmailList(process.env.SUPERADMIN_EMAILS, ['superadmin@bykelink.com']),
-  admin: parseEmailList(process.env.ADMIN_EMAILS, ['admin@bykelink.com']),
-  staff: parseEmailList(process.env.STAFF_EMAILS, ['staff@bykelink.com']),
-})
-
 const getDashboardPath = (role, explicitPath = '') => {
   const normalizedPath = normalizeDashboardPath(explicitPath)
 
@@ -91,8 +81,6 @@ const getDashboardPath = (role, explicitPath = '') => {
       return null
   }
 }
-
-const isStrongPassword = (value = '') => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(String(value))
 
 const getWebApiKey = () =>
   String(
@@ -165,6 +153,38 @@ const sendFirebaseVerificationEmail = async ({ email, temporaryPassword }) => {
   return { sent: true }
 }
 
+const isAuthorizedCollectionSource = (source = '') =>
+  ['authorizedSuperadmin', 'authorizedAdmin', 'authorizedPersonnel'].includes(String(source).trim())
+
+const getAuthorizedCollectionNameForRole = (role = 'customer') => {
+  const normalizedRole = normalizeRole(role)
+
+  if (normalizedRole === 'superadmin') return 'authorizedSuperadmin'
+  if (normalizedRole === 'admin') return 'authorizedAdmin'
+  if (normalizedRole === 'staff' || personnelRoles.includes(normalizedRole)) return 'authorizedPersonnel'
+
+  return null
+}
+
+const deleteMatchingUserDocs = async ({ uid = '', email = '' } = {}) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  const usersCollection = admin.firestore().collection('users')
+  const deleteOperations = []
+
+  if (uid) {
+    deleteOperations.push(usersCollection.doc(uid).delete().catch(() => undefined))
+  }
+
+  if (normalizedEmail) {
+    const snapshot = await usersCollection.where('email', '==', normalizedEmail).get()
+    snapshot.forEach((docSnapshot) => {
+      deleteOperations.push(docSnapshot.ref.delete().catch(() => undefined))
+    })
+  }
+
+  await Promise.all(deleteOperations)
+}
+
 const buildResolvedAccessProfile = (profiles = [], fallbackRole = 'customer') => {
   const normalizedFallbackRole = normalizeRole(fallbackRole)
 
@@ -206,83 +226,12 @@ const buildResolvedAccessProfile = (profiles = [], fallbackRole = 'customer') =>
   )
 }
 
-const getRoleFromUsersCollection = async ({ uid = '', email = '' } = {}) => {
-  const normalizedUid = String(uid || '').trim()
-  const normalizedEmail = String(email || '').trim().toLowerCase()
-
-  if (!normalizedUid && !normalizedEmail) {
-    return null
-  }
-
-  const usersCollection = admin.firestore().collection('users')
-
-  const toUserProfile = (data = {}) => {
-    const role = normalizeRole(
-      data.role || data.personnelRole || data.assignedRole || data.accessRole || data.accountRole,
-    )
-
-    if (role === 'customer') {
-      return null
-    }
-
-    return {
-      role,
-      dashboardPath: getDashboardPath(
-        role,
-        data.dashboardPath || data.assignedPage || data.redirectTo || data.page,
-      ),
-      source: 'users-collection',
-    }
-  }
-
-  try {
-    if (normalizedUid) {
-      const userDoc = await usersCollection.doc(normalizedUid).get()
-
-      if (userDoc.exists) {
-        const userProfile = toUserProfile(userDoc.data() || {})
-
-        if (userProfile) {
-          return userProfile
-        }
-      }
-    }
-
-    if (normalizedEmail) {
-      const userSnapshot = await usersCollection.where('email', '==', normalizedEmail).limit(1).get()
-      const matchedUser = userSnapshot.docs[0]
-
-      if (matchedUser) {
-        return toUserProfile(matchedUser.data() || {})
-      }
-    }
-  } catch (error) {
-    logger.warn('Unable to read the users collection while resolving access.', {
-      uid: normalizedUid,
-      email: normalizedEmail,
-      details: error.message,
-      structuredData: true,
-    })
-  }
-
-  return null
-}
-
 const getRoleFromEmail = async (email = '', options = {}) => {
   const normalizedEmail = String(email || '').trim().toLowerCase()
   const normalizedUid = String(options.uid || '').trim()
   const claimsRole = normalizeRole(options.claimsRole || 'customer')
-  const allowlist = getAllowedEmails()
 
   const resolvedProfiles = []
-
-  if (claimsRole !== 'customer') {
-    resolvedProfiles.push({
-      role: claimsRole,
-      dashboardPath: getDashboardPath(claimsRole),
-      source: 'auth-claim',
-    })
-  }
 
   if (!normalizedEmail && !normalizedUid) {
     return buildResolvedAccessProfile(resolvedProfiles, 'customer')
@@ -370,19 +319,19 @@ const getRoleFromEmail = async (email = '', options = {}) => {
     return null
   }
 
-  const [adminProfileResult, personnelProfileResult, userProfileResult] = await Promise.allSettled([
+  const [superadminProfileResult, adminProfileResult, personnelProfileResult] = await Promise.allSettled([
+    findCollectionRole('authorizedSuperadmin', 'superadmin'),
     findCollectionRole('authorizedAdmin', 'admin'),
     findCollectionRole('authorizedPersonnel', 'staff'),
-    getRoleFromUsersCollection({ uid: normalizedUid, email: normalizedEmail }),
   ])
 
   resolvedProfiles.push(
+    superadminProfileResult.status === 'fulfilled' ? superadminProfileResult.value : null,
     adminProfileResult.status === 'fulfilled' ? adminProfileResult.value : null,
     personnelProfileResult.status === 'fulfilled' ? personnelProfileResult.value : null,
-    userProfileResult.status === 'fulfilled' ? userProfileResult.value : null,
   )
 
-  const accessLookupErrors = [adminProfileResult, personnelProfileResult, userProfileResult]
+  const accessLookupErrors = [superadminProfileResult, adminProfileResult, personnelProfileResult]
     .filter((result) => result.status === 'rejected')
     .map((result) => result.reason?.message)
     .filter(Boolean)
@@ -394,18 +343,14 @@ const getRoleFromEmail = async (email = '', options = {}) => {
       details: accessLookupErrors.join(' | '),
       structuredData: true,
     })
-  }
 
-  if (allowlist.superadmin.includes(normalizedEmail)) {
-    resolvedProfiles.push({ role: 'superadmin', dashboardPath: '/superadmin', source: 'env-allowlist' })
-  }
-
-  if (allowlist.admin.includes(normalizedEmail)) {
-    resolvedProfiles.push({ role: 'admin', dashboardPath: '/admin', source: 'env-allowlist' })
-  }
-
-  if (allowlist.staff.includes(normalizedEmail)) {
-    resolvedProfiles.push({ role: 'staff', dashboardPath: '/staff', source: 'env-allowlist' })
+    if (!resolvedProfiles.filter(Boolean).length && claimsRole !== 'customer') {
+      resolvedProfiles.push({
+        role: claimsRole,
+        dashboardPath: getDashboardPath(claimsRole),
+        source: 'auth-claim-fallback',
+      })
+    }
   }
 
   return buildResolvedAccessProfile(resolvedProfiles, 'customer')
@@ -463,19 +408,22 @@ exports.syncUserAccess = onCall(async (request) => {
   const role = accessRecord.role
   const dashboardPath = accessRecord.dashboardPath || getDashboardPath(role)
   const isPrivileged = role !== 'customer'
-  const userRef = admin.firestore().collection('users').doc(uid)
+  const shouldSyncUsersCollection = !isAuthorizedCollectionSource(accessRecord.source)
+  const userRef = shouldSyncUsersCollection ? admin.firestore().collection('users').doc(uid) : null
   let existingUserData = {}
 
-  try {
-    const existingUserSnapshot = await userRef.get()
-    existingUserData = existingUserSnapshot.data() || {}
-  } catch (error) {
-    logger.warn('Unable to read the user profile from Firestore during syncUserAccess.', {
-      uid,
-      email,
-      details: error.message,
-      structuredData: true,
-    })
+  if (userRef) {
+    try {
+      const existingUserSnapshot = await userRef.get()
+      existingUserData = existingUserSnapshot.data() || {}
+    } catch (error) {
+      logger.warn('Unable to read the user profile from Firestore during syncUserAccess.', {
+        uid,
+        email,
+        details: error.message,
+        structuredData: true,
+      })
+    }
   }
 
   const mustChangePassword = Boolean(existingUserData.mustChangePassword || request.auth.token.mustChangePassword)
@@ -499,31 +447,33 @@ exports.syncUserAccess = onCall(async (request) => {
     })
   }
 
-  try {
-    await userRef.set(
-      {
-        email: email.toLowerCase(),
-        displayName: request.auth.token.name || null,
-        role,
-        isPrivileged,
-        dashboardPath,
-        mustChangePassword,
-        firstLoginRequired: Boolean(existingUserData.firstLoginRequired || mustChangePassword),
-        lastRequestedRole: requestedRole,
-        provider: request.auth.token.firebase?.sign_in_provider || 'password',
-        accessSource: accessRecord.source,
-        lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    )
-  } catch (error) {
-    logger.warn('Unable to persist the synced user profile to Firestore; returning access data without blocking sign-in.', {
-      uid,
-      email,
-      details: error.message,
-      structuredData: true,
-    })
+  if (userRef) {
+    try {
+      await userRef.set(
+        {
+          email: email.toLowerCase(),
+          displayName: request.auth.token.name || null,
+          role,
+          isPrivileged,
+          dashboardPath,
+          mustChangePassword,
+          firstLoginRequired: Boolean(existingUserData.firstLoginRequired || mustChangePassword),
+          lastRequestedRole: requestedRole,
+          provider: request.auth.token.firebase?.sign_in_provider || 'password',
+          accessSource: accessRecord.source,
+          lastLoginAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      )
+    } catch (error) {
+      logger.warn('Unable to persist the synced user profile to Firestore; returning access data without blocking sign-in.', {
+        uid,
+        email,
+        details: error.message,
+        structuredData: true,
+      })
+    }
   }
 
   logger.info('Bykelink access sync complete', {
@@ -546,6 +496,7 @@ exports.syncUserAccess = onCall(async (request) => {
     isPrivileged,
     dashboardPath,
     mustChangePassword,
+    source: accessRecord.source,
   }
 })
 
@@ -564,7 +515,7 @@ exports.createOperatorAccount = onCall(async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
   const role = normalizeRole(request.data?.role || 'admin')
   const status = String(request.data?.status || 'active').trim().toLowerCase()
-  const temporaryPassword = String(request.data?.temporaryPassword || '').trim()
+  const temporaryPassword = DEFAULT_OPERATOR_PASSWORD
 
   if (!fullName) {
     throw new HttpsError('invalid-argument', 'Enter the operator full name first.')
@@ -599,10 +550,10 @@ exports.createOperatorAccount = onCall(async (request) => {
     )
   }
 
-  if (!isStrongPassword(temporaryPassword)) {
+  if (temporaryPassword.length < 8) {
     throw new HttpsError(
       'invalid-argument',
-      'Temporary password must contain uppercase, lowercase, and a number with at least 8 characters.',
+      'Temporary password must be at least 8 characters long.',
     )
   }
 
@@ -657,28 +608,6 @@ exports.createOperatorAccount = onCall(async (request) => {
 
   try {
     await Promise.all([
-      admin.firestore().collection('users').doc(operatorUser.uid).set(
-        {
-          email,
-          fullName,
-          displayName: fullName,
-          role,
-          accessLevel,
-          personnelRole: isPersonnelRole ? role : '',
-          status,
-          active,
-          isPrivileged: true,
-          dashboardPath,
-          mustChangePassword: true,
-          firstLoginRequired: true,
-          invitedBy: inviterEmail,
-          inviteSource: 'createOperatorAccount',
-          emailVerified: false,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      ),
       admin.firestore().collection(targetCollection).doc(email).set(
         {
           email,
@@ -698,15 +627,7 @@ exports.createOperatorAccount = onCall(async (request) => {
         },
         { merge: true },
       ),
-      admin.firestore().collection(alternateCollection).doc(email).set(
-        {
-          email,
-          status: 'inactive',
-          active: false,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      ),
+      admin.firestore().collection(alternateCollection).doc(email).delete(),
     ])
   } catch (error) {
     logger.warn('Unable to persist operator access records from Cloud Functions. The client will need deployed Firestore rules for direct writes.', {
@@ -725,13 +646,6 @@ exports.createOperatorAccount = onCall(async (request) => {
   if (emailResult.sent) {
     try {
       await Promise.all([
-        admin.firestore().collection('users').doc(operatorUser.uid).set(
-          {
-            verificationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        ),
         admin.firestore().collection(targetCollection).doc(email).set(
           {
             verificationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -767,7 +681,172 @@ exports.createOperatorAccount = onCall(async (request) => {
     emailSent: emailResult.sent,
     message: emailResult.sent
       ? `Firebase verification email sent to ${email}. Please use the newest verification email link.`
-      : `Operator created for ${email}. Firebase verification email could not be sent automatically. Set FIREBASE_WEB_API_KEY in Functions config.`,
+      : `Operator created for ${email}. Firebase verification email could not be sent automatically.`,
+  }
+})
+
+exports.archiveOperatorAccount = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to archive an operator.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+
+  try {
+    var requesterAccess = await getRoleFromEmail(requesterEmail, {
+      uid: request.auth.uid,
+      claimsRole: request.auth.token.role,
+    })
+  } catch (error) {
+    logger.error('Unable to resolve requester access in archiveOperatorAccount', {
+      email: requesterEmail,
+      details: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Unable to resolve your access permissions. ${error.message}`)
+  }
+
+  if (!['admin', 'superadmin'].includes(requesterAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only admin or superadmin can archive user accounts.')
+  }
+
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  const fullName = String(request.data?.fullName || '').trim()
+  const role = normalizeRole(request.data?.role || 'customer')
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'Enter a valid email address to archive.')
+  }
+
+  if (requesterAccess.role === 'admin' && ['admin', 'superadmin'].includes(role)) {
+    throw new HttpsError('permission-denied', 'Admin can archive non-admin accounts only.')
+  }
+
+  const accessCollection = getAuthorizedCollectionNameForRole(role)
+  const archiveRef = admin.firestore().collection('deleteArchived').doc(email)
+  const authApi = admin.auth()
+  let authUser = null
+  let accessRecord = {}
+
+  try {
+    if (accessCollection) {
+      const accessSnapshot = await admin.firestore().collection(accessCollection).doc(email).get()
+      accessRecord = accessSnapshot.data() || {}
+    }
+  } catch (error) {
+    logger.warn('Unable to read the active access record before archiving.', {
+      email,
+      role,
+      details: error.message,
+      structuredData: true,
+    })
+  }
+
+  try {
+    authUser = await authApi.getUserByEmail(email)
+    await authApi.updateUser(authUser.uid, { disabled: true })
+  } catch (error) {
+    if (error.code !== 'auth/user-not-found') {
+      throw new HttpsError('internal', `Unable to archive the user account. ${error.message}`)
+    }
+  }
+
+  try {
+    await archiveRef.set(
+      {
+        email,
+        fullName: fullName || accessRecord.fullName || authUser?.displayName || '',
+        role,
+        accessLevel: accessRecord.accessLevel || (role === 'admin' ? 'admin' : 'staff'),
+        personnelRole: personnelRoles.includes(role) ? role : '',
+        dashboardPath: getDashboardPath(role),
+        archivedBy: requesterEmail,
+        archivedByRole: requesterAccess.role,
+        archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: 'archived',
+        active: false,
+        authUid: authUser?.uid || '',
+        originalCollection: accessCollection || 'users',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+
+    await Promise.all([
+      admin.firestore().collection('authorizedSuperadmin').doc(email).delete().catch(() => undefined),
+      admin.firestore().collection('authorizedAdmin').doc(email).delete().catch(() => undefined),
+      admin.firestore().collection('authorizedPersonnel').doc(email).delete().catch(() => undefined),
+      deleteMatchingUserDocs({ uid: authUser?.uid || '', email }),
+    ])
+  } catch (error) {
+    throw new HttpsError('internal', `Unable to move the user into Delete Archived. ${error.message}`)
+  }
+
+  return {
+    ok: true,
+    email,
+    message: `${email} moved to Delete Archived successfully.`,
+  }
+})
+
+exports.deleteArchivedUserPermanently = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to permanently delete an archived user.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const requesterAccess = await getRoleFromEmail(requesterEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (requesterAccess.role !== 'superadmin') {
+    throw new HttpsError('permission-denied', 'Only superadmin can permanently delete archived users.')
+  }
+
+  const email = String(request.data?.email || '').trim().toLowerCase()
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'Enter a valid archived user email address.')
+  }
+
+  const archiveRef = admin.firestore().collection('deleteArchived').doc(email)
+  const archiveSnapshot = await archiveRef.get().catch(() => null)
+  const archivedData = archiveSnapshot?.data?.() || {}
+  const authApi = admin.auth()
+  let authUid = String(archivedData.authUid || '').trim()
+
+  if (!authUid) {
+    try {
+      const authUser = await authApi.getUserByEmail(email)
+      authUid = authUser.uid
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') {
+        throw new HttpsError('internal', `Unable to inspect the archived auth account. ${error.message}`)
+      }
+    }
+  }
+
+  try {
+    if (authUid) {
+      await authApi.deleteUser(authUid)
+    }
+
+    await Promise.all([
+      archiveRef.delete().catch(() => undefined),
+      admin.firestore().collection('authorizedSuperadmin').doc(email).delete().catch(() => undefined),
+      admin.firestore().collection('authorizedAdmin').doc(email).delete().catch(() => undefined),
+      admin.firestore().collection('authorizedPersonnel').doc(email).delete().catch(() => undefined),
+      deleteMatchingUserDocs({ uid: authUid, email }),
+    ])
+  } catch (error) {
+    throw new HttpsError('internal', `Unable to permanently delete the archived user. ${error.message}`)
+  }
+
+  return {
+    ok: true,
+    email,
+    message: `${email} was permanently deleted from Delete Archived.`,
   }
 })
 
@@ -804,6 +883,18 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
   })
   const role = accessRecord.role
   const dashboardPath = accessRecord.dashboardPath || getDashboardPath(role)
+  const shouldSyncUsersCollection = !isAuthorizedCollectionSource(accessRecord.source)
+  const accessCollectionsToSync = email
+    ? [
+        accessRecord.source === 'authorizedSuperadmin' || role === 'superadmin'
+          ? 'authorizedSuperadmin'
+          : role === 'admin'
+            ? 'authorizedAdmin'
+            : personnelRoles.includes(role) || role === 'staff'
+              ? 'authorizedPersonnel'
+              : null,
+      ].filter(Boolean)
+    : []
 
   try {
     await admin.auth().setCustomUserClaims(uid, {
@@ -825,41 +916,33 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
 
   try {
     await Promise.all([
-      admin.firestore().collection('users').doc(uid).set(
-        {
-          mustChangePassword: false,
-          firstLoginRequired: false,
-          temporaryPassword: '',
-          emailVerified: Boolean(request.auth.token.email_verified),
-          passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
+      ...(shouldSyncUsersCollection
+        ? [
+            admin.firestore().collection('users').doc(uid).set(
+              {
+                mustChangePassword: false,
+                firstLoginRequired: false,
+                temporaryPassword: '',
+                emailVerified: Boolean(request.auth.token.email_verified),
+                passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              },
+              { merge: true },
+            ),
+          ]
+        : []),
+      ...accessCollectionsToSync.map((collectionName) =>
+        admin.firestore().collection(collectionName).doc(email).set(
+          {
+            mustChangePassword: false,
+            firstLoginRequired: false,
+            temporaryPassword: '',
+            passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        ),
       ),
-      email
-        ? admin.firestore().collection('authorizedAdmin').doc(email).set(
-            {
-              mustChangePassword: false,
-              firstLoginRequired: false,
-              temporaryPassword: '',
-              passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            },
-            { merge: true },
-          )
-        : Promise.resolve(),
-      email
-        ? admin.firestore().collection('authorizedPersonnel').doc(email).set(
-            {
-              mustChangePassword: false,
-              firstLoginRequired: false,
-              temporaryPassword: '',
-              passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            },
-            { merge: true },
-          )
-        : Promise.resolve(),
     ])
 
     firestoreSyncCompleted = true

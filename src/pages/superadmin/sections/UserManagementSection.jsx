@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import './UserManagementSection.css'
 
 const isRecentDate = (value) => {
@@ -14,60 +17,144 @@ const isRecentDate = (value) => {
   return Date.now() - date.getTime() <= 7 * 24 * 60 * 60 * 1000
 }
 
+const formatRoleLabel = (role = '') => {
+  const normalizedRole = String(role || 'customer').trim().toLowerCase()
+
+  if (normalizedRole === 'mechanics personnel') return 'Mechanic'
+  if (normalizedRole === 'inventory personnel') return 'Inventory'
+  if (normalizedRole === 'cashier personnel') return 'Cashier'
+  if (normalizedRole === 'front desk personnel') return 'Front Desk'
+  if (normalizedRole === 'staff') return 'Staff'
+  if (normalizedRole === 'admin') return 'Admin'
+
+  return normalizedRole || 'Customer'
+}
+
+const formatRelativeTime = (value) => {
+  const date = value?.toDate ? value.toDate() : value ? new Date(value) : null
+
+  if (!date || Number.isNaN(date.getTime())) {
+    return 'No recent activity'
+  }
+
+  const diffMs = date.getTime() - Date.now()
+  const diffMinutes = Math.round(diffMs / (1000 * 60))
+  const relativeTime = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
+
+  if (Math.abs(diffMinutes) < 60) {
+    return relativeTime.format(diffMinutes, 'minute')
+  }
+
+  const diffHours = Math.round(diffMinutes / 60)
+
+  if (Math.abs(diffHours) < 24) {
+    return relativeTime.format(diffHours, 'hour')
+  }
+
+  const diffDays = Math.round(diffHours / 24)
+  return relativeTime.format(diffDays, 'day')
+}
+
 export default function UserManagementSection({
   filteredAuthorizedAdmins,
   filteredUsers,
+  archivedUsers = [],
   canManageAccess,
+  currentAccessRole,
   isSubmitting,
-  handleCollectionUpdate,
-  handleUserRoleChange,
   roleOptions,
   formatDate,
   getStatusClasses,
   searchTerm,
   onSearchChange,
   onOpenNewUserModal,
+  onEditUser,
+  onArchiveUser,
+  onDeleteArchivedUser,
 }) {
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 5
+  const pageSize = 4
 
   const mappedUsers = useMemo(() => {
-    return filteredUsers
+    const resolveTeamLabel = (role) =>
+      role === 'admin'
+        ? 'Operations Desk'
+        : role === 'mechanics personnel'
+          ? 'Mechanics Bay'
+          : role === 'inventory personnel'
+            ? 'Inventory Desk'
+            : role === 'cashier personnel'
+              ? 'Billing Counter'
+              : role === 'front desk personnel'
+                ? 'Reception Desk'
+                : role === 'staff'
+                  ? 'Field Team'
+                  : 'Customer Network'
+
+    const mergedUsers = new Map()
+
+    filteredUsers
       .filter((user) => String(user.role || '').toLowerCase() !== 'superadmin')
-      .map((user) => {
-        const matchingAccess = filteredAuthorizedAdmins.find((item) => {
-          const lookupEmail = String(item.email || item.id || '').trim().toLowerCase()
-          return lookupEmail && lookupEmail === String(user.email || '').trim().toLowerCase()
-        })
+      .forEach((user) => {
+        const normalizedEmail = String(user.email || '').trim().toLowerCase()
+        const requiresPasswordChange = Boolean(user.mustChangePassword || user.firstLoginRequired)
+        const status = requiresPasswordChange ? 'Pending' : 'Active'
 
-        const status =
-          matchingAccess?.active === false
-            ? 'Suspended'
-            : user.emailVerified === false
-              ? 'Pending'
-              : 'Active'
-
-        return {
+        mergedUsers.set(normalizedEmail || user.id, {
           ...user,
-          teamLabel:
-            user.role === 'admin'
-              ? 'Operations Desk'
-              : user.role === 'mechanics personnel'
-                ? 'Mechanics Bay'
-                : user.role === 'inventory personnel'
-                  ? 'Inventory Desk'
-                  : user.role === 'cashier personnel'
-                    ? 'Billing Counter'
-                    : user.role === 'front desk personnel'
-                      ? 'Reception Desk'
-                      : user.role === 'staff'
-                        ? 'Field Team'
-                        : 'Customer Network',
+          email: normalizedEmail || user.email || '',
+          requiresPasswordChange,
+          teamLabel: resolveTeamLabel(String(user.role || 'customer').toLowerCase()),
           status,
-        }
+        })
       })
+
+    filteredAuthorizedAdmins
+      .filter((entry) => String(entry.role || '').toLowerCase() !== 'superadmin')
+      .forEach((entry) => {
+        const normalizedEmail = String(entry.email || entry.id || '').trim().toLowerCase()
+        const mapKey = normalizedEmail || entry.id
+        const existingUser = mergedUsers.get(mapKey) || {}
+        const resolvedRole = String(entry.role || existingUser.role || 'customer').toLowerCase()
+        const requiresPasswordChange = Boolean(
+          existingUser.requiresPasswordChange ||
+            existingUser.mustChangePassword ||
+            existingUser.firstLoginRequired ||
+            entry.mustChangePassword ||
+            entry.firstLoginRequired,
+        )
+        const status = entry.active === false ? 'Suspended' : requiresPasswordChange ? 'Pending' : 'Active'
+
+        mergedUsers.set(mapKey, {
+          ...existingUser,
+          ...entry,
+          id: existingUser.id || entry.id || normalizedEmail,
+          email: normalizedEmail || existingUser.email || '',
+          fullName:
+            entry.fullName ||
+            existingUser.fullName ||
+            existingUser.displayName ||
+            normalizedEmail ||
+            'Authorized User',
+          displayName:
+            entry.fullName ||
+            existingUser.displayName ||
+            existingUser.fullName ||
+            normalizedEmail ||
+            'Authorized User',
+          role: resolvedRole,
+          requiresPasswordChange,
+          status,
+          teamLabel: resolveTeamLabel(resolvedRole),
+          lastLoginAt: existingUser.lastLoginAt || entry.lastLoginAt,
+          createdAt: existingUser.createdAt || entry.createdAt,
+          updatedAt: entry.updatedAt || existingUser.updatedAt,
+        })
+      })
+
+    return Array.from(mergedUsers.values())
   }, [filteredAuthorizedAdmins, filteredUsers])
 
   const visibleUsers = useMemo(() => {
@@ -82,11 +169,56 @@ export default function UserManagementSection({
 
   const totalPages = Math.max(1, Math.ceil(visibleUsers.length / pageSize))
   const paginatedUsers = visibleUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const startEntry = visibleUsers.length ? (currentPage - 1) * pageSize + 1 : 0
+  const endEntry = Math.min(currentPage * pageSize, visibleUsers.length)
+  const visibleArchivedUsers = archivedUsers.filter((user) => {
+    const haystack = [user.fullName, user.displayName, user.email, user.role, user.status].join(' ')
+    return haystack.toLowerCase().includes(String(searchTerm || '').trim().toLowerCase())
+  })
 
   const totalUsers = mappedUsers.length
   const newUsersThisWeek = mappedUsers.filter((user) => isRecentDate(user.createdAt || user.updatedAt || user.lastLoginAt)).length
   const activeRoles = filteredAuthorizedAdmins.filter((item) => item.active !== false).length
   const pendingApprovals = mappedUsers.filter((user) => user.status === 'Pending').length
+
+  const handleResetFilters = () => {
+    onSearchChange('')
+    setRoleFilter('all')
+    setStatusFilter('all')
+    setCurrentPage(1)
+  }
+
+  const handleExportVisibleUsers = () => {
+    if (typeof window === 'undefined' || !visibleUsers.length) {
+      return
+    }
+
+    const rows = visibleUsers.map((user) => ({
+      name: user.fullName || user.displayName || '',
+      email: user.email || '',
+      role: user.role || 'customer',
+      status: user.status || 'Active',
+      activity: formatDate(user.lastLoginAt || user.updatedAt || user.createdAt),
+    }))
+
+    const header = ['Name', 'Email', 'Role', 'Status', 'Last Activity']
+    const csv = [
+      header.join(','),
+      ...rows.map((row) =>
+        [row.name, row.email, row.role, row.status, row.activity]
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(','),
+      ),
+    ].join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'bykelink-users.csv'
+    link.click()
+    window.URL.revokeObjectURL(url)
+  }
 
   return (
     <section className="user-management-shell space-y-6">
@@ -126,125 +258,135 @@ export default function UserManagementSection({
         ))}
       </div>
 
-      <div className="user-table-shell rounded-3xl p-4 sm:p-5">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="user-table-toolbar flex flex-1 flex-col gap-3 md:flex-row">
+      <div className="user-table-shell rounded-[28px] p-4 sm:p-5">
+        <div className="user-table-toolbar">
+          <label className="user-table-search" aria-label="Search users">
+            <SearchRoundedIcon sx={{ fontSize: 18 }} />
             <input
               type="text"
               value={searchTerm}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Search by name or email..."
-              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#111111] px-4 py-2.5 text-sm text-white outline-none"
             />
+          </label>
+
+          <div className="user-table-filter-group">
             <select
               value={roleFilter}
               onChange={(event) => {
                 setRoleFilter(event.target.value)
                 setCurrentPage(1)
               }}
-              className="rounded-xl border border-white/10 bg-[#111111] px-4 py-2.5 text-sm text-white outline-none"
+              className="user-table-select"
             >
               <option value="all">All Roles</option>
               {roleOptions.filter((role) => role !== 'superadmin').map((role) => (
-                <option key={role} value={role}>{role}</option>
+                <option key={role} value={role}>{formatRoleLabel(role)}</option>
               ))}
             </select>
+
             <select
               value={statusFilter}
               onChange={(event) => {
                 setStatusFilter(event.target.value)
                 setCurrentPage(1)
               }}
-              className="rounded-xl border border-white/10 bg-[#111111] px-4 py-2.5 text-sm text-white outline-none"
+              className="user-table-select"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
             </select>
-          </div>
 
-          <button type="button" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
-            <FilterListRoundedIcon sx={{ fontSize: 16 }} />
-            Filters
-          </button>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="user-table-icon-button"
+              aria-label="Reset filters"
+            >
+              <FilterListRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportVisibleUsers}
+              className="user-table-icon-button"
+              aria-label="Export users"
+            >
+              <DownloadRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+          </div>
         </div>
 
-        <div className="hidden grid-cols-[1.2fr_0.95fr_0.95fr_0.7fr_0.7fr] gap-3 border-b border-white/5 px-3 py-3 text-[10px] font-black uppercase tracking-[0.24em] text-white/40 md:grid">
-          <span>Member</span>
-          <span>Role & Team</span>
+        <div className="user-table-header">
+          <span>Avatar</span>
+          <span>Name &amp; Email</span>
+          <span>Role</span>
           <span>Last Activity</span>
           <span>Status</span>
           <span className="text-right">Actions</span>
         </div>
 
-        <div className="divide-y divide-white/5">
+        <div className="user-table-body">
           {paginatedUsers.map((user) => (
-            <div key={user.id} className="grid gap-3 px-3 py-4 md:grid-cols-[1.2fr_0.95fr_0.95fr_0.7fr_0.7fr] md:items-center">
-              <div className="flex items-center gap-3">
+            <div key={user.id} className="user-table-row">
+              <div className="user-avatar-cell">
                 <div className="user-avatar flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white">
                   {(user.fullName || user.displayName || user.email || 'U').charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="font-semibold text-white">{user.fullName || user.displayName || user.email || 'Firebase user'}</p>
-                  <p className="text-xs text-white/45">{user.email || 'No email provided'}</p>
-                </div>
               </div>
 
-              <div>
-                <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase ${getStatusClasses(user.role)}`}>
-                  {user.role || 'customer'}
+              <div className="user-member-cell">
+                <p className="user-member-name">{user.fullName || user.displayName || user.email || 'Authorized User'}</p>
+                <p className="user-member-email">{user.email || 'No email provided'}</p>
+              </div>
+
+              <div className="user-role-cell">
+                <span className={`user-role-pill ${getStatusClasses(user.role)}`}>
+                  {formatRoleLabel(user.role)}
                 </span>
-                <p className="mt-2 text-xs text-white/45">{user.teamLabel}</p>
               </div>
 
-              <div>
-                <p className="text-sm text-white">{formatDate(user.lastLoginAt || user.updatedAt || user.createdAt)}</p>
-                <p className="text-xs text-white/45">{user.emailVerified ? 'Last login recorded' : 'Waiting for email verification'}</p>
+              <div className="user-activity-cell">
+                <p className="user-activity-primary">{formatRelativeTime(user.lastLoginAt || user.updatedAt || user.createdAt)}</p>
+                <p className="user-activity-secondary">{formatDate(user.lastLoginAt || user.updatedAt || user.createdAt)}</p>
               </div>
 
-              <div>
-                <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase ${getStatusClasses(user.status)}`}>
+              <div className="user-status-cell">
+                <span className={`user-status-pill ${getStatusClasses(user.status)}`}>
+                  <span className="user-status-dot" />
                   {user.status}
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
-                <select
-                  value={user.role || 'customer'}
-                  onChange={(event) => handleUserRoleChange(user, event.target.value)}
-                  disabled={!canManageAccess || isSubmitting}
-                  className="rounded-lg border border-white/10 bg-[#111111] px-2 py-1.5 text-xs text-white outline-none disabled:opacity-70"
-                >
-                  {roleOptions.filter((role) => role !== 'superadmin').map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
+              <div className="user-actions-cell">
                 <button
                   type="button"
-                  onClick={() => {
-                    const personnelRoles = [
-                      'mechanics personnel',
-                      'inventory personnel',
-                      'cashier personnel',
-                      'front desk personnel',
-                      'staff',
-                    ]
-                    const targetCollection = personnelRoles.includes(String(user.role || '').toLowerCase())
-                      ? 'authorizedPersonnel'
-                      : 'authorizedAdmin'
-
-                    handleCollectionUpdate(targetCollection, String(user.email || user.id).trim().toLowerCase(), {
-                      email: String(user.email || '').trim().toLowerCase(),
-                      role: user.role || 'customer',
-                      active: user.status !== 'Active',
-                    })
-                  }}
-                  disabled={!canManageAccess || !user.email}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70 disabled:opacity-50"
+                  onClick={() => onEditUser?.(user)}
+                  disabled={
+                    !canManageAccess ||
+                    !user.email ||
+                    (currentAccessRole !== 'superadmin' && ['admin', 'superadmin'].includes(String(user.role || '').toLowerCase()))
+                  }
+                  className="user-action-icon"
                   aria-label={`Edit ${user.fullName || user.email || user.id}`}
                 >
                   <EditRoundedIcon sx={{ fontSize: 16 }} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onArchiveUser?.(user)}
+                  disabled={
+                    !canManageAccess ||
+                    !user.email ||
+                    (currentAccessRole !== 'superadmin' && ['admin', 'superadmin'].includes(String(user.role || '').toLowerCase()))
+                  }
+                  className="user-action-icon user-action-icon--danger"
+                  aria-label={`Archive ${user.fullName || user.email || user.id}`}
+                >
+                  <DeleteOutlineRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
               </div>
             </div>
@@ -257,13 +399,13 @@ export default function UserManagementSection({
           )}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-xs text-white/45">
-          <span>Showing {paginatedUsers.length} of {visibleUsers.length} users</span>
-          <div className="flex items-center gap-2">
+        <div className="user-table-footer">
+          <span>Showing {startEntry} to {endEntry} of {visibleUsers.length} entries</span>
+          <div className="user-pagination">
             <button
               type="button"
               onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-              className="rounded-lg border border-white/10 px-2.5 py-1.5 text-white/70"
+              className="user-pagination-button"
               disabled={currentPage === 1}
             >
               ‹
@@ -275,7 +417,7 @@ export default function UserManagementSection({
                   key={pageNumber}
                   type="button"
                   onClick={() => setCurrentPage(pageNumber)}
-                  className={`rounded-lg px-3 py-1.5 ${currentPage === pageNumber ? 'bg-[#e10100] text-white' : 'border border-white/10 text-white/70'}`}
+                  className={`user-pagination-button ${currentPage === pageNumber ? 'is-active' : ''}`}
                 >
                   {pageNumber}
                 </button>
@@ -284,11 +426,53 @@ export default function UserManagementSection({
             <button
               type="button"
               onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-              className="rounded-lg border border-white/10 px-2.5 py-1.5 text-white/70"
+              className="user-pagination-button"
               disabled={currentPage === totalPages}
             >
               ›
             </button>
+          </div>
+        </div>
+
+        <div className="archived-users-shell">
+          <div className="archived-users-header">
+            <div>
+              <p className="archived-users-kicker">Delete Archived</p>
+              <h3>Archived Users</h3>
+              <p>
+                Admin can view archived records only. Only superadmin can permanently delete them.
+              </p>
+            </div>
+          </div>
+
+          <div className="archived-users-list">
+            {visibleArchivedUsers.length ? (
+              visibleArchivedUsers.map((user) => (
+                <div key={user.email || user.id} className="archived-user-item">
+                  <div>
+                    <p className="archived-user-name">{user.fullName || user.displayName || user.email || 'Archived User'}</p>
+                    <p className="archived-user-meta">
+                      {user.email || 'No email'} • {formatRoleLabel(user.role)} • {formatDate(user.archivedAt || user.updatedAt || user.createdAt)}
+                    </p>
+                  </div>
+
+                  {currentAccessRole === 'superadmin' ? (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteArchivedUser?.(user)}
+                      disabled={isSubmitting}
+                      className="archived-user-delete"
+                    >
+                      Delete Permanently
+                    </button>
+                  ) : (
+                    <span className="archived-user-view-only">View only</span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="archived-user-empty">No archived user records yet.</div>
+            )}
           </div>
         </div>
       </div>
