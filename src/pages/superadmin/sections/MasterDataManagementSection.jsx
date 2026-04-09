@@ -15,8 +15,6 @@ export default function MasterDataManagementSection({
   dataType,
   categories = [],
   models = [],
-  variants = [],
-  series = [],
   canEditOperations,
   isDarkMode = true,
 }) {
@@ -25,12 +23,14 @@ export default function MasterDataManagementSection({
   const [selectedParentId, setSelectedParentId] = useState(null)
   const [message, setMessage] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [parentData, setParentData] = useState([])
 
   const config = collectionMap[dataType]
-  if (!config) return null
 
   // Load items on mount or when dataType changes
   useEffect(() => {
+    if (!config) return
+
     const loadItems = async () => {
       try {
         const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
@@ -40,25 +40,36 @@ export default function MasterDataManagementSection({
       }
     }
     loadItems()
-  }, [dataType, config.path])
+  }, [config])
 
-  const getParentData = () => {
-    if (dataType === 'master-models') return categories
-    if (dataType === 'master-series') return models
-    return []
-  }
-
-  const getParentLabel = () => {
-    if (dataType === 'master-models') return 'Category'
-    if (dataType === 'master-series') return 'Model'
-    return null
-  }
-
-  const getParentName = (parentId) => {
-    if (dataType === 'master-models') return categories.find((c) => c.id === parentId)?.name
-    if (dataType === 'master-series') return models.find((m) => m.id === parentId)?.name
-    return null
-  }
+  // Load parent data if needed
+  useEffect(() => {
+    const loadParentData = async () => {
+      try {
+        if (dataType === 'master-models') {
+          if (categories.length > 0) {
+            setParentData(categories)
+          } else {
+            const snap = await getDocs(collection(db, 'masterData', 'inventory', 'categories'))
+            setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+          }
+        } else if (dataType === 'master-series') {
+          if (models.length > 0) {
+            setParentData(models)
+          } else {
+            const snap = await getDocs(collection(db, 'masterData', 'inventory', 'models'))
+            setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+          }
+        } else {
+          setParentData([])
+        }
+      } catch (error) {
+        console.warn(`Failed to load parent data`, error)
+        setParentData([])
+      }
+    }
+    loadParentData()
+  }, [dataType, categories, models])
 
   const handleAddItem = async () => {
     if (!newItemName.trim()) {
@@ -128,7 +139,17 @@ export default function MasterDataManagementSection({
       })
     : items
 
-  const parentData = getParentData()
+  const getParentLabel = () => {
+    if (dataType === 'master-models') return 'Category'
+    if (dataType === 'master-series') return 'Model'
+    return null
+  }
+
+  const getParentName = (parentId) => {
+    return parentData.find((p) => p.id === parentId)?.name || 'Unknown'
+  }
+
+  if (!config) return null
 
   return (
     <section className={`master-data-section space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
@@ -238,12 +259,12 @@ export default function MasterDataManagementSection({
                       </p>
                       {dataType === 'master-models' && item.categoryId && (
                         <p className={`text-xs truncate ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
-                          {categories.find((c) => c.id === item.categoryId)?.name || 'Unknown'}
+                          {parentData.find((c) => c.id === item.categoryId)?.name || 'Unknown'}
                         </p>
                       )}
                       {dataType === 'master-series' && item.modelId && (
                         <p className={`text-xs truncate ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
-                          {models.find((m) => m.id === item.modelId)?.name || 'Unknown'}
+                          {parentData.find((m) => m.id === item.modelId)?.name || 'Unknown'}
                         </p>
                       )}
                     </div>

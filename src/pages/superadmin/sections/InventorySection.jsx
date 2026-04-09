@@ -15,15 +15,14 @@ import './InventorySection.css'
 
 const inventoryTabs = [
   { id: 'all', label: 'All' },
-  { id: 'motorcycle-parts', label: 'Motorcycle Parts' },
+  { id: 'motorcycle-parts', label: 'Motorcycle Units' },
   { id: 'spare-parts', label: 'Spare Parts' },
-  { id: 'accessories', label: 'Accessories' },
 ]
 
 const defaultItemForm = {
   name: '',
   model: '',
-  category: 'Motorcycle Parts',
+  category: 'Motorcycle Units',
   description: '',
   stock: '1',
   price: '',
@@ -40,24 +39,37 @@ export default function InventorySection({
   inventoryStatusOptions,
   handleCollectionUpdate,
   formatCurrency,
+  categories = [],
+  models = [],
+  variants = [],
+  series = [],
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false)
+  const [isAddSparepartsModalOpen, setIsAddSparepartsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isUpdateStocksModalOpen, setIsUpdateStocksModalOpen] = useState(false)
   const [isCriticalStockModalOpen, setIsCriticalStockModalOpen] = useState(false)
   const [isSavingItem, setIsSavingItem] = useState(false)
   const [itemForm, setItemForm] = useState(defaultItemForm)
+  const [sparePartsForm, setSparePartsForm] = useState({ ...defaultItemForm, category: 'Spare Parts' })
   const [editingItem, setEditingItem] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
+  const [galleryFiles, setGalleryFiles] = useState([])
+  const [galleryPreviews, setGalleryPreviews] = useState([])
   const [formMessage, setFormMessage] = useState(null)
   const [actionMenuOpen, setActionMenuOpen] = useState(null)
   const [stockUpdates, setStockUpdates] = useState({})
   const [editFormData, setEditFormData] = useState({})
+  const [selectedModel, setSelectedModel] = useState(null)
+  const [selectedVariant, setSelectedVariant] = useState(null)
+  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [selectedSparepartsModel, setSelectedSparepartsModel] = useState(null)
+  const [selectedSparepartsCategory, setSelectedSparepartsCategory] = useState(null)
 
   const getAutoStatus = (stock) => {
     const stockValue = Number(stock ?? 0)
@@ -97,10 +109,6 @@ export default function InventorySection({
         return /spare|part|kit|filter|belt|bearing|plug/.test(categoryHaystack)
       }
 
-      if (activeTab === 'accessories') {
-        return /access|helmet|guard|bag|cover|mount|seat/.test(categoryHaystack)
-      }
-
       return true
     })
   }, [activeTab, items, searchTerm, statusFilter])
@@ -125,13 +133,20 @@ export default function InventorySection({
     ]
   }, [items])
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event, formType = 'unit') => {
     const { name, value, type, checked } = event.target
 
-    setItemForm((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
+    if (formType === 'unit') {
+      setItemForm((current) => ({
+        ...current,
+        [name]: type === 'checkbox' ? checked : value,
+      }))
+    } else {
+      setSparePartsForm((current) => ({
+        ...current,
+        [name]: type === 'checkbox' ? checked : value,
+      }))
+    }
     setFormMessage(null)
   }
 
@@ -142,23 +157,79 @@ export default function InventorySection({
     setFormMessage(null)
   }
 
-  const handleOpenAddModal = () => {
+  const handleGalleryImageChange = (event) => {
+    const files = event.target.files
+    if (!files) return
+
+    const newFiles = Array.from(files)
+    const maxFiles = 5
+    const totalFiles = galleryFiles.length + newFiles.length
+
+    if (totalFiles > maxFiles) {
+      setFormMessage({ type: 'error', text: `Maximum ${maxFiles} gallery images allowed` })
+      return
+    }
+
+    setGalleryFiles((prev) => [...prev, ...newFiles])
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+    setGalleryPreviews((prev) => [...prev, ...newPreviews])
+    setFormMessage(null)
+  }
+
+  const handleRemoveGalleryImage = (index) => {
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== index))
+    setGalleryPreviews((prev) => {
+      URL.revokeObjectURL(prev[index])
+      return prev.filter((_, i) => i !== index)
+    })
+  }
+
+  const handleOpenAddUnitModal = () => {
     setItemForm(defaultItemForm)
+    setSelectedCategory(null)
+    setSelectedModel(null)
+    setSelectedVariant(null)
     setImageFile(null)
     setImagePreview('')
     setFormMessage(null)
-    setIsAddModalOpen(true)
+    setIsAddUnitModalOpen(true)
   }
 
-  const handleCloseAddModal = () => {
-    setIsAddModalOpen(false)
+  const handleCloseAddUnitModal = () => {
+    setIsAddUnitModalOpen(false)
+    setImageFile(null)
+    setImagePreview('')
+    setGalleryFiles([])
+    setGalleryPreviews([])
+    setFormMessage(null)
+    setItemForm(defaultItemForm)
+    setSelectedCategory(null)
+    setSelectedModel(null)
+    setSelectedVariant(null)
+  }
+
+  const handleOpenAddSparepartsModal = () => {
+    setSparePartsForm({ ...defaultItemForm, category: 'Spare Parts' })
+    setSelectedSparepartsCategory(null)
+    setSelectedSparepartsModel(null)
     setImageFile(null)
     setImagePreview('')
     setFormMessage(null)
-    setItemForm(defaultItemForm)
+    setIsAddSparepartsModalOpen(true)
   }
 
-  const handleCreateItem = async (event) => {
+  const handleCloseAddSparepartsModal = () => {
+    setIsAddSparepartsModalOpen(false)
+    setImageFile(null)
+    setImagePreview('')
+    setFormMessage(null)
+    setSparePartsForm({ ...defaultItemForm, category: 'Spare Parts' })
+    setSelectedSparepartsCategory(null)
+    setSelectedSparepartsModel(null)
+  }
+
+  const handleCreateUnit = async (event) => {
     event.preventDefault()
 
     if (!canEditOperations) {
@@ -167,12 +238,96 @@ export default function InventorySection({
     }
 
     if (!itemForm.name.trim()) {
-      setFormMessage({ type: 'error', text: 'Enter the inventory item name first.' })
+      setFormMessage({ type: 'error', text: 'Enter the unit name first.' })
+      return
+    }
+
+    if (!selectedModel) {
+      setFormMessage({ type: 'error', text: 'Please select a Model.' })
       return
     }
 
     if (!itemForm.price || Number(itemForm.price) < 0) {
-      setFormMessage({ type: 'error', text: 'Enter a valid item price.' })
+      setFormMessage({ type: 'error', text: 'Enter a valid unit price.' })
+      return
+    }
+
+    setIsSavingItem(true)
+    setFormMessage(null)
+
+    try {
+      let imageUrl = ''
+      const galleryUrls = []
+
+      if (imageFile) {
+        const storageRef = ref(storage, `inventory/${Date.now()}-${imageFile.name}`)
+        const uploadSnapshot = await uploadBytes(storageRef, imageFile)
+        imageUrl = await getDownloadURL(uploadSnapshot.ref)
+      }
+
+      // Upload gallery images
+      for (const galleryFile of galleryFiles) {
+        const storageRef = ref(storage, `inventory/gallery/${Date.now()}-${Math.random()}-${galleryFile.name}`)
+        const uploadSnapshot = await uploadBytes(storageRef, galleryFile)
+        const galleryUrl = await getDownloadURL(uploadSnapshot.ref)
+        galleryUrls.push(galleryUrl)
+      }
+
+      await addDoc(collection(db, 'inventory'), {
+        name: itemForm.name.trim(),
+        model: selectedModel.name,
+        modelId: selectedModel.id,
+        variant: selectedVariant?.name || '',
+        variantId: selectedVariant?.id || '',
+        category: 'Motorcycle Units',
+        description: itemForm.description.trim(),
+        stock: Number(itemForm.stock || 0),
+        price: Number(itemForm.price || 0),
+        status: itemForm.status,
+        badge: itemForm.badge.trim() || 'New Arrival',
+        imageUrl,
+        gallery: imageUrl ? [imageUrl, ...galleryUrls] : galleryUrls,
+        showInShowroom: Boolean(itemForm.showInShowroom),
+        publishedToShowroom: Boolean(itemForm.showInShowroom),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+
+      setFormMessage({ type: 'success', text: 'Unit added successfully and synced to the showroom.' })
+      window.setTimeout(() => {
+        handleCloseAddUnitModal()
+      }, 600)
+    } catch (error) {
+      console.error('Unable to create unit', error)
+      setFormMessage({
+        type: 'error',
+        text: `Unable to add the unit. ${error.message}`,
+      })
+    } finally {
+      setIsSavingItem(false)
+    }
+  }
+
+  const handleCreateSpareParts = async (event) => {
+    event.preventDefault()
+
+    if (!canEditOperations) {
+      setFormMessage({ type: 'error', text: 'Only staff-level access or higher can create inventory items.' })
+      return
+    }
+
+    if (!sparePartsForm.name.trim()) {
+      setFormMessage({ type: 'error', text: 'Enter the spare part name first.' })
+      return
+    }
+
+    if (!selectedSparepartsModel) {
+      setFormMessage({ type: 'error', text: 'Please select a Unit/Model.' })
+      return
+    }
+
+    if (!sparePartsForm.price || Number(sparePartsForm.price) < 0) {
+      setFormMessage({ type: 'error', text: 'Enter a valid spare part price.' })
       return
     }
 
@@ -189,31 +344,32 @@ export default function InventorySection({
       }
 
       await addDoc(collection(db, 'inventory'), {
-        name: itemForm.name.trim(),
-        model: itemForm.model.trim(),
-        category: itemForm.category.trim(),
-        description: itemForm.description.trim(),
-        stock: Number(itemForm.stock || 0),
-        price: Number(itemForm.price || 0),
-        status: itemForm.status,
-        badge: itemForm.badge.trim() || 'New Arrival',
+        name: sparePartsForm.name.trim(),
+        model: selectedSparepartsModel.name,
+        modelId: selectedSparepartsModel.id,
+        category: 'Spare Parts',
+        description: sparePartsForm.description.trim(),
+        stock: Number(sparePartsForm.stock || 0),
+        price: Number(sparePartsForm.price || 0),
+        status: sparePartsForm.status,
+        badge: sparePartsForm.badge.trim() || 'New Stock',
         imageUrl,
         gallery: imageUrl ? [imageUrl] : [],
-        showInShowroom: Boolean(itemForm.showInShowroom),
-        publishedToShowroom: Boolean(itemForm.showInShowroom),
+        showInShowroom: Boolean(sparePartsForm.showInShowroom),
+        publishedToShowroom: Boolean(sparePartsForm.showInShowroom),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
 
-      setFormMessage({ type: 'success', text: 'Inventory item added successfully and synced to the showroom.' })
+      setFormMessage({ type: 'success', text: 'Spare part added successfully and synced to the showroom.' })
       window.setTimeout(() => {
-        handleCloseAddModal()
+        handleCloseAddSparepartsModal()
       }, 600)
     } catch (error) {
-      console.error('Unable to create inventory item', error)
+      console.error('Unable to create spare part', error)
       setFormMessage({
         type: 'error',
-        text: `Unable to add the inventory item. ${error.message}`,
+        text: `Unable to add the spare part. ${error.message}`,
       })
     } finally {
       setIsSavingItem(false)
@@ -242,12 +398,22 @@ export default function InventorySection({
   
           <button
             type="button"
-            onClick={handleOpenAddModal}
+            onClick={handleOpenAddUnitModal}
             disabled={!canEditOperations}
             className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"
           >
             <AddRoundedIcon sx={{ fontSize: 18 }} />
-            Add Item
+            Add Unit
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAddSparepartsModal}
+            disabled={!canEditOperations}
+            className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"
+          >
+            <AddRoundedIcon sx={{ fontSize: 18 }} />
+            Add Spare Parts
           </button>
         </div>
       </div>
@@ -439,21 +605,21 @@ export default function InventorySection({
         </div>
       </div>
 
-      {isAddModalOpen && (
+      {isAddUnitModalOpen && (
         <div className="inventory-modal-overlay">
-          <button type="button" className="inventory-modal-backdrop" onClick={handleCloseAddModal} aria-label="Close add inventory modal" />
+          <button type="button" className="inventory-modal-backdrop" onClick={handleCloseAddUnitModal} aria-label="Close add unit modal" />
 
           <div className={`inventory-modal-panel scrollable-modal-panel ${!isDarkMode ? 'light-mode' : ''}`}>
             <div className="inventory-modal-header sticky top-0 bg-inherit z-10 pb-3 border-b border-white/5">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="inventory-modal-kicker">Live Inventory Entry</p>
-                  <h3 className="inventory-modal-title">Add Inventory Item</h3>
-                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Create a new stock record, upload an image, and publish it to the showroom in one step.</p>
+                  <h3 className="inventory-modal-title">Add Unit</h3>
+                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Create a new motorcycle unit, upload an image, and publish it to the showroom in one step.</p>
                 </div>
                 <button
                   type="button"
-                  onClick={handleCloseAddModal}
+                  onClick={handleCloseAddUnitModal}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0 ml-3"
                 >
                   <CloseRoundedIcon sx={{ fontSize: 18 }} />
@@ -461,31 +627,67 @@ export default function InventorySection({
               </div>
             </div>
 
-            <form onSubmit={handleCreateItem} className="inventory-modal-form">
+            <form onSubmit={handleCreateUnit} className="inventory-modal-form">
               <div className="inventory-modal-grid">
                 <label className="inventory-field">
-                  <span>Item Name</span>
-                  <input type="text" name="name" value={itemForm.name} onChange={handleFormChange} placeholder="Yamaha NMAX" />
-                </label>
-
-                <label className="inventory-field">
-                  <span>Model / Variant</span>
-                  <input type="text" name="model" value={itemForm.model} onChange={handleFormChange} placeholder="155 ABS" />
+                  <span>Unit Name</span>
+                  <input type="text" name="name" value={itemForm.name} onChange={(e) => handleFormChange(e, 'unit')} placeholder="Yamaha NMAX" />
                 </label>
 
                 <label className="inventory-field">
                   <span>Category</span>
-                  <select name="category" value={itemForm.category} onChange={handleFormChange}>
-                    <option value="Motorcycle Parts">Motorcycle Parts</option>
-                    <option value="Motorcycle Units">Motorcycle Units</option>
-                    <option value="Spare Parts">Spare Parts</option>
-                    <option value="Accessories">Accessories</option>
+                  <select 
+                    value={selectedCategory?.id || ''} 
+                    onChange={(e) => {
+                      const category = categories.find(c => c.id === e.target.value)
+                      setSelectedCategory(category || null)
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Category...</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Model</span>
+                  <select 
+                    value={selectedModel?.id || ''} 
+                    onChange={(e) => {
+                      const model = models.find(m => m.id === e.target.value)
+                      setSelectedModel(model || null)
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Model...</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Variant (Optional)</span>
+                  <select 
+                    value={selectedVariant?.id || ''} 
+                    onChange={(e) => {
+                      const variant = variants.find(v => v.id === e.target.value)
+                      setSelectedVariant(variant || null)
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Variant...</option>
+                    {variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>{variant.name}</option>
+                    ))}
                   </select>
                 </label>
 
                 <label className="inventory-field">
                   <span>Status</span>
-                  <select name="status" value={itemForm.status} onChange={handleFormChange}>
+                  <select name="status" value={itemForm.status} onChange={(e) => handleFormChange(e, 'unit')} className="dropdown-select">
                     {inventoryStatusOptions.map((status) => (
                       <option key={status} value={status}>{status}</option>
                     ))}
@@ -494,31 +696,31 @@ export default function InventorySection({
 
                 <label className="inventory-field">
                   <span>Stock</span>
-                  <input type="number" name="stock" min="0" value={itemForm.stock} onChange={handleFormChange} placeholder="10" />
+                  <input type="number" name="stock" min="0" value={itemForm.stock} onChange={(e) => handleFormChange(e, 'unit')} placeholder="10" />
                 </label>
 
                 <label className="inventory-field">
                   <span>Price</span>
-                  <input type="number" name="price" min="0" value={itemForm.price} onChange={handleFormChange} placeholder="145000" />
+                  <input type="number" name="price" min="0" value={itemForm.price} onChange={(e) => handleFormChange(e, 'unit')} placeholder="145000" />
                 </label>
               </div>
 
               <label className="inventory-field">
                 <span>Description</span>
-                <textarea name="description" value={itemForm.description} onChange={handleFormChange} rows="3" placeholder="Add a short description for the showroom and inventory listing." />
+                <textarea name="description" value={itemForm.description} onChange={(e) => handleFormChange(e, 'unit')} rows="3" placeholder="Add a short description for the showroom and inventory listing." />
               </label>
 
               <div className="inventory-modal-grid inventory-modal-grid--secondary">
                 <label className="inventory-field">
                   <span>Badge</span>
-                  <input type="text" name="badge" value={itemForm.badge} onChange={handleFormChange} placeholder="New Arrival" />
+                  <input type="text" name="badge" value={itemForm.badge} onChange={(e) => handleFormChange(e, 'unit')} placeholder="New Arrival" />
                 </label>
 
                 <label className="inventory-field inventory-checkbox-field">
                   <span>Showroom Visibility</span>
                   <label className="inventory-checkbox-row">
-                    <input type="checkbox" name="showInShowroom" checked={itemForm.showInShowroom} onChange={handleFormChange} />
-                    <span>Display this item in the public showroom</span>
+                    <input type="checkbox" name="showInShowroom" checked={itemForm.showInShowroom} onChange={(e) => handleFormChange(e, 'unit')} />
+                    <span>Display this unit in the public showroom</span>
                   </label>
                 </label>
               </div>
@@ -526,13 +728,41 @@ export default function InventorySection({
               <label className="inventory-upload-box">
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
                 <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
-                <span className="inventory-upload-title">Upload Item Image</span>
+                <span className="inventory-upload-title">Upload Unit Image</span>
                 <span className="inventory-upload-copy">PNG, JPG, or WEBP — used in the showroom and inventory listing.</span>
               </label>
 
               {imagePreview && (
                 <div className="inventory-image-preview max-w-full">
-                  <img src={imagePreview} alt="Inventory preview" className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
+                  <img src={imagePreview} alt="Unit preview" className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
+                </div>
+              )}
+
+              <label className="inventory-upload-box">
+                <input type="file" accept="image/*" multiple onChange={handleGalleryImageChange} className="hidden" />
+                <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
+                <span className="inventory-upload-title">Upload Sub Images (Gallery)</span>
+                <span className="inventory-upload-copy">Add up to 5 additional images to display in the showroom. PNG, JPG, or WEBP.</span>
+              </label>
+
+              {galleryPreviews.length > 0 && (
+                <div className="inventory-gallery-preview">
+                  <p className="text-sm text-white/60 mb-2">Gallery Images ({galleryPreviews.length}/5)</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {galleryPreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img src={preview} alt={`Gallery ${index + 1}`} className="w-full h-24 rounded-lg object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveGalleryImage(index)}
+                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove image"
+                        >
+                          <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -545,9 +775,145 @@ export default function InventorySection({
               <div className="inventory-modal-actions">
                 <button type="submit" disabled={isSavingItem} className="inventory-submit-button inline-flex items-center justify-center gap-2">
                   <SaveRoundedIcon sx={{ fontSize: 18 }} />
-                  {isSavingItem ? 'Saving Item...' : 'Save Inventory Item'}
+                  {isSavingItem ? 'Saving Unit...' : 'Save Unit'}
                 </button>
-                <button type="button" onClick={handleCloseAddModal} className="inventory-cancel-button">
+                <button type="button" onClick={handleCloseAddUnitModal} className="inventory-cancel-button">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isAddSparepartsModalOpen && (
+        <div className="inventory-modal-overlay">
+          <button type="button" className="inventory-modal-backdrop" onClick={handleCloseAddSparepartsModal} aria-label="Close add spare parts modal" />
+
+          <div className={`inventory-modal-panel scrollable-modal-panel ${!isDarkMode ? 'light-mode' : ''}`}>
+            <div className="inventory-modal-header sticky top-0 bg-inherit z-10 pb-3 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="inventory-modal-kicker">Live Inventory Entry</p>
+                  <h3 className="inventory-modal-title">Add Spare Parts</h3>
+                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Create a new spare part record, upload an image, and publish it to the showroom in one step.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseAddSparepartsModal}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0 ml-3"
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateSpareParts} className="inventory-modal-form">
+              <div className="inventory-modal-grid">
+                <label className="inventory-field">
+                  <span>Spare Part Name</span>
+                  <input type="text" name="name" value={sparePartsForm.name} onChange={(e) => handleFormChange(e, 'spareparts')} placeholder="Engine Filter" />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Category</span>
+                  <select 
+                    value={selectedSparepartsCategory?.id || ''} 
+                    onChange={(e) => {
+                      const category = categories.find(c => c.id === e.target.value)
+                      setSelectedSparepartsCategory(category || null)
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Category...</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Unit/Model</span>
+                  <select 
+                    value={selectedSparepartsModel?.id || ''} 
+                    onChange={(e) => {
+                      const model = models.find(m => m.id === e.target.value)
+                      setSelectedSparepartsModel(model || null)
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Unit/Model...</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Status</span>
+                  <select name="status" value={sparePartsForm.status} onChange={(e) => handleFormChange(e, 'spareparts')} className="dropdown-select">
+                    {inventoryStatusOptions.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Stock</span>
+                  <input type="number" name="stock" min="0" value={sparePartsForm.stock} onChange={(e) => handleFormChange(e, 'spareparts')} placeholder="10" />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Price</span>
+                  <input type="number" name="price" min="0" value={sparePartsForm.price} onChange={(e) => handleFormChange(e, 'spareparts')} placeholder="25000" />
+                </label>
+              </div>
+
+              <label className="inventory-field">
+                <span>Description</span>
+                <textarea name="description" value={sparePartsForm.description} onChange={(e) => handleFormChange(e, 'spareparts')} rows="3" placeholder="Add a short description for the showroom and inventory listing." />
+              </label>
+
+              <div className="inventory-modal-grid inventory-modal-grid--secondary">
+                <label className="inventory-field">
+                  <span>Badge</span>
+                  <input type="text" name="badge" value={sparePartsForm.badge} onChange={(e) => handleFormChange(e, 'spareparts')} placeholder="New Stock" />
+                </label>
+
+                <label className="inventory-field inventory-checkbox-field">
+                  <span>Showroom Visibility</span>
+                  <label className="inventory-checkbox-row">
+                    <input type="checkbox" name="showInShowroom" checked={sparePartsForm.showInShowroom} onChange={(e) => handleFormChange(e, 'spareparts')} />
+                    <span>Display this spare part in the public showroom</span>
+                  </label>
+                </label>
+              </div>
+
+              <label className="inventory-upload-box">
+                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
+                <span className="inventory-upload-title">Upload Spare Part Image</span>
+                <span className="inventory-upload-copy">PNG, JPG, or WEBP — used in the showroom and inventory listing.</span>
+              </label>
+
+              {imagePreview && (
+                <div className="inventory-image-preview max-w-full">
+                  <img src={imagePreview} alt="Spare part preview" className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
+                </div>
+              )}
+
+              {formMessage && (
+                <div className={`inventory-form-message ${formMessage.type === 'error' ? 'is-error' : 'is-success'}`}>
+                  {formMessage.text}
+                </div>
+              )}
+
+              <div className="inventory-modal-actions">
+                <button type="submit" disabled={isSavingItem} className="inventory-submit-button inline-flex items-center justify-center gap-2">
+                  <SaveRoundedIcon sx={{ fontSize: 18 }} />
+                  {isSavingItem ? 'Saving Spare Part...' : 'Save Spare Part'}
+                </button>
+                <button type="button" onClick={handleCloseAddSparepartsModal} className="inventory-cancel-button">
                   Cancel
                 </button>
               </div>

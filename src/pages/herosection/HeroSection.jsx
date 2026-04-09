@@ -16,6 +16,8 @@ import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 
 const navLinks = [
@@ -833,15 +835,20 @@ export default function HeroSection({
                             minLength={8}
                             autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
                             placeholder="8+ characters with upper, lower, and number"
-                            className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
+                            className="password-input"
                           />
                           <button
                             type="button"
                             onClick={() => setAuthPasswordVisible(!authPasswordVisible)}
                             className="hero-password-toggle"
                             aria-label={authPasswordVisible ? 'Hide password' : 'Show password'}
+                            tabIndex="-1"
                           >
-                            {authPasswordVisible ? '○' : '●'}
+                            {authPasswordVisible ? (
+                              <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                            ) : (
+                              <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                            )}
                           </button>
                         </div>
                       </label>
@@ -860,15 +867,20 @@ export default function HeroSection({
                                 minLength={8}
                                 autoComplete="new-password"
                                 placeholder="Re-enter your password"
-                                className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
+                                className="password-input"
                               />
                               <button
                                 type="button"
                                 onClick={() => setAuthConfirmPasswordVisible(!authConfirmPasswordVisible)}
                                 className="hero-password-toggle"
                                 aria-label={authConfirmPasswordVisible ? 'Hide password' : 'Show password'}
+                                tabIndex="-1"
                               >
-                                {authConfirmPasswordVisible ? '○' : '●'}
+                                {authConfirmPasswordVisible ? (
+                                  <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                                ) : (
+                                  <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                                )}
                               </button>
                             </div>
                           </label>

@@ -51,7 +51,6 @@ const sidebarItems = [
       { id: 'master-categories', label: 'Categories' },
       { id: 'master-models', label: 'Models' },
       { id: 'master-variants', label: 'Variants' },
-      { id: 'master-series', label: 'Series' },
     ]
   },
   { id: 'event-tracking', label: 'Event Tracking', icon: TwoWheelerRoundedIcon },
@@ -90,7 +89,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [categories, setCategories] = useState([])
   const [models, setModels] = useState([])
   const [variants, setVariants] = useState([])
-  const [series, setSeries] = useState([])
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -102,7 +100,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     categories: true,
     models: true,
     variants: true,
-    series: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -294,13 +291,9 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         const variantsSnap = await getDocs(collection(db, 'masterData', 'inventory', 'variants'))
         setVariants(variantsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
         setLoadingState((current) => ({ ...current, variants: false }))
-
-        const seriesSnap = await getDocs(collection(db, 'masterData', 'inventory', 'series'))
-        setSeries(seriesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
-        setLoadingState((current) => ({ ...current, series: false }))
       } catch (error) {
         console.warn('Master data collections not yet created', error)
-        setLoadingState((current) => ({ ...current, categories: false, models: false, variants: false, series: false }))
+        setLoadingState((current) => ({ ...current, categories: false, models: false, variants: false }))
       }
     }
     loadMasterData()
@@ -949,20 +942,20 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             handleCollectionUpdate={handleCollectionUpdate}
             formatCurrency={formatCurrency}
             getStatusClasses={getStatusClasses}
+            categories={categories}
+            models={models}
+            variants={variants}
             isDarkMode={isDarkMode}
           />
         )
       case 'master-categories':
       case 'master-models':
       case 'master-variants':
-      case 'master-series':
         return (
           <MasterDataManagementSection
             dataType={activeSection}
             categories={categories}
             models={models}
-            variants={variants}
-            series={series}
             canEditOperations={canEditOperations}
             isDarkMode={isDarkMode}
           />

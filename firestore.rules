@@ -141,7 +141,7 @@ service cloud.firestore {
     }
 
     match /inventory/{docId} {
-      allow read: if isStaffOrHigher() || resource.data.showInShowroom == true || resource.data.publishedToShowroom == true;
+      allow read: if isStaffOrHigher() || resource.data.showInShowroom == true || resource.data.publishedToShowroom == true || request.auth == null;
       allow create, update: if isStaffOrHigher();
       allow delete: if isAdminOrHigher();
     }
