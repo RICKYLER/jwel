@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 
 export default function SuperAdminSidebar({
   sidebarItems,
@@ -12,6 +14,16 @@ export default function SuperAdminSidebar({
   onSignOut,
   consoleLabel,
 }) {
+  const [expandedItem, setExpandedItem] = useState(null)
+
+  const handleItemClick = (item) => {
+    if (item.subitems && item.subitems.length > 0) {
+      setExpandedItem(expandedItem === item.id ? null : item.id)
+    } else {
+      onSectionChange(item.id)
+    }
+  }
+
   return (
     <>
       {isSidebarOpen && (
@@ -53,21 +65,51 @@ export default function SuperAdminSidebar({
           {sidebarItems.map((item) => {
             const Icon = item.icon
             const isActive = activeSection === item.id
+            const isExpanded = expandedItem === item.id
+            const hasSubitems = item.subitems && item.subitems.length > 0
+            const isSubitemActive = item.subitems?.some((sub) => activeSection === sub.id)
 
             return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSectionChange(item.id)}
-                className={`superadmin-nav-item flex w-full items-center rounded-xl px-4 py-3 text-left font-['Epilogue'] text-[13px] font-bold transition-all duration-300 ${
-                  isActive
-                    ? 'is-active border-l-4 border-[#e10100] bg-linear-to-r from-[#e10100]/10 to-transparent'
-                    : 'hover:bg-white/5'
-                }`}
-              >
-                <Icon sx={{ fontSize: 20 }} className="mr-4" />
-                {item.label}
-              </button>
+              <div key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => handleItemClick(item)}
+                  className={`superadmin-nav-item flex w-full items-center rounded-xl px-4 py-3 text-left font-['Epilogue'] text-[13px] font-bold transition-all duration-300 ${
+                    isActive || isSubitemActive
+                      ? 'is-active border-l-4 border-[#e10100] bg-linear-to-r from-[#e10100]/10 to-transparent'
+                      : 'hover:bg-white/5'
+                  }`}
+                >
+                  <Icon sx={{ fontSize: 20 }} className="mr-4" />
+                  {item.label}
+                  {hasSubitems && (
+                    <ExpandMoreRoundedIcon
+                      sx={{ fontSize: 18, marginLeft: 'auto', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
+                    />
+                  )}
+                </button>
+
+                {hasSubitems && isExpanded && (
+                  <div className="mt-1 space-y-1 pl-4">
+                    {item.subitems.map((subitem) => (
+                      <button
+                        key={subitem.id}
+                        type="button"
+                        onClick={() => {
+                          onSectionChange(subitem.id)
+                        }}
+                        className={`superadmin-nav-subitem flex w-full items-center rounded-lg px-3 py-2.5 text-left font-['Epilogue'] text-xs font-bold transition-all duration-300 ${
+                          activeSection === subitem.id
+                            ? 'is-active border-l-2 border-[#e10100] bg-[#e10100]/10 text-white'
+                            : 'text-white/60 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                        {subitem.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>

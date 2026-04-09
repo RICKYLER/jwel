@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
@@ -21,6 +21,7 @@ import SuperAdminSidebar from './components/SuperAdminSidebar'
 import AnalyticsSection from './sections/AnalyticsSection'
 import DashboardSection from './sections/DashboardSection'
 import InventorySection from './sections/InventorySection'
+import MasterDataManagementSection from './sections/MasterDataManagementSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
@@ -41,6 +42,18 @@ import './SuperAdminPage.css'
 const sidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardRoundedIcon },
   { id: 'user-management', label: 'User Management', icon: ManageAccountsRoundedIcon },
+  { 
+    id: 'inventory-management', 
+    label: 'Inventory Management', 
+    icon: TwoWheelerRoundedIcon,
+    subitems: [
+      { id: 'inventory', label: 'Inventory Items' },
+      { id: 'master-categories', label: 'Categories' },
+      { id: 'master-models', label: 'Models' },
+      { id: 'master-variants', label: 'Variants' },
+      { id: 'master-series', label: 'Series' },
+    ]
+  },
   { id: 'event-tracking', label: 'Event Tracking', icon: TwoWheelerRoundedIcon },
   { id: 'service-logs', label: 'Service Logs', icon: BuildRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
@@ -74,6 +87,10 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [authorizedAdmins, setAuthorizedAdmins] = useState([])
   const [authorizedPersonnel, setAuthorizedPersonnel] = useState([])
   const [archivedUsers, setArchivedUsers] = useState([])
+  const [categories, setCategories] = useState([])
+  const [models, setModels] = useState([])
+  const [variants, setVariants] = useState([])
+  const [series, setSeries] = useState([])
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -82,6 +99,10 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     authorizedAdmins: true,
     authorizedPersonnel: true,
     archivedUsers: true,
+    categories: true,
+    models: true,
+    variants: true,
+    series: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -257,6 +278,33 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       unsubscribers.forEach((unsubscribe) => unsubscribe?.())
     }
   }, [canEditOperations, consoleLabel])
+
+  // Load master data collections
+  useEffect(() => {
+    const loadMasterData = async () => {
+      try {
+        const categoriesSnap = await getDocs(collection(db, 'masterData', 'inventory', 'categories'))
+        setCategories(categoriesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+        setLoadingState((current) => ({ ...current, categories: false }))
+
+        const modelsSnap = await getDocs(collection(db, 'masterData', 'inventory', 'models'))
+        setModels(modelsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+        setLoadingState((current) => ({ ...current, models: false }))
+
+        const variantsSnap = await getDocs(collection(db, 'masterData', 'inventory', 'variants'))
+        setVariants(variantsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+        setLoadingState((current) => ({ ...current, variants: false }))
+
+        const seriesSnap = await getDocs(collection(db, 'masterData', 'inventory', 'series'))
+        setSeries(seriesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+        setLoadingState((current) => ({ ...current, series: false }))
+      } catch (error) {
+        console.warn('Master data collections not yet created', error)
+        setLoadingState((current) => ({ ...current, categories: false, models: false, variants: false, series: false }))
+      }
+    }
+    loadMasterData()
+  }, [])
 
   const visibleTechnicians = technicians.length ? technicians : fallbackTechnicians
   const normalizedSearchTerm = normalizeText(searchTerm)
@@ -820,6 +868,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
   const renderActiveSection = () => {
     switch (activeSection) {
+      case 'event-tracking':
       case 'service-logs':
       case 'service-requests':
         return (
@@ -830,19 +879,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             handleCollectionUpdate={handleCollectionUpdate}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
-            getStatusClasses={getStatusClasses}
-            isDarkMode={isDarkMode}
-          />
-        )
-      case 'event-tracking':
-      case 'inventory':
-        return (
-          <InventorySection
-            items={filteredInventory}
-            canEditOperations={canEditOperations}
-            inventoryStatusOptions={inventoryStatusOptions}
-            handleCollectionUpdate={handleCollectionUpdate}
-            formatCurrency={formatCurrency}
             getStatusClasses={getStatusClasses}
             isDarkMode={isDarkMode}
           />
@@ -901,6 +937,33 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onProfileSave={handleProfileSave}
             isSubmitting={isSubmitting}
             formatDate={formatDate}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'inventory':
+        return (
+          <InventorySection
+            items={filteredInventory}
+            canEditOperations={canEditOperations}
+            inventoryStatusOptions={inventoryStatusOptions}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatCurrency={formatCurrency}
+            getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'master-categories':
+      case 'master-models':
+      case 'master-variants':
+      case 'master-series':
+        return (
+          <MasterDataManagementSection
+            dataType={activeSection}
+            categories={categories}
+            models={models}
+            variants={variants}
+            series={series}
+            canEditOperations={canEditOperations}
             isDarkMode={isDarkMode}
           />
         )

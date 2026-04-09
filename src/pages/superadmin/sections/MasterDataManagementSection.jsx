@@ -1,0 +1,298 @@
+import { useState, useEffect } from 'react'
+import { addDoc, collection, serverTimestamp, deleteDoc, doc, getDocs } from 'firebase/firestore'
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
+import { db } from '../../../firebase'
+
+const collectionMap = {
+  'master-categories': { path: 'categories', label: 'Categories', placeholder: 'e.g., Scooter / Automatic' },
+  'master-models': { path: 'models', label: 'Models', placeholder: 'e.g., NMAX, Aerox, Mio' },
+  'master-variants': { path: 'variants', label: 'Variants', placeholder: 'Enter variant name' },
+  'master-series': { path: 'series', label: 'Series', placeholder: 'e.g., Mio Sporty, Mio i 125' },
+}
+
+export default function MasterDataManagementSection({
+  dataType,
+  categories = [],
+  models = [],
+  variants = [],
+  series = [],
+  canEditOperations,
+  isDarkMode = true,
+}) {
+  const [items, setItems] = useState([])
+  const [newItemName, setNewItemName] = useState('')
+  const [selectedParentId, setSelectedParentId] = useState(null)
+  const [message, setMessage] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const config = collectionMap[dataType]
+  if (!config) return null
+
+  // Load items on mount or when dataType changes
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
+        setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+      } catch (error) {
+        console.warn(`Failed to load ${config.path}`, error)
+      }
+    }
+    loadItems()
+  }, [dataType, config.path])
+
+  const getParentData = () => {
+    if (dataType === 'master-models') return categories
+    if (dataType === 'master-series') return models
+    return []
+  }
+
+  const getParentLabel = () => {
+    if (dataType === 'master-models') return 'Category'
+    if (dataType === 'master-series') return 'Model'
+    return null
+  }
+
+  const getParentName = (parentId) => {
+    if (dataType === 'master-models') return categories.find((c) => c.id === parentId)?.name
+    if (dataType === 'master-series') return models.find((m) => m.id === parentId)?.name
+    return null
+  }
+
+  const handleAddItem = async () => {
+    if (!newItemName.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a name.' })
+      return
+    }
+
+    if ((dataType === 'master-models' || dataType === 'master-series') && !selectedParentId) {
+      setMessage({ type: 'error', text: `Please select a ${getParentLabel()}.` })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const dataToAdd = {
+        name: newItemName.trim(),
+        createdAt: serverTimestamp(),
+      }
+
+      if (dataType === 'master-models' && selectedParentId) {
+        dataToAdd.categoryId = selectedParentId
+      } else if (dataType === 'master-series' && selectedParentId) {
+        dataToAdd.modelId = selectedParentId
+      }
+
+      await addDoc(collection(db, 'masterData', 'inventory', config.path), dataToAdd)
+
+      setMessage({ type: 'success', text: `${config.label.slice(0, -1)} added successfully!` })
+      setNewItemName('')
+      setSelectedParentId(null)
+
+      // Reload items
+      const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
+      setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+    } catch (error) {
+      console.error('Error adding item', error)
+      setMessage({ type: 'error', text: `Error: ${error.message}` })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteItem = async (itemId) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return
+
+    setIsLoading(true)
+    try {
+      await deleteDoc(doc(db, 'masterData', 'inventory', config.path, itemId))
+      setMessage({ type: 'success', text: 'Item deleted successfully!' })
+
+      // Reload items
+      const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
+      setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+    } catch (error) {
+      console.error('Error deleting item', error)
+      setMessage({ type: 'error', text: `Error: ${error.message}` })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredItems = selectedParentId
+    ? items.filter((item) => {
+        if (dataType === 'master-models') return item.categoryId === selectedParentId
+        if (dataType === 'master-series') return item.modelId === selectedParentId
+        return true
+      })
+    : items
+
+  const parentData = getParentData()
+
+  return (
+    <section className={`master-data-section space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
+      <div className="master-data-header">
+        <h2 className="inventory-control-title font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+          {config.label}
+        </h2>
+        <p className={`mt-2 text-sm ${!isDarkMode ? 'text-gray-600' : 'text-white/45'}`}>
+          {dataType === 'master-categories' && 'Create and organize categories for inventory items (e.g., Scooter / Automatic).'}
+          {dataType === 'master-models' && 'Manage motorcycle models and their relationships to categories.'}
+          {dataType === 'master-variants' && 'Define variants for different product specifications and features.'}
+          {dataType === 'master-series' && 'Create series/sub-variants within models (e.g., Mio Sporty, Mio i 125).'}
+        </p>
+      </div>
+
+      <div className={`master-data-panel rounded-[28px] p-6 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/5'}`}>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Input Panel */}
+          <div className={`master-data-input rounded-2xl p-5 ${!isDarkMode ? 'bg-white border border-gray-200' : 'bg-white/6 border border-white/10'}`}>
+            <h3 className={`text-sm font-black uppercase tracking-[0.18em] mb-4 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>
+              Add New {config.label.slice(0, -1)}
+            </h3>
+
+            {parentData.length > 0 && (
+              <div className="mb-4">
+                <label className={`text-xs font-bold uppercase tracking-[0.12em] block mb-2 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>
+                  {getParentLabel()}
+                </label>
+                <select
+                  value={selectedParentId || ''}
+                  onChange={(e) => setSelectedParentId(e.target.value || null)}
+                  disabled={!canEditOperations}
+                  className={`w-full px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                    !isDarkMode
+                      ? 'bg-gray-100 border-gray-300 text-gray-900 disabled:opacity-60'
+                      : 'bg-white/4 border-white/10 text-white disabled:opacity-60'
+                  }`}
+                >
+                  <option value="">Select {getParentLabel()}...</option>
+                  {parentData.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className={`text-xs font-bold uppercase tracking-[0.12em] block mb-2 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>
+                Name
+              </label>
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddItem()}
+                placeholder={config.placeholder}
+                disabled={!canEditOperations}
+                className={`w-full px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
+                  !isDarkMode
+                    ? 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-400 disabled:opacity-60'
+                    : 'bg-white/4 border-white/10 text-white placeholder-white/40 disabled:opacity-60'
+                }`}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddItem}
+              disabled={!canEditOperations || isLoading}
+              className="inventory-submit-button w-full inline-flex items-center justify-center gap-2 py-2.5"
+            >
+              <AddRoundedIcon sx={{ fontSize: 18 }} />
+              {isLoading ? 'Adding...' : 'Add'}
+            </button>
+
+            {message && (
+              <div className={`mt-4 p-3 rounded-lg text-sm font-medium ${
+                message.type === 'error'
+                  ? !isDarkMode ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-red-950/30 text-red-300 border border-red-900/30'
+                  : !isDarkMode ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-emerald-950/30 text-emerald-300 border border-emerald-900/30'
+              }`}>
+                {message.text}
+              </div>
+            )}
+          </div>
+
+          {/* List Panel */}
+          <div className={`master-data-list lg:col-span-2 rounded-2xl p-5 ${!isDarkMode ? 'bg-white border border-gray-200' : 'bg-white/6 border border-white/10'}`}>
+            <h3 className={`text-sm font-black uppercase tracking-[0.18em] mb-4 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>
+              {filteredItems.length} {config.label} {selectedParentId ? `in "${getParentName(selectedParentId)}"` : ''}
+            </h3>
+
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredItems.length > 0 ? (
+                filteredItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      !isDarkMode ? 'bg-gray-50 border-gray-200 hover:bg-gray-100' : 'bg-white/4 border-white/10 hover:bg-white/8'
+                    } transition-colors`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold truncate ${!isDarkMode ? 'text-gray-900' : 'text-white'}`}>
+                        {item.name}
+                      </p>
+                      {dataType === 'master-models' && item.categoryId && (
+                        <p className={`text-xs truncate ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
+                          {categories.find((c) => c.id === item.categoryId)?.name || 'Unknown'}
+                        </p>
+                      )}
+                      {dataType === 'master-series' && item.modelId && (
+                        <p className={`text-xs truncate ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
+                          {models.find((m) => m.id === item.modelId)?.name || 'Unknown'}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(item.id)}
+                      disabled={!canEditOperations || isLoading}
+                      className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-colors shrink-0 ml-3 disabled:opacity-60 ${
+                        !isDarkMode
+                          ? 'text-red-600 hover:bg-red-50'
+                          : 'text-red-400 hover:bg-red-950/30'
+                      }`}
+                      title={`Delete ${item.name}`}
+                    >
+                      <DeleteOutlineRoundedIcon sx={{ fontSize: 18 }} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className={`text-center py-8 text-sm ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
+                  {selectedParentId
+                    ? `No ${config.label.toLowerCase()} in this ${getParentLabel()?.toLowerCase()}.`
+                    : `No ${config.label.toLowerCase()} yet. Add one to get started.`}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: 'Total ' + config.label, value: String(items.length) },
+          { label: 'Active', value: String(Math.max(0, items.length - 0)) },
+          { label: 'Ready to Use', value: 'Yes' },
+          { label: 'Last Updated', value: 'Today' },
+        ].map((stat, idx) => (
+          <article
+            key={idx}
+            className={`rounded-2xl p-4 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/10'}`}
+          >
+            <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${!isDarkMode ? 'text-gray-600' : 'text-white/40'}`}>
+              {stat.label}
+            </p>
+            <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{stat.value}</h3>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}

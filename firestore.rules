@@ -146,6 +146,26 @@ service cloud.firestore {
       allow delete: if isAdminOrHigher();
     }
 
+    match /masterData/inventory/categories/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create, update, delete: if isSuperadmin();
+    }
+
+    match /masterData/inventory/models/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create, update, delete: if isSuperadmin();
+    }
+
+    match /masterData/inventory/variants/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create, update, delete: if isSuperadmin();
+    }
+
+    match /masterData/inventory/series/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create, update, delete: if isSuperadmin();
+    }
+
     match /technicians/{docId} {
       allow read, create, update: if isStaffOrHigher();
       allow delete: if isAdminOrHigher();
