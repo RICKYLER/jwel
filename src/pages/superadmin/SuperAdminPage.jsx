@@ -831,6 +831,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
           />
         )
       case 'event-tracking':
@@ -843,6 +844,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             handleCollectionUpdate={handleCollectionUpdate}
             formatCurrency={formatCurrency}
             getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
           />
         )
       case 'technicians':
@@ -865,6 +867,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             technicians={technicians}
             roleOptions={roleOptions}
             normalizeText={normalizeText}
+            isDarkMode={isDarkMode}
           />
         )
       case 'user-management':
@@ -885,6 +888,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onEditUser={handleOpenEditUserModal}
             onArchiveUser={handleArchiveUser}
             onDeleteArchivedUser={handleDeleteArchivedUserPermanently}
+            isDarkMode={isDarkMode}
           />
         )
       case 'profile':
@@ -897,6 +901,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onProfileSave={handleProfileSave}
             isSubmitting={isSubmitting}
             formatDate={formatDate}
+            isDarkMode={isDarkMode}
           />
         )
       default:

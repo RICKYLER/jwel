@@ -398,3 +398,31 @@
     align-items: flex-start;
   }
 }
+
+/* Light Mode Support */
+.user-management-shell.light-mode .user-stat-card,
+.user-management-shell.light-mode .user-table-shell {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.user-management-shell.light-mode h2,
+.user-management-shell.light-mode h3,
+.user-management-shell.light-mode h4 {
+  color: #111827;
+}
+
+.user-management-shell.light-mode p {
+  color: #6b7280;
+}
+
+.user-management-shell.light-mode  .user-table-search input {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+}
+
+.user-management-shell.light-mode .user-table-search input::placeholder {
+  color: #9ca3af;
+}

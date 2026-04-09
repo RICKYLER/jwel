@@ -8,9 +8,10 @@ export default function ServiceRequestsSection({
   formatCurrency,
   formatDate,
   getStatusClasses,
+  isDarkMode = true,
 }) {
   return (
-    <section className="service-requests-section rounded-xl p-6">
+    <section className={`service-requests-section rounded-xl p-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h3 className="font-['Epilogue'] text-xl font-extrabold uppercase italic tracking-tighter">

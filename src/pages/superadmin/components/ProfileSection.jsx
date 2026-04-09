@@ -9,9 +9,10 @@ export default function ProfileSection({
   onProfileSave,
   isSubmitting,
   formatDate,
+  isDarkMode = true,
 }) {
   return (
-    <div className="profile-section-grid grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className={`profile-section-grid grid gap-6 xl:grid-cols-[0.9fr_1.1fr] ${!isDarkMode ? 'light-mode' : ''}`}>
       <section className="profile-card rounded-2xl p-6">
         <div className="flex items-center gap-4">
           <div className="profile-avatar flex h-20 w-20 items-center justify-center rounded-full text-2xl font-black text-white">

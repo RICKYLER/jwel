@@ -635,7 +635,7 @@ function App() {
 
     setAuthForm((current) => ({
       ...current,
-      [name]: name === 'email' ? value.trim().toLowerCase() : value,
+      [name]: value,
     }))
   }
 
@@ -837,7 +837,7 @@ function App() {
       }
 
       if (requestedRole === 'customer' && authMode === 'signup') {
-        const credentials = await createUserWithEmailAndPassword(auth, authForm.email, authForm.password)
+        const credentials = await createUserWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
 
         if (authForm.fullName.trim()) {
           await updateProfile(credentials.user, {
@@ -857,9 +857,9 @@ function App() {
           text: 'Account created securely. We sent a verification email—please use the newest link before your first login.',
         })
       } else {
-        const credentials = await signInWithEmailAndPassword(auth, authForm.email, authForm.password)
+        const credentials = await signInWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
 
-        if (!credentials.user.emailVerified) {
+        if (!credentials.user.emailVerified && requestedRole !== 'superadmin') {
           const verificationDispatch = await sendVerificationEmailWithCooldown(credentials.user)
           await signOut(auth)
           setAccessProfile(defaultAccessProfile)

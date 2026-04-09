@@ -70,8 +70,7 @@ export default function UserManagementSection({
   onOpenNewUserModal,
   onEditUser,
   onArchiveUser,
-  onDeleteArchivedUser,
-}) {
+  onDeleteArchivedUser,  isDarkMode = true,}) {
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -221,13 +220,13 @@ export default function UserManagementSection({
   }
 
   return (
-    <section className="user-management-shell space-y-6">
+    <section className={`user-management-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className="font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
+          <h2 className={`font-['Epilogue'] text-3xl font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'} sm:text-4xl`}>
             User Management
           </h2>
-          <p className="mt-2 text-sm text-white/50">
+          <p className={`mt-2 text-sm ${isDarkMode ? 'text-white/50' : 'text-gray-600'}`}>
             Configure and oversee the Bykelink operator network.
           </p>
         </div>

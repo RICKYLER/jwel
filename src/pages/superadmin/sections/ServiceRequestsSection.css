@@ -9,3 +9,29 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: #161616;
 }
+
+/* Light Mode Support */
+.service-requests-section.light-mode {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.service-requests-section.light-mode h3,
+.service-requests-section.light-mode h4 {
+  color: #111827;
+}
+
+.service-requests-section.light-mode p {
+  color: #6b7280;
+}
+
+.service-requests-section.light-mode .service-request-card {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.service-requests-section.light-mode .service-request-card select {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+}

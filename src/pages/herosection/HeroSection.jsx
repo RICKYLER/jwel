@@ -114,6 +114,8 @@ export default function HeroSection({
   onSignOut,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [authPasswordVisible, setAuthPasswordVisible] = useState(false)
+  const [authConfirmPasswordVisible, setAuthConfirmPasswordVisible] = useState(false)
 
   const currentHeroImage = useMemo(
     () => heroImages[activeSlide % heroImages.length],
@@ -821,34 +823,54 @@ export default function HeroSection({
 
                       <label className="block text-sm text-neutral-200">
                         <span className="mb-2 block">Password</span>
-                        <input
-                          type="password"
-                          name="password"
-                          value={authForm.password}
-                          onChange={onAuthFieldChange}
-                          required
-                          minLength={8}
-                          autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-                          placeholder="8+ characters with upper, lower, and number"
-                          className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
-                        />
+                        <div className="hero-password-input-wrapper">
+                          <input
+                            type={authPasswordVisible ? 'text' : 'password'}
+                            name="password"
+                            value={authForm.password}
+                            onChange={onAuthFieldChange}
+                            required
+                            minLength={8}
+                            autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+                            placeholder="8+ characters with upper, lower, and number"
+                            className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setAuthPasswordVisible(!authPasswordVisible)}
+                            className="hero-password-toggle"
+                            aria-label={authPasswordVisible ? 'Hide password' : 'Show password'}
+                          >
+                            {authPasswordVisible ? '○' : '●'}
+                          </button>
+                        </div>
                       </label>
 
                       {authMode === 'signup' && (
                         <>
                           <label className="block text-sm text-neutral-200">
                             <span className="mb-2 block">Confirm password</span>
-                            <input
-                              type="password"
-                              name="confirmPassword"
-                              value={authForm.confirmPassword || ''}
-                              onChange={onAuthFieldChange}
-                              required
-                              minLength={8}
-                              autoComplete="new-password"
-                              placeholder="Re-enter your password"
-                              className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
-                            />
+                            <div className="hero-password-input-wrapper">
+                              <input
+                                type={authConfirmPasswordVisible ? 'text' : 'password'}
+                                name="confirmPassword"
+                                value={authForm.confirmPassword || ''}
+                                onChange={onAuthFieldChange}
+                                required
+                                minLength={8}
+                                autoComplete="new-password"
+                                placeholder="Re-enter your password"
+                                className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setAuthConfirmPasswordVisible(!authConfirmPasswordVisible)}
+                                className="hero-password-toggle"
+                                aria-label={authConfirmPasswordVisible ? 'Hide password' : 'Show password'}
+                              >
+                                {authConfirmPasswordVisible ? '○' : '●'}
+                              </button>
+                            </div>
                           </label>
 
                           <div className="rounded-2xl border border-white/10 bg-[#131313] p-4 text-sm text-neutral-300">

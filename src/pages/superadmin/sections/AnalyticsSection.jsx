@@ -8,9 +8,10 @@ export default function AnalyticsSection({
   technicians,
   roleOptions,
   normalizeText,
+  isDarkMode = true,
 }) {
   return (
-    <section className="analytics-section-grid grid gap-6 lg:grid-cols-3">
+    <section className={`analytics-section-grid grid gap-6 lg:grid-cols-3 ${!isDarkMode ? 'light-mode' : ''}`}>
       <article className="analytics-card rounded-2xl p-6">
         <h3 className="font-['Epilogue'] text-lg font-extrabold uppercase italic tracking-tighter">User Mix</h3>
         <div className="mt-4 space-y-3 text-sm">

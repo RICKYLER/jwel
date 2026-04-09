@@ -7,3 +7,25 @@
 .profile-avatar {
   background: linear-gradient(135deg, #e10100 0%, #7a0000 100%);
 }
+
+/* Light Mode Support */
+.profile-section-grid.light-mode .profile-card {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.profile-section-grid.light-mode h3,
+.profile-section-grid.light-mode h4 {
+  color: #111827;
+}
+
+.profile-section-grid.light-mode p {
+  color: #6b7280;
+}
+
+.profile-section-grid.light-mode input,
+.profile-section-grid.light-mode textarea {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+}
