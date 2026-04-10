@@ -148,26 +148,32 @@ service cloud.firestore {
 
     match /masterData/inventory/categories/{docId} {
       allow read: if isStaffOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/models/{docId} {
       allow read: if isStaffOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/variants/{docId} {
       allow read: if isStaffOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/series/{docId} {
       allow read: if isStaffOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow create, update, delete: if isAdminOrHigher();
     }
 
     match /technicians/{docId} {
       allow read, create, update: if isStaffOrHigher();
+      allow delete: if isAdminOrHigher();
+    }
+
+    match /inventoryLogs/{docId} {
+      allow read: if isStaffOrHigher();
+      allow create, update: if isStaffOrHigher();
       allow delete: if isAdminOrHigher();
     }
   }

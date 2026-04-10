@@ -3,6 +3,7 @@ import { addDoc, collection, serverTimestamp, deleteDoc, doc, getDocs } from 'fi
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import { db } from '../../../firebase'
+import ConfirmationModal from '../components/ConfirmationModal'
 
 const collectionMap = {
   'master-categories': { path: 'categories', label: 'Categories', placeholder: 'e.g., Scooter / Automatic' },
@@ -24,6 +25,7 @@ export default function MasterDataManagementSection({
   const [message, setMessage] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [parentData, setParentData] = useState([])
+  const [confirmModal, setConfirmModal] = useState({ open: false, itemId: null, itemName: '' })
 
   const config = collectionMap[dataType]
 
@@ -112,8 +114,13 @@ export default function MasterDataManagementSection({
     }
   }
 
-  const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return
+  const handleDeleteItem = async (itemId, itemName) => {
+    setConfirmModal({ open: true, itemId, itemName })
+  }
+
+  const handleConfirmDelete = async () => {
+    const { itemId } = confirmModal
+    setConfirmModal({ open: false, itemId: null, itemName: '' })
 
     setIsLoading(true)
     try {
@@ -270,7 +277,7 @@ export default function MasterDataManagementSection({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleDeleteItem(item.id)}
+                      onClick={() => handleDeleteItem(item.id, item.name)}
                       disabled={!canEditOperations || isLoading}
                       className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-colors shrink-0 ml-3 disabled:opacity-60 ${
                         !isDarkMode
@@ -314,6 +321,18 @@ export default function MasterDataManagementSection({
           </article>
         ))}
       </div>
+
+      <ConfirmationModal
+        open={confirmModal.open}
+        title="Delete Item"
+        message={`Are you sure you want to delete "${confirmModal.itemName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+        isDarkMode={isDarkMode}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmModal({ open: false, itemId: null, itemName: '' })}
+      />
     </section>
   )
 }

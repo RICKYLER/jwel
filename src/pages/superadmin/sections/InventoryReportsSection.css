@@ -1,0 +1,124 @@
+.inventory-reports-title span {
+  color: #e10100;
+}
+
+.inventory-reports-export-button,
+.inventory-reports-submit-button {
+  border: 0;
+  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  box-shadow: 0 16px 28px rgba(225, 1, 0, 0.28);
+}
+
+.inventory-reports-export-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 35px rgba(225, 1, 0, 0.35);
+}
+
+.inventory-reports-summary-card,
+.inventory-reports-board,
+.inventory-reports-empty {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(22, 22, 23, 0.98) 0%, #121212 100%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+}
+
+.inventory-reports-summary-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.inventory-reports-summary-card::after {
+  content: '';
+  position: absolute;
+  right: -18px;
+  bottom: -20px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(225, 1, 0, 0.16) 0%, transparent 70%);
+}
+
+.inventory-reports-tab {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.42);
+  padding: 0.4rem 1rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  border-radius: 999px;
+  padding: 0.5rem 1.2rem;
+  white-space: nowrap;
+}
+
+.inventory-reports-tab.is-active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(225, 1, 0, 0.15) 0%, rgba(225, 1, 0, 0.08) 100%);
+  border: 1px solid rgba(225, 1, 0, 0.25);
+  box-shadow: 0 0 16px rgba(225, 1, 0, 0.15);
+}
+
+.inventory-reports-tab:hover:not(.is-active) {
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.inventory-reports-search-box {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.inventory-reports-search-box input {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  text-overflow: ellipsis;
+}
+
+.inventory-reports-search-box input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.inventory-reports-date-input {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.inventory-reports-date-input:focus {
+  border-color: rgba(225, 1, 0, 0.4);
+  outline: none;
+}
+
+.inventory-reports-category-pill {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.inventory-reports-empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 767px) {
+  .inventory-reports-tab-row {
+    width: 100%;
+  }
+
+  .inventory-reports-tab {
+    flex: 1 1 auto;
+    font-size: 0.6rem;
+    padding: 0.4rem 0.8rem;
+  }
+
+  .inventory-reports-header {
+    flex-direction: column;
+  }
+
+  .inventory-reports-export-button {
+    width: 100%;
+  }
+}

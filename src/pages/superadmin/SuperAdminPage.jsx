@@ -21,6 +21,8 @@ import SuperAdminSidebar from './components/SuperAdminSidebar'
 import AnalyticsSection from './sections/AnalyticsSection'
 import DashboardSection from './sections/DashboardSection'
 import InventorySection from './sections/InventorySection'
+import InventoryReportsSection from './sections/InventoryReportsSection'
+import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSection'
 import MasterDataManagementSection from './sections/MasterDataManagementSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
 import TechniciansSection from './sections/TechniciansSection'
@@ -48,6 +50,8 @@ const sidebarItems = [
     icon: TwoWheelerRoundedIcon,
     subitems: [
       { id: 'inventory', label: 'Inventory Items' },
+      { id: 'inventory-reports', label: 'Inventory Reports' },
+      { id: 'inventory-delete-archived', label: 'Inventory Delete Archived' },
       { id: 'master-categories', label: 'Categories' },
       { id: 'master-models', label: 'Models' },
       { id: 'master-variants', label: 'Variants' },
@@ -89,6 +93,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [categories, setCategories] = useState([])
   const [models, setModels] = useState([])
   const [variants, setVariants] = useState([])
+  const [inventoryLogs, setInventoryLogs] = useState([])
+  const [deletedItems, setDeletedItems] = useState([])
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -100,6 +106,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     categories: true,
     models: true,
     variants: true,
+    inventoryLogs: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -269,6 +276,18 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         setter: setArchivedUsers,
         shouldSubscribe: canEditOperations,
       }),
+      subscribeToCollection({
+        collectionName: 'inventoryLogs',
+        stateKey: 'inventoryLogs',
+        setter: setInventoryLogs,
+        shouldSubscribe: canEditOperations,
+      }),
+      subscribeToCollection({
+        collectionName: 'deleteArchived',
+        stateKey: 'deletedItems',
+        setter: setDeletedItems,
+        shouldSubscribe: canEditOperations,
+      }),
     ]
 
     return () => {
@@ -409,6 +428,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   )
 
   const handleCollectionUpdate = async (collectionName, docId, payload) => {
+    // If called without parameters, just trigger a re-subscription refresh
+    if (!collectionName || !docId) {
+      console.log('Refreshing collection subscriptions...')
+      return
+    }
+
     if (!canEditOperations) {
       setActionMessage({
         type: 'error',
@@ -945,7 +970,31 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             categories={categories}
             models={models}
             variants={variants}
+            currentUser={currentUser}
             isDarkMode={isDarkMode}
+          />
+        )
+      case 'inventory-reports':
+        return (
+          <InventoryReportsSection
+            inventoryLogs={inventoryLogs}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+            currentUser={currentUser}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'inventory-delete-archived':
+        return (
+          <InventoryDeleteArchivedSection
+            deletedItems={deletedItems}
+            canDeletePermanently={currentAccessRole === 'superadmin'}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+            isDarkMode={isDarkMode}
+            currentUser={currentUser}
+            currentAccessRole={currentAccessRole}
           />
         )
       case 'master-categories':

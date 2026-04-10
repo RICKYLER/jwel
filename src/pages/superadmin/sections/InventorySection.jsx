@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { addDoc, collection, serverTimestamp, updateDoc, doc } from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
@@ -11,6 +11,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db, storage } from '../../../firebase'
+import ConfirmationModal from '../components/ConfirmationModal'
 import './InventorySection.css'
 
 const inventoryTabs = [
@@ -42,7 +43,7 @@ export default function InventorySection({
   categories = [],
   models = [],
   variants = [],
-  series = [],
+  currentUser = null,
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
@@ -70,6 +71,15 @@ export default function InventorySection({
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [selectedSparepartsModel, setSelectedSparepartsModel] = useState(null)
   const [selectedSparepartsCategory, setSelectedSparepartsCategory] = useState(null)
+  const [editSelectedCategory, setEditSelectedCategory] = useState(null)
+  const [editSelectedModel, setEditSelectedModel] = useState(null)
+  const [editSelectedVariant, setEditSelectedVariant] = useState(null)
+  const [editImageFile, setEditImageFile] = useState(null)
+  const [editImagePreview, setEditImagePreview] = useState('')
+  const [editGalleryFiles, setEditGalleryFiles] = useState([])
+  const [editGalleryPreviews, setEditGalleryPreviews] = useState([])
+  const [stockSearchTerm, setStockSearchTerm] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null })
 
   const getAutoStatus = (stock) => {
     const stockValue = Number(stock ?? 0)
@@ -203,6 +213,11 @@ export default function InventorySection({
   }
 
   const handleCloseAddUnitModal = () => {
+    const hasUnsavedChanges = itemForm.name.trim() || itemForm.price || itemForm.stock !== '1' || imageFile
+    if (hasUnsavedChanges) {
+      setConfirmModal({ open: true, action: 'add-unit-cancel', itemId: 'unit' })
+      return
+    }
     setIsAddUnitModalOpen(false)
     setImageFile(null)
     setImagePreview('')
@@ -226,9 +241,16 @@ export default function InventorySection({
   }
 
   const handleCloseAddSparepartsModal = () => {
+    const hasUnsavedChanges = sparePartsForm.name.trim() || sparePartsForm.price || sparePartsForm.stock !== '1' || imageFile
+    if (hasUnsavedChanges) {
+      setConfirmModal({ open: true, action: 'add-spare-parts-cancel', itemId: 'spare' })
+      return
+    }
     setIsAddSparepartsModalOpen(false)
     setImageFile(null)
     setImagePreview('')
+    setGalleryFiles([])
+    setGalleryPreviews([])
     setFormMessage(null)
     setSparePartsForm({ ...defaultItemForm, category: 'Spare Parts' })
     setSelectedSparepartsCategory(null)
@@ -258,6 +280,11 @@ export default function InventorySection({
       return
     }
 
+    // Show confirmation dialog before proceeding
+    setConfirmModal({ open: true, action: 'add-unit-confirm', itemId: 'unit' })
+  }
+
+  const handleProceedCreateUnit = async () => {
     setIsSavingItem(true)
     setFormMessage(null)
 
@@ -299,10 +326,36 @@ export default function InventorySection({
         updatedAt: serverTimestamp(),
       })
 
+      // Log the inventory addition
+      try {
+        await addDoc(collection(db, 'inventoryLogs'), {
+          itemName: itemForm.name.trim(),
+          itemModel: selectedModel.name,
+          category: 'Motorcycle Units',
+          stock: Number(itemForm.stock || 0),
+          price: Number(itemForm.price || 0),
+          status: itemForm.status,
+          imageUrl: imageUrl || '',
+          addedBy: currentUser?.displayName || currentUser?.email || 'Unknown',
+          createdAt: serverTimestamp(),
+        })
+      } catch (logError) {
+        console.warn('Unable to log inventory addition', logError)
+      }
+
       setFormMessage({ type: 'success', text: 'Unit added successfully and synced to the showroom.' })
       window.setTimeout(() => {
-        handleCloseAddUnitModal()
-      }, 600)
+        setIsAddUnitModalOpen(false)
+        setImageFile(null)
+        setImagePreview('')
+        setGalleryFiles([])
+        setGalleryPreviews([])
+        setItemForm(defaultItemForm)
+        setSelectedCategory(null)
+        setSelectedModel(null)
+        setSelectedVariant(null)
+        handleCollectionUpdate()
+      }, 1500)
     } catch (error) {
       console.error('Unable to create unit', error)
       setFormMessage({
@@ -367,6 +420,23 @@ export default function InventorySection({
         updatedAt: serverTimestamp(),
       })
 
+      // Log the spare parts addition
+      try {
+        await addDoc(collection(db, 'inventoryLogs'), {
+          itemName: sparePartsForm.name.trim(),
+          itemModel: selectedSparepartsModel.name,
+          category: 'Spare Parts',
+          stock: Number(sparePartsForm.stock || 0),
+          price: Number(sparePartsForm.price || 0),
+          status: sparePartsForm.status,
+          imageUrl: imageUrl || '',
+          addedBy: currentUser?.displayName || currentUser?.email || 'Unknown',
+          createdAt: serverTimestamp(),
+        })
+      } catch (logError) {
+        console.warn('Unable to log inventory addition', logError)
+      }
+
       setFormMessage({ type: 'success', text: 'Spare part added successfully and synced to the showroom.' })
       window.setTimeout(() => {
         handleCloseAddSparepartsModal()
@@ -377,6 +447,191 @@ export default function InventorySection({
         type: 'error',
         text: `Unable to add the spare part. ${error.message}`,
       })
+    } finally {
+      setIsSavingItem(false)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    const { itemId, item, action } = confirmModal
+
+    // Handle add unit confirmation
+    if (action === 'add-unit-confirm') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      await handleProceedCreateUnit()
+      return
+    }
+
+    // Handle add unit cancel with unsaved changes
+    if (action === 'add-unit-cancel') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsAddUnitModalOpen(false)
+      setImageFile(null)
+      setImagePreview('')
+      setGalleryFiles([])
+      setGalleryPreviews([])
+      setFormMessage(null)
+      setItemForm(defaultItemForm)
+      setSelectedCategory(null)
+      setSelectedModel(null)
+      setSelectedVariant(null)
+      return
+    }
+
+    // Handle add spare parts cancel with unsaved changes
+    if (action === 'add-spare-parts-cancel') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsAddSparepartsModalOpen(false)
+      setImageFile(null)
+      setImagePreview('')
+      setGalleryFiles([])
+      setGalleryPreviews([])
+      setFormMessage(null)
+      setSparePartsForm({ ...defaultItemForm, category: 'Spare Parts' })
+      setSelectedSparepartsCategory(null)
+      setSelectedSparepartsModel(null)
+      return
+    }
+
+    // Handle update stocks cancel with unsaved changes
+    if (action === 'update-stocks-cancel') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsUpdateStocksModalOpen(false)
+      setStockUpdates({})
+      setStockSearchTerm('')
+      return
+    }
+
+    // Handle update stocks confirmation
+    if (action === 'update-stocks') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsSavingItem(true)
+      try {
+        for (const itemId of Object.keys(stockUpdates)) {
+          if (stockUpdates[itemId]) {
+            await updateDoc(doc(db, 'inventory', itemId), {
+              stock: Number(stockUpdates[itemId]),
+              updatedAt: serverTimestamp(),
+            })
+          }
+        }
+        setFormMessage({ type: 'success', text: 'Stock levels updated successfully!' })
+        window.setTimeout(() => {
+          setIsUpdateStocksModalOpen(false)
+          setStockUpdates({})
+          setStockSearchTerm('')
+          handleCollectionUpdate()
+        }, 1500)
+      } catch (error) {
+        console.error('Error updating stocks:', error)
+        setFormMessage({ type: 'error', text: `Failed to update stocks. ${error.message}` })
+      } finally {
+        setIsSavingItem(false)
+      }
+      return
+    }
+
+    // Handle edit cancel
+    if (action === 'edit-cancel') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsEditModalOpen(false)
+      setEditFormData({})
+      setEditingItem(null)
+      return
+    }
+
+    // Handle edit update
+    if (action === 'edit-update') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      await handleUpdateItem()
+      return
+    }
+
+    // Handle delete
+    setConfirmModal({ open: false, action: null, itemId: null })
+
+    try {
+      const isSuperAdmin = currentUser?.role === 'superadmin'
+
+      if (isSuperAdmin) {
+        // Superadmin: permanently delete from inventory
+        await deleteDoc(doc(db, 'inventory', itemId))
+        setFormMessage({ type: 'success', text: 'Item permanently deleted.' })
+      } else {
+        // Regular user: move to deleteArchived collection
+        const deletedItemData = {
+          ...item,
+          deletedAt: serverTimestamp(),
+          deletedBy: currentUser?.displayName || currentUser?.email || 'Unknown',
+        }
+        
+        await setDoc(doc(db, 'deleteArchived', itemId), deletedItemData)
+        await deleteDoc(doc(db, 'inventory', itemId))
+        setFormMessage({ type: 'success', text: 'Item moved to archive. Only superadmin can permanently delete.' })
+      }
+
+      handleCollectionUpdate()
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      setFormMessage({ type: 'error', text: `Failed to delete item. ${error.message}` })
+    }
+  }
+
+  const handleUpdateItem = async () => {
+    if (!editingItem) return
+
+    setIsSavingItem(true)
+    try {
+      const itemDocRef = doc(db, 'inventory', editingItem.id)
+      let imageUrl = editingItem.imageUrl
+      const galleryUrls = [...(editingItem.gallery || [])]
+
+      // Upload new main image if provided
+      if (editImageFile) {
+        const storageRef = ref(storage, `inventory/${Date.now()}-${editImageFile.name}`)
+        const uploadSnapshot = await uploadBytes(storageRef, editImageFile)
+        imageUrl = await getDownloadURL(uploadSnapshot.ref)
+      }
+
+      // Upload new gallery images
+      for (let i = 0; i < editGalleryFiles.length; i++) {
+        if (editGalleryFiles[i]) {
+          const storageRef = ref(storage, `inventory/gallery/${Date.now()}-${Math.random()}-${editGalleryFiles[i].name}`)
+          const uploadSnapshot = await uploadBytes(storageRef, editGalleryFiles[i])
+          const galleryUrl = await getDownloadURL(uploadSnapshot.ref)
+          galleryUrls[i] = galleryUrl
+        }
+      }
+
+      const updateData = {
+        name: editFormData.name ?? editingItem.name,
+        model: editFormData.model ?? editingItem.model,
+        modelId: editFormData.modelId ?? editingItem.modelId,
+        variant: editFormData.variant ?? editingItem.variant ?? '',
+        variantId: editFormData.variantId ?? editingItem.variantId ?? '',
+        stock: Number(editFormData.stock ?? editingItem.stock ?? 0),
+        price: Number(editFormData.price ?? editingItem.price ?? 0),
+        description: editFormData.description ?? editingItem.description ?? '',
+        imageUrl,
+        gallery: galleryUrls.filter(Boolean),
+        updatedAt: serverTimestamp(),
+      }
+
+      await updateDoc(itemDocRef, updateData)
+      setFormMessage({ type: 'success', text: 'Item updated successfully.' })
+      setIsEditModalOpen(false)
+      setEditFormData({})
+      setEditingItem(null)
+      setEditImageFile(null)
+      setEditImagePreview('')
+      setEditGalleryFiles([])
+      setEditGalleryPreviews([])
+      setEditSelectedModel(null)
+      setEditSelectedVariant(null)
+      handleCollectionUpdate()
+    } catch (error) {
+      console.error('Error updating item:', error)
+      setFormMessage({ type: 'error', text: `Failed to update item. ${error.message}` })
     } finally {
       setIsSavingItem(false)
     }
@@ -571,6 +826,15 @@ export default function InventorySection({
                         type="button"
                         onClick={() => {
                           setEditingItem(item)
+                          setEditFormData({})
+                          setEditImageFile(null)
+                          setEditImagePreview('')
+                          setEditGalleryFiles([])
+                          setEditGalleryPreviews([])
+                          const modelItem = models.find(m => m.id === item.modelId)
+                          const variantItem = variants.find(v => v.id === item.variantId)
+                          setEditSelectedModel(modelItem || null)
+                          setEditSelectedVariant(variantItem || null)
                           setIsEditModalOpen(true)
                           setActionMenuOpen(null)
                         }}
@@ -583,6 +847,7 @@ export default function InventorySection({
                       <button
                         type="button"
                         onClick={() => {
+                          setConfirmModal({ open: true, action: 'delete', itemId: item.id, itemName: item.name, item })
                           setActionMenuOpen(null)
                         }}
                         className="inventory-action-item inline-flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-[#ff6a63] hover:bg-red-950/30 transition-colors"
@@ -707,7 +972,16 @@ export default function InventorySection({
 
                 <label className="inventory-field">
                   <span>Price</span>
-                  <input type="number" name="price" min="0" value={itemForm.price} onChange={(e) => handleFormChange(e, 'unit')} placeholder="145000" />
+                  <input 
+                    type="number" 
+                    name="price" 
+                    value={itemForm.price} 
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                      handleFormChange({ target: { name: 'price', type: 'text', value: String(val) } }, 'unit')
+                    }} 
+                    placeholder="145000" 
+                  />
                 </label>
               </div>
 
@@ -887,7 +1161,16 @@ export default function InventorySection({
 
                 <label className="inventory-field">
                   <span>Price</span>
-                  <input type="number" name="price" min="0" value={sparePartsForm.price} onChange={(e) => handleFormChange(e, 'spareparts')} placeholder="25000" />
+                  <input 
+                    type="number" 
+                    name="price" 
+                    value={sparePartsForm.price} 
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                      handleFormChange({ target: { name: 'price', type: 'text', value: String(val) } }, 'spareparts')
+                    }} 
+                    placeholder="25000" 
+                  />
                 </label>
               </div>
 
@@ -993,13 +1276,27 @@ export default function InventorySection({
 
       {isUpdateStocksModalOpen && (
         <div className="inventory-modal-overlay">
-          <button type="button" className="inventory-modal-backdrop" onClick={() => setIsUpdateStocksModalOpen(false)} />
+          <button type="button" className="inventory-modal-backdrop" onClick={() => {
+            const hasChanges = Object.values(stockUpdates).some(val => val)
+            if (hasChanges) {
+              setConfirmModal({ open: true, action: 'update-stocks-cancel', itemId: 'stocks' })
+            } else {
+              setIsUpdateStocksModalOpen(false)
+            }
+          }} />
           <div className={`inventory-modal-panel update-stocks-modal ${!isDarkMode ? 'light-mode' : ''}`}>
             <div className="flex items-center justify-between mb-4 sticky top-0 z-10 bg-inherit pb-3 border-b border-white/5">
               <h3 className="inventory-modal-title">Update Stock Levels</h3>
               <button
                 type="button"
-                onClick={() => setIsUpdateStocksModalOpen(false)}
+                onClick={() => {
+                  const hasChanges = Object.values(stockUpdates).some(val => val)
+                  if (hasChanges) {
+                    setConfirmModal({ open: true, action: 'update-stocks-cancel', itemId: 'stocks' })
+                  } else {
+                    setIsUpdateStocksModalOpen(false)
+                  }
+                }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
               >
                 <CloseRoundedIcon sx={{ fontSize: 18 }} />
@@ -1016,12 +1313,19 @@ export default function InventorySection({
                   <input
                     type="text"
                     placeholder="Search items..."
+                    value={stockSearchTerm}
+                    onChange={(e) => setStockSearchTerm(e.target.value)}
                     className={`flex-1 border-0 bg-transparent text-sm outline-none ${!isDarkMode ? 'text-gray-900 placeholder-gray-400' : 'text-white placeholder-white/40'}`}
                   />
                 </div>
 
                 <div className="update-stocks-items space-y-2 max-h-64 overflow-y-auto">
-                  {items.slice(0, 3).map((item) => (
+                  {items.filter((item) => {
+                    const searchNormalized = stockSearchTerm.toLowerCase().trim()
+                    if (!searchNormalized) return true
+                    const itemText = `${item.name} ${item.model} ${item.category}`.toLowerCase()
+                    return itemText.includes(searchNormalized)
+                  }).map((item) => (
                     <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border ${!isDarkMode ? 'bg-gray-50 border-gray-200' : 'bg-white/4 border-white/10'}`}>
                       <div className={`h-14 w-14 rounded-lg overflow-hidden shrink-0 ${!isDarkMode ? 'bg-gray-200' : 'bg-white/5'}`}>
                         {item.imageUrl ? (
@@ -1057,7 +1361,7 @@ export default function InventorySection({
                   <p className={`text-xs font-bold uppercase tracking-widest mb-4 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>Changes Summary</p>
                   
                   <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {items.slice(0, 3).map((item) => {
+                    {items.map((item) => {
                       const newStock = stockUpdates[item.id] ?? item.stock ?? 0
                       const oldStock = item.stock ?? 0
                       const diff = Number(newStock) - Number(oldStock)
@@ -1087,14 +1391,26 @@ export default function InventorySection({
                   <button
                     type="button"
                     className="inventory-submit-button flex-1 inline-flex items-center justify-center gap-2 py-2"
-                    onClick={() => setIsUpdateStocksModalOpen(false)}
+                    onClick={() => {
+                      const hasChanges = Object.values(stockUpdates).some(val => val)
+                      if (hasChanges) {
+                        setConfirmModal({ open: true, action: 'update-stocks', itemId: 'stocks' })
+                      }
+                    }}
                   >
                     <SaveRoundedIcon sx={{ fontSize: 16 }} />
                     Confirm Update
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsUpdateStocksModalOpen(false)}
+                    onClick={() => {
+                      const hasChanges = Object.values(stockUpdates).some(val => val)
+                      if (hasChanges) {
+                        setConfirmModal({ open: true, action: 'update-stocks-cancel', itemId: 'stocks' })
+                      } else {
+                        setIsUpdateStocksModalOpen(false)
+                      }
+                    }}
                     className={`flex-1 border rounded-full px-4 py-2 text-xs font-bold transition-colors ${!isDarkMode ? 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50' : 'border-white/10 text-white hover:bg-white/5'}`}
                   >
                     Cancel
@@ -1108,102 +1424,384 @@ export default function InventorySection({
 
       {isEditModalOpen && editingItem && (
         <div className="inventory-modal-overlay">
-          <button type="button" className="inventory-modal-backdrop" onClick={() => { setIsEditModalOpen(false); setEditFormData({}); }} />
-          <div className={`inventory-modal-panel edit-item-modal ${!isDarkMode ? 'light-mode' : ''}`}>
-            <div className="flex items-start gap-4 overflow-y-auto max-h-[calc(100vh-2rem)]">
-              {/* Left - Image Panel */}
-              <div className="edit-modal-image-panel">
-                <div className={`rounded-lg overflow-hidden border mb-3 ${!isDarkMode ? 'bg-gray-100 border-gray-300' : 'bg-white/5 border-white/10'}`}>
-                  {editingItem.imageUrl ? (
-                    <img src={editingItem.imageUrl} alt={editingItem.name} className="w-40 h-40 object-cover" />
-                  ) : (
-                    <div className={`w-40 h-40 flex items-center justify-center text-xs font-bold ${!isDarkMode ? 'bg-gray-200 text-gray-600' : 'bg-white/5 text-white/30'}`}>
-                      No Image
-                    </div>
-                  )}
+          <button type="button" className="inventory-modal-backdrop" onClick={() => {
+            const hasChanges = JSON.stringify(editFormData) !== '{}'
+            if (hasChanges) {
+              setConfirmModal({ open: true, action: 'edit-cancel', itemId: editingItem.id })
+            } else {
+              setIsEditModalOpen(false)
+              setEditFormData({})
+            }
+          }} aria-label="Close edit modal" />
+
+          <div className={`inventory-modal-panel scrollable-modal-panel ${!isDarkMode ? 'light-mode' : ''}`}>
+            <div className="inventory-modal-header sticky top-0 bg-inherit z-10 pb-3 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="inventory-modal-kicker">Live Inventory Update</p>
+                  <h3 className="inventory-modal-title">Edit Item</h3>
+                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Update item details. Stock and Status are locked and cannot be changed in edit mode.</p>
                 </div>
                 <button
                   type="button"
-                  className={`text-xs font-bold uppercase tracking-widest w-full py-2 rounded-lg border transition-colors ${!isDarkMode ? 'border-gray-300 text-gray-700 hover:bg-gray-100' : 'border-white/10 text-white/70 hover:bg-white/5'}`}
+                  onClick={() => {
+                    const hasChanges = JSON.stringify(editFormData) !== '{}'
+                    if (hasChanges) {
+                      setConfirmModal({ open: true, action: 'edit-cancel', itemId: editingItem.id })
+                    } else {
+                      setIsEditModalOpen(false)
+                      setEditFormData({})
+                    }
+                  }}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0 ml-3"
                 >
-                  Change Photo
+                  <CloseRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
               </div>
-
-              {/* Right - Form Panel */}
-              <div className="edit-modal-form-panel flex-1 flex flex-col">
-                <div className="flex items-center justify-between mb-4 sticky top-0 bg-inherit pb-3 border-b border-white/5">
-                  <h3 className="inventory-modal-title">Edit Item Details</h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditModalOpen(false)
-                      setEditFormData({})
-                    }}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0"
-                  >
-                    <CloseRoundedIcon sx={{ fontSize: 18 }} />
-                  </button>
-                </div>
-
-                <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
-                  <div>
-                    <label className="inventory-field">
-                      <span>Item Name</span>
-                      <input type="text" value={editFormData.name ?? editingItem?.name ?? ''} onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} placeholder="Item name" className={`w-full px-3 py-2 rounded-lg border text-sm ${!isDarkMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-white/4 border-white/10 text-white'}`} />
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="inventory-field">
-                      <span>Model / Variant</span>
-                      <input type="text" value={editFormData.model ?? editingItem?.model ?? ''} onChange={(e) => setEditFormData({ ...editFormData, model: e.target.value })} placeholder="Model" className={`w-full px-3 py-2 rounded-lg border text-sm ${!isDarkMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-white/4 border-white/10 text-white'}`} />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="inventory-field">
-                        <span>Stock</span>
-                        <input type="number" value={editFormData.stock ?? editingItem?.stock ?? 0} onChange={(e) => setEditFormData({ ...editFormData, stock: e.target.value })} placeholder="0" className={`w-full px-3 py-2 rounded-lg border text-sm ${!isDarkMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-white/4 border-white/10 text-white'}`} />
-                      </label>
-                    </div>
-                    <div>
-                      <label className="inventory-field">
-                        <span>Unit Price</span>
-                        <input type="number" value={editFormData.price ?? editingItem?.price ?? 0} onChange={(e) => setEditFormData({ ...editFormData, price: e.target.value })} placeholder="0" className={`w-full px-3 py-2 rounded-lg border text-sm ${!isDarkMode ? 'bg-white border-gray-300 text-gray-900' : 'bg-white/4 border-white/10 text-white'}`} />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 sticky bottom-0 bg-inherit pt-2 border-t border-white/5">
-                  <button
-                    type="button"
-                    className="inventory-submit-button flex-1 py-2 text-xs font-bold inline-flex items-center justify-center gap-2"
-                    onClick={() => {
-                      setIsEditModalOpen(false)
-                      setEditFormData({})
-                    }}
-                  >
-                    <SaveRoundedIcon sx={{ fontSize: 16 }} />
-                    Update Item
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditModalOpen(false)
-                      setEditFormData({})
-                    }}
-                    className={`flex-1 py-2 text-xs font-bold rounded-full border transition-colors ${!isDarkMode ? 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50' : 'border-white/10 bg-white/4 text-white hover:bg-white/5'}`}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
             </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); setConfirmModal({ open: true, action: 'edit-update', itemId: editingItem.id }) }} className="inventory-modal-form">
+              <div className="inventory-modal-grid">
+                <label className="inventory-field">
+                  <span>Item Name</span>
+                  <input 
+                    type="text" 
+                    value={editFormData.name ?? editingItem?.name ?? ''} 
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
+                    placeholder="Item name"
+                  />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Category</span>
+                  <select 
+                    value={editSelectedCategory?.id || editingItem?.categoryId || ''}
+                    onChange={(e) => {
+                      const cat = categories.find(c => c.id === e.target.value)
+                      setEditSelectedCategory(cat || null)
+                      setEditFormData({ ...editFormData, categoryId: e.target.value })
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Category...</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Model</span>
+                  <select 
+                    value={editSelectedModel?.id || editingItem?.modelId || ''}
+                    onChange={(e) => {
+                      const model = models.find(m => m.id === e.target.value)
+                      setEditSelectedModel(model || null)
+                      setEditFormData({ ...editFormData, model: model?.name || '', modelId: e.target.value })
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Model...</option>
+                    {models.map((model) => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Variant (Optional)</span>
+                  <select 
+                    value={editSelectedVariant?.id || editingItem?.variantId || ''}
+                    onChange={(e) => {
+                      const variant = variants.find(v => v.id === e.target.value)
+                      setEditSelectedVariant(variant || null)
+                      setEditFormData({ ...editFormData, variant: variant?.name || '', variantId: e.target.value })
+                    }}
+                    className="dropdown-select"
+                  >
+                    <option value="">Select Variant...</option>
+                    {variants.map((variant) => (
+                      <option key={variant.id} value={variant.id}>{variant.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="inventory-field">
+                  <span>Status</span>
+                  <input 
+                    type="text"
+                    value={editingItem?.status ?? ''}
+                    disabled
+                    className="dropdown-select opacity-60 cursor-not-allowed"
+                  />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Stock</span>
+                  <input 
+                    type="number"
+                    value={editingItem?.stock ?? 0}
+                    disabled
+                    className="opacity-60 cursor-not-allowed"
+                  />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Price</span>
+                  <input 
+                    type="number"
+                    value={editFormData.price !== undefined ? editFormData.price : (editingItem?.price ?? '')}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                      setEditFormData({ ...editFormData, price: val })
+                    }}
+                    placeholder="0"
+                  />
+                </label>
+              </div>
+
+              <label className="inventory-field">
+                <span>Description</span>
+                <textarea 
+                  value={editFormData.description ?? editingItem?.description ?? ''} 
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  rows="3" 
+                  placeholder="Add item details."
+                />
+              </label>
+
+              {editingItem.imageUrl || editImagePreview ? (
+                <div className="inventory-image-preview max-w-full">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Main Image</p>
+                  <div className="relative group inline-block">
+                    <img src={editImagePreview || editingItem.imageUrl} alt={editingItem.name} className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
+                    <label className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setEditImageFile(file)
+                            setEditImagePreview(URL.createObjectURL(file))
+                            setEditFormData({ ...editFormData, imageFile: file })
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <span className="text-white text-sm font-bold">Replace Image</span>
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <label className="inventory-upload-box">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setEditImageFile(file)
+                        setEditImagePreview(URL.createObjectURL(file))
+                        setEditFormData({ ...editFormData, imageFile: file })
+                      }
+                    }}
+                    className="hidden" 
+                  />
+                  <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
+                  <span className="inventory-upload-title">Upload Main Image</span>
+                  <span className="inventory-upload-copy">PNG, JPG, or WEBP</span>
+                </label>
+              )}
+
+              {(editingItem.gallery && editingItem.gallery.length > 0) || editGalleryPreviews.length > 0 ? (
+                <div className="inventory-gallery-section max-w-full">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {[0, 1, 2, 3].map((index) => {
+                      const galleryImage = editGalleryPreviews[index] || editingItem.gallery?.[index]
+                      return (
+                        <label key={index} className="relative group">
+                          {galleryImage ? (
+                            <>
+                              <img 
+                                src={galleryImage} 
+                                alt={`Gallery ${index + 1}`}
+                                className="w-full h-24 rounded-lg object-cover border border-white/10 cursor-pointer"
+                              />
+                              <div className="absolute inset-0 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                      const newFiles = [...editGalleryFiles]
+                                      const newPreviews = [...editGalleryPreviews]
+                                      newFiles[index] = file
+                                      newPreviews[index] = URL.createObjectURL(file)
+                                      setEditGalleryFiles(newFiles)
+                                      setEditGalleryPreviews(newPreviews)
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    const newPreviews = [...editGalleryPreviews]
+                                    const newFiles = [...editGalleryFiles]
+                                    if (newPreviews[index]) {
+                                      URL.revokeObjectURL(newPreviews[index])
+                                    }
+                                    newFiles[index] = undefined
+                                    newPreviews[index] = undefined
+                                    setEditGalleryFiles(newFiles.filter(Boolean))
+                                    setEditGalleryPreviews(newPreviews.filter(Boolean))
+                                  }}
+                                  className="bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition-colors"
+                                >
+                                  <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                                </button>
+                                <span className="text-white text-xs font-bold">Replace</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-full h-24 rounded-lg border border-dashed border-white/10 flex items-center justify-center bg-white/4 cursor-pointer">
+                                <CloudUploadRoundedIcon sx={{ fontSize: 24 }} className="text-white/40" />
+                              </div>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    const newFiles = [...editGalleryFiles]
+                                    const newPreviews = [...editGalleryPreviews]
+                                    newFiles[index] = file
+                                    newPreviews[index] = URL.createObjectURL(file)
+                                    setEditGalleryFiles(newFiles)
+                                    setEditGalleryPreviews(newPreviews)
+                                  }
+                                }}
+                                className="hidden"
+                              />
+                              <span className="absolute inset-0 flex items-center justify-center text-white text-xs font-bold text-center opacity-0 group-hover:opacity-100 transition-opacity">Image {index + 1}</span>
+                            </>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="inventory-gallery-upload-section">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {[0, 1, 2, 3].map((index) => (
+                      <label key={index} className="inventory-gallery-upload-box cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              const newFiles = [...editGalleryFiles]
+                              const newPreviews = [...editGalleryPreviews]
+                              newFiles[index] = file
+                              newPreviews[index] = URL.createObjectURL(file)
+                              setEditGalleryFiles(newFiles)
+                              setEditGalleryPreviews(newPreviews)
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <div className="inventory-gallery-upload-placeholder">
+                          <CloudUploadRoundedIcon sx={{ fontSize: 24 }} className="text-white/40" />
+                          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40 text-center">Image {index + 1}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {formMessage && (
+                <div className={`inventory-form-message ${formMessage.type === 'error' ? 'is-error' : 'is-success'}`}>
+                  {formMessage.text}
+                </div>
+              )}
+
+              <div className="inventory-modal-actions">
+                <button 
+                  type="submit" 
+                  disabled={isSavingItem}
+                  className="inventory-submit-button inline-flex items-center justify-center gap-2"
+                >
+                  <SaveRoundedIcon sx={{ fontSize: 18 }} />
+                  {isSavingItem ? 'Updating...' : 'Update Item'}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    const hasChanges = JSON.stringify(editFormData) !== '{}'
+                    if (hasChanges) {
+                      setConfirmModal({ open: true, action: 'edit-cancel', itemId: editingItem.id })
+                    } else {
+                      setIsEditModalOpen(false)
+                      setEditFormData({})
+                    }
+                  }}
+                  className="inventory-cancel-button"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      )}    </section>
+      )}
+
+      <ConfirmationModal
+        open={confirmModal.open}
+        title={
+          confirmModal.action === 'add-unit-confirm' ? 'Confirm Save Unit' :
+          confirmModal.action === 'edit-update' ? 'Update Item' :
+          confirmModal.action === 'edit-cancel' ? 'Discard Changes' :
+          confirmModal.action === 'update-stocks' ? 'Confirm Stock Update' :
+          confirmModal.action === 'update-stocks-cancel' ? 'Discard Stock Changes' :
+          confirmModal.action === 'add-unit-cancel' ? 'Discard Draft' :
+          confirmModal.action === 'add-spare-parts-cancel' ? 'Discard Draft' :
+          'Delete Item'
+        }
+        message={
+          confirmModal.action === 'add-unit-confirm' ? 'Are you sure you want to save this unit? It will be added to the inventory and published to the showroom.' :
+          confirmModal.action === 'edit-update' ? 'Are you sure you want to update this item? This change will be saved to the database.' :
+          confirmModal.action === 'edit-cancel' ? 'You have unsaved changes. Are you sure you want to discard them?' :
+          confirmModal.action === 'update-stocks' ? 'Are you sure you want to update the stock levels? This will permanently change the inventory counts.' :
+          confirmModal.action === 'update-stocks-cancel' ? 'You have unsaved stock changes. Are you sure you want to discard them?' :
+          confirmModal.action === 'add-unit-cancel' ? 'You have unsaved changes. Are you sure you want to discard the draft?' :
+          confirmModal.action === 'add-spare-parts-cancel' ? 'You have unsaved changes. Are you sure you want to discard the draft?' :
+          `Are you sure you want to delete "${confirmModal.itemName}"? This action cannot be undone.`
+        }
+        confirmText={
+          confirmModal.action === 'add-unit-confirm' ? 'Yes, Save Unit' :
+          confirmModal.action === 'edit-update' ? 'Update' :
+          confirmModal.action === 'edit-cancel' ? 'Discard' :
+          confirmModal.action === 'update-stocks' ? 'Update Stocks' :
+          confirmModal.action === 'update-stocks-cancel' ? 'Discard' :
+          confirmModal.action === 'add-unit-cancel' ? 'Discard' :
+          confirmModal.action === 'add-spare-parts-cancel' ? 'Discard' :
+          'Delete'
+        }
+        cancelText="Cancel"
+        isDangerous={['delete', 'edit-cancel', 'update-stocks-cancel', 'add-unit-cancel', 'add-spare-parts-cancel'].includes(confirmModal.action)}
+        isDarkMode={isDarkMode}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmModal({ open: false, action: null, itemId: null })}
+      />
+    </section>
   )
 }
