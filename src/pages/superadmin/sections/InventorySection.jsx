@@ -157,33 +157,39 @@ export default function InventorySection({
     setFormMessage(null)
   }
 
-  const handleGalleryImageChange = (event) => {
+  const handleGalleryImageChange = (event, index) => {
     const files = event.target.files
-    if (!files) return
+    if (!files || !files[0]) return
 
-    const newFiles = Array.from(files)
-    const maxFiles = 5
-    const totalFiles = galleryFiles.length + newFiles.length
+    const file = files[0]
+    const newFiles = [...galleryFiles]
+    const newPreviews = [...galleryPreviews]
 
-    if (totalFiles > maxFiles) {
-      setFormMessage({ type: 'error', text: `Maximum ${maxFiles} gallery images allowed` })
-      return
-    }
+    // Replace the image at the specific index
+    newFiles[index] = file
+    newPreviews[index] = URL.createObjectURL(file)
 
-    setGalleryFiles((prev) => [...prev, ...newFiles])
-
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
-    setGalleryPreviews((prev) => [...prev, ...newPreviews])
+    setGalleryFiles(newFiles)
+    setGalleryPreviews(newPreviews)
     setFormMessage(null)
   }
 
-  const handleRemoveGalleryImage = (index) => {
-    setGalleryFiles((prev) => prev.filter((_, i) => i !== index))
-    setGalleryPreviews((prev) => {
-      URL.revokeObjectURL(prev[index])
-      return prev.filter((_, i) => i !== index)
-    })
+  const handleRemoveGalleryImageAtIndex = (index) => {
+    const newFiles = [...galleryFiles]
+    const newPreviews = [...galleryPreviews]
+
+    if (newPreviews[index]) {
+      URL.revokeObjectURL(newPreviews[index])
+    }
+
+    newFiles.splice(index, 1)
+    newPreviews.splice(index, 1)
+
+    setGalleryFiles(newFiles)
+    setGalleryPreviews(newPreviews)
   }
+
+
 
   const handleOpenAddUnitModal = () => {
     setItemForm(defaultItemForm)
@@ -738,33 +744,49 @@ export default function InventorySection({
                 </div>
               )}
 
-              <label className="inventory-upload-box">
-                <input type="file" accept="image/*" multiple onChange={handleGalleryImageChange} className="hidden" />
-                <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
-                <span className="inventory-upload-title">Upload Sub Images (Gallery)</span>
-                <span className="inventory-upload-copy">Add up to 5 additional images to display in the showroom. PNG, JPG, or WEBP.</span>
-              </label>
-
-              {galleryPreviews.length > 0 && (
-                <div className="inventory-gallery-preview">
-                  <p className="text-sm text-white/60 mb-2">Gallery Images ({galleryPreviews.length}/5)</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {galleryPreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <img src={preview} alt={`Gallery ${index + 1}`} className="w-full h-24 rounded-lg object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveGalleryImage(index)}
-                          className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Remove image"
-                        >
-                          <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              <div className="inventory-gallery-upload-section">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
+                <div className="grid grid-cols-4 gap-3">
+                  {[0, 1, 2, 3].map((index) => (
+                    <label key={index} className="inventory-gallery-upload-box">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleGalleryImageChange(e, index)}
+                        className="hidden"
+                      />
+                      {galleryPreviews[index] ? (
+                        <div className="relative group h-full">
+                          <img
+                            src={galleryPreviews[index]}
+                            alt={`Gallery ${index + 1}`}
+                            className="w-full h-full rounded-lg object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleRemoveGalleryImageAtIndex(index)
+                              }}
+                              className="bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                            </button>
+                            <span className="text-white text-xs font-bold">Replace</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="inventory-gallery-upload-placeholder">
+                          <CloudUploadRoundedIcon sx={{ fontSize: 24 }} className="text-white/40" />
+                          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/40 text-center">Image {index + 1}</span>
+                        </div>
+                      )}
+                    </label>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {formMessage && (
                 <div className={`inventory-form-message ${formMessage.type === 'error' ? 'is-error' : 'is-success'}`}>

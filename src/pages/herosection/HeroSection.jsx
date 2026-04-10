@@ -845,9 +845,9 @@ export default function HeroSection({
                             tabIndex="-1"
                           >
                             {authPasswordVisible ? (
-                              <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                              <VisibilityOffRoundedIcon sx={{ fontSize: 16 }} />
                             ) : (
-                              <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                              <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
                             )}
                           </button>
                         </div>
@@ -877,9 +877,9 @@ export default function HeroSection({
                                 tabIndex="-1"
                               >
                                 {authConfirmPasswordVisible ? (
-                                  <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                                  <VisibilityOffRoundedIcon sx={{ fontSize: 16 }} />
                                 ) : (
-                                  <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                                  <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
                                 )}
                               </button>
                             </div>
