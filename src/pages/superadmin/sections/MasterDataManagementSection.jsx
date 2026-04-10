@@ -49,19 +49,13 @@ export default function MasterDataManagementSection({
     const loadParentData = async () => {
       try {
         if (dataType === 'master-models') {
-          if (categories.length > 0) {
-            setParentData(categories)
-          } else {
-            const snap = await getDocs(collection(db, 'masterData', 'inventory', 'categories'))
-            setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
-          }
+          // Always reload from firestore instead of relying on prop to ensure live updates
+          const snap = await getDocs(collection(db, 'masterData', 'inventory', 'categories'))
+          setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
         } else if (dataType === 'master-series') {
-          if (models.length > 0) {
-            setParentData(models)
-          } else {
-            const snap = await getDocs(collection(db, 'masterData', 'inventory', 'models'))
-            setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
-          }
+          // Always reload from firestore instead of relying on prop to ensure live updates
+          const snap = await getDocs(collection(db, 'masterData', 'inventory', 'models'))
+          setParentData(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
         } else {
           setParentData([])
         }
@@ -106,6 +100,15 @@ export default function MasterDataManagementSection({
       // Reload items
       const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
       setItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+
+      // Reload parent data for live updates in related sections
+      if (dataType === 'master-categories') {
+        const catSnap = await getDocs(collection(db, 'masterData', 'inventory', 'categories'))
+        setParentData(catSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+      } else if (dataType === 'master-models') {
+        const modSnap = await getDocs(collection(db, 'masterData', 'inventory', 'models'))
+        setParentData(modSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+      }
     } catch (error) {
       console.error('Error adding item', error)
       setMessage({ type: 'error', text: `Error: ${error.message}` })
@@ -194,6 +197,9 @@ export default function MasterDataManagementSection({
                       ? 'bg-gray-100 border-gray-300 text-gray-900 disabled:opacity-60'
                       : 'bg-white/4 border-white/10 text-white disabled:opacity-60'
                   }`}
+                  style={{
+                    colorScheme: isDarkMode ? 'dark' : 'light',
+                  }}
                 >
                   <option value="">Select {getParentLabel()}...</option>
                   {parentData.map((item) => (
