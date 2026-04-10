@@ -193,7 +193,7 @@ export default function InventoryDeleteArchivedSection({
         {[
           { label: 'Total Deleted', value: String(deletedItems.length) },
           { label: 'Showing', value: String(filteredItems.length) },
-          { label: 'Superadmin Access', value: actualCanDelete ? 'Yes' : 'No' },
+          { label: 'Superadmin Access', value: isSuperAdmin ? 'Yes' : 'No' },
         ].map((stat, idx) => (
           <article
             key={idx}
