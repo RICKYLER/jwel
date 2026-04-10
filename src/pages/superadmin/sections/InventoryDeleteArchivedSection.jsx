@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { deleteDoc, doc } from 'firebase/firestore'
+import { deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import DeleteForeverRoundedIcon from '@mui/icons-material/DeleteForeverRounded'
 import RestoreRoundedIcon from '@mui/icons-material/RestoreRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
@@ -44,16 +44,37 @@ export default function InventoryDeleteArchivedSection({
     setConfirmModal({ open: true, action: 'permanent-delete', itemId, itemName })
   }
 
+  const handleRestore = (itemId, itemName) => {
+    if (!actualCanDelete) {
+      return
+    }
+    setConfirmModal({ open: true, action: 'restore', itemId, itemName })
+  }
+
   const handleConfirmDelete = async () => {
-    const { itemId } = confirmModal
+    const { itemId, action } = confirmModal
     setConfirmModal({ open: false, action: null, itemId: null, itemName: '' })
 
     setIsDeleting(true)
     try {
-      await deleteDoc(doc(db, 'deleteArchived', itemId))
+      if (action === 'restore') {
+        // Restore item to inventory
+        const itemToRestore = deletedItems.find(item => item.id === itemId)
+        if (itemToRestore) {
+          const { id, deletedAt, deletedBy, ...itemData } = itemToRestore
+          await setDoc(doc(db, 'inventory', id), {
+            ...itemData,
+            updatedAt: serverTimestamp(),
+          })
+          await deleteDoc(doc(db, 'deleteArchived', itemId))
+        }
+      } else {
+        // Permanent delete
+        await deleteDoc(doc(db, 'deleteArchived', itemId))
+      }
       handleCollectionUpdate()
     } catch (error) {
-      console.error('Error permanently deleting item:', error)
+      console.error('Error:', error)
     } finally {
       setIsDeleting(false)
     }
@@ -120,6 +141,21 @@ export default function InventoryDeleteArchivedSection({
                   </div>
 
                   <div className="flex items-center gap-2 ml-4 shrink-0">
+                    {actualCanDelete && currentAccessRole === 'superadmin' && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestore(item.id, item.name)}
+                        disabled={isDeleting}
+                        className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-colors shrink-0 disabled:opacity-60 ${
+                          !isDarkMode
+                            ? 'text-emerald-600 hover:bg-emerald-50'
+                            : 'text-emerald-400 hover:bg-emerald-950/30'
+                        }`}
+                        title="Restore this item to inventory"
+                      >
+                        <RestoreRoundedIcon sx={{ fontSize: 18 }} />
+                      </button>
+                    )}
                     {actualCanDelete && (
                       <button
                         type="button"
@@ -170,11 +206,19 @@ export default function InventoryDeleteArchivedSection({
 
       <ConfirmationModal
         open={confirmModal.open}
-        title="Permanently Delete Item"
-        message={`Are you sure you want to permanently delete "${confirmModal.itemName}"? This action cannot be undone.`}
-        confirmText="Delete Permanently"
+        title={
+          confirmModal.action === 'restore' 
+            ? 'Restore Item to Inventory' 
+            : 'Permanently Delete Item'
+        }
+        message={
+          confirmModal.action === 'restore'
+            ? `Are you sure you want to restore "${confirmModal.itemName}" back to the inventory? It will be available immediately.`
+            : `Are you sure you want to permanently delete "${confirmModal.itemName}"? This action cannot be undone.`
+        }
+        confirmText={confirmModal.action === 'restore' ? 'Yes, Restore' : 'Delete Permanently'}
         cancelText="Cancel"
-        isDangerous={true}
+        isDangerous={confirmModal.action !== 'restore'}
         isDarkMode={isDarkMode}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmModal({ open: false, action: null, itemId: null, itemName: '' })}

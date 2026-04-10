@@ -132,7 +132,8 @@ service cloud.firestore {
 
     match /deleteArchived/{docId} {
       allow read: if isAdminOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow create, update: if isAdminOrHigher();
+      allow delete: if isSuperadmin();
     }
 
     match /serviceBookings/{docId} {

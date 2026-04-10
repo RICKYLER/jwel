@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore'
+import { useMemo, useState, useEffect } from 'react'
+import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc, getDocs } from 'firebase/firestore'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
@@ -18,6 +18,7 @@ const inventoryTabs = [
   { id: 'all', label: 'All' },
   { id: 'motorcycle-parts', label: 'Motorcycle Units' },
   { id: 'spare-parts', label: 'Spare Parts' },
+  { id: 'archived', label: 'Deleted Items' },
 ]
 
 const defaultItemForm = {
@@ -80,6 +81,25 @@ export default function InventorySection({
   const [editGalleryPreviews, setEditGalleryPreviews] = useState([])
   const [stockSearchTerm, setStockSearchTerm] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null })
+  const [archivedItems, setArchivedItems] = useState([])
+  const [stockNumberPadOpen, setStockNumberPadOpen] = useState(false)
+  const [stockNumberPadValue, setStockNumberPadValue] = useState('')
+  const [stockNumberPadItemId, setStockNumberPadItemId] = useState(null)
+
+  // Load archived items for superadmin
+  useEffect(() => {
+    const loadArchivedItems = async () => {
+      try {
+        if (currentUser?.role === 'superadmin' || activeTab === 'archived') {
+          const snapshot = await getDocs(collection(db, 'deleteArchived'))
+          setArchivedItems(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })))
+        }
+      } catch (error) {
+        console.warn('Failed to load archived items', error)
+      }
+    }
+    loadArchivedItems()
+  }, [activeTab, currentUser])
 
   const getAutoStatus = (stock) => {
     const stockValue = Number(stock ?? 0)
@@ -96,6 +116,15 @@ export default function InventorySection({
   }
 
   const filteredItems = useMemo(() => {
+    // Show archived items when on archived tab
+    if (activeTab === 'archived') {
+      return archivedItems.filter((item) => {
+        const searchHaystack = normalizeText(`${item.name} ${item.model} ${item.category} ${item.description} ${item.sku || ''}`)
+        const searchMatch = !searchTerm || searchHaystack.includes(normalizeText(searchTerm))
+        return searchMatch
+      })
+    }
+
     return items.filter((item) => {
       const searchHaystack = normalizeText(`${item.name} ${item.model} ${item.category} ${item.description} ${item.sku || ''}`)
       const searchMatch = !searchTerm || searchHaystack.includes(normalizeText(searchTerm))
@@ -121,7 +150,7 @@ export default function InventorySection({
 
       return true
     })
-  }, [activeTab, items, searchTerm, statusFilter])
+  }, [activeTab, items, archivedItems, searchTerm, statusFilter])
 
   const summaryCards = useMemo(() => {
     const totalUnits = items.reduce((sum, item) => sum + Number(item.stock ?? 0), 0)
@@ -450,6 +479,24 @@ export default function InventorySection({
     } finally {
       setIsSavingItem(false)
     }
+  }
+
+  const handleNumberPadConfirm = (itemId, currentStock) => {
+    if (stockNumberPadValue === '') return
+    const addedValue = Number(stockNumberPadValue)
+    const newStock = currentStock + addedValue
+    setStockUpdates({ ...stockUpdates, [itemId]: newStock })
+    setStockNumberPadOpen(false)
+    setStockNumberPadValue('')
+    setStockNumberPadItemId(null)
+  }
+
+  const handleNumberPadAppend = (digit) => {
+    setStockNumberPadValue(stockNumberPadValue + String(digit))
+  }
+
+  const handleNumberPadBackspace = () => {
+    setStockNumberPadValue(stockNumberPadValue.slice(0, -1))
   }
 
   const handleConfirmDelete = async () => {
@@ -1339,16 +1386,17 @@ export default function InventorySection({
                         <p className={`text-xs ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>{Number(item.stock ?? 0)} units</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={item.stock ?? 0}
-                          value={stockUpdates[item.id] ?? item.stock ?? 0}
-                          onChange={(e) => {
-                            const newVal = Math.max(Number(item.stock ?? 0), Number(e.target.value))
-                            setStockUpdates({ ...stockUpdates, [item.id]: newVal })
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStockNumberPadItemId(item.id)
+                            setStockNumberPadValue('')
+                            setStockNumberPadOpen(true)
                           }}
-                          className={`w-16 px-2 py-1 text-sm rounded border text-center font-bold ${!isDarkMode ? 'border-gray-300 bg-white text-gray-900' : 'border-white/10 bg-white/4 text-white'}`}
-                        />
+                          className={`w-16 px-2 py-1 text-sm rounded border text-center font-bold cursor-pointer transition-colors ${!isDarkMode ? 'border-gray-300 bg-white text-gray-900 hover:bg-gray-100' : 'border-white/10 bg-white/4 text-white hover:bg-white/8'}`}
+                        >
+                          {stockUpdates[item.id] ?? item.stock ?? 0}
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1760,6 +1808,132 @@ export default function InventorySection({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Number Pad Modal */}
+      {stockNumberPadOpen && (
+        <div className="inventory-modal-overlay">
+          <button type="button" className="inventory-modal-backdrop" onClick={() => {
+            setStockNumberPadOpen(false)
+            setStockNumberPadValue('')
+            setStockNumberPadItemId(null)
+          }} />
+          <div className={`inventory-modal-panel ${!isDarkMode ? 'light-mode' : ''}`} style={{ maxWidth: '420px' }}>
+            <div className="inventory-modal-header sticky top-0 bg-inherit z-10 pb-3 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="inventory-modal-title">Add Stock</h3>
+                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Enter quantity to add to current stock</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockNumberPadOpen(false)
+                    setStockNumberPadValue('')
+                    setStockNumberPadItemId(null)
+                  }}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-white/10 transition-colors shrink-0"
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Display Current and Input */}
+              <div className={`rounded-lg border p-4 ${!isDarkMode ? 'bg-gray-50 border-gray-200' : 'bg-white/4 border-white/10'}`}>
+                <div className="text-center">
+                  <p className={`text-xs font-bold uppercase tracking-widest ${!isDarkMode ? 'text-gray-600' : 'text-white/60'} mb-2`}>Current Stock</p>
+                  <p className={`text-2xl font-black ${!isDarkMode ? 'text-gray-900' : 'text-white'}`}>
+                    {items.find(i => i.id === stockNumberPadItemId)?.stock ?? 0} units
+                  </p>
+                </div>
+                <div className="my-4 flex items-center justify-center">
+                  <div className={`text-center px-6 py-3 rounded-lg border-2 border-dashed ${!isDarkMode ? 'border-green-200 bg-green-50' : 'border-emerald-900/30 bg-emerald-950/20'}`}>
+                    <p className={`text-xs font-bold uppercase ${!isDarkMode ? 'text-green-600' : 'text-emerald-400'} mb-1`}>Add</p>
+                    <p className={`text-3xl font-black ${!isDarkMode ? 'text-green-900' : 'text-emerald-300'}`}>
+                      {stockNumberPadValue || '0'}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-widest ${!isDarkMode ? 'text-gray-600' : 'text-white/60'} mb-2 text-center`}>New Total</p>
+                  <p className={`text-2xl font-black text-center ${!isDarkMode ? 'text-gray-900' : 'text-white'}`}>
+                    {(items.find(i => i.id === stockNumberPadItemId)?.stock ?? 0) + Number(stockNumberPadValue || 0)} units
+                  </p>
+                </div>
+              </div>
+
+              {/* Number Pad */}
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => (
+                  <button
+                    key={digit}
+                    type="button"
+                    onClick={() => handleNumberPadAppend(digit)}
+                    className={`py-3 rounded-lg font-bold text-lg transition-colors ${
+                      !isDarkMode
+                        ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                  >
+                    {digit}
+                  </button>
+                ))}
+              </div>
+
+              {/* Zero and Backspace */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleNumberPadAppend(0)}
+                  className={`py-3 rounded-lg font-bold text-lg transition-colors ${
+                    !isDarkMode
+                      ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  0
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNumberPadBackspace}
+                  className={`py-3 rounded-lg font-bold text-lg transition-colors ${
+                    !isDarkMode
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                      : 'bg-red-950/30 text-red-400 hover:bg-red-950/50'
+                  }`}
+                >
+                  ← Back
+                </button>
+              </div>
+
+              {/* Clear and Confirm */}
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStockNumberPadValue('')
+                  }}
+                  className={`py-3 rounded-lg font-bold transition-colors ${
+                    !isDarkMode
+                      ? 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNumberPadConfirm(stockNumberPadItemId, items.find(i => i.id === stockNumberPadItemId)?.stock ?? 0)}
+                  className="inventory-submit-button py-3 rounded-lg font-bold transition-colors"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
