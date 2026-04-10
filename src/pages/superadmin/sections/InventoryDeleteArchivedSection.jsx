@@ -24,7 +24,10 @@ export default function InventoryDeleteArchivedSection({
   const [isDeleting, setIsDeleting] = useState(false)
 
   // Debug: Check actual role
-  const actualCanDelete = canDeletePermanently || (currentAccessRole && ['superadmin', 'admin'].includes(String(currentAccessRole).toLowerCase()))
+  const isSuperAdmin = currentAccessRole && String(currentAccessRole).toLowerCase() === 'superadmin'
+  const isAdmin = currentAccessRole && String(currentAccessRole).toLowerCase() === 'admin'
+  const canShowDeleteButton = canDeletePermanently || isAdmin || isSuperAdmin
+  const canShowRestoreButton = isSuperAdmin
   
   const normalizedSearchTerm = normalizeText(searchTerm)
 
@@ -141,7 +144,7 @@ export default function InventoryDeleteArchivedSection({
                   </div>
 
                   <div className="flex items-center gap-2 ml-4 shrink-0">
-                    {actualCanDelete && currentAccessRole === 'superadmin' && (
+                    {canShowRestoreButton && (
                       <button
                         type="button"
                         onClick={() => handleRestore(item.id, item.name)}
@@ -156,7 +159,7 @@ export default function InventoryDeleteArchivedSection({
                         <RestoreRoundedIcon sx={{ fontSize: 18 }} />
                       </button>
                     )}
-                    {actualCanDelete && (
+                    {canShowDeleteButton && (
                       <button
                         type="button"
                         onClick={() => handlePermanentDelete(item.id, item.name)}

@@ -138,14 +138,12 @@ export default function InventorySection({
         return true
       }
 
-      const categoryHaystack = normalizeText(`${item.name} ${item.category} ${item.description}`)
-
       if (activeTab === 'motorcycle-parts') {
-        return /motor|engine|wheel|brake|frame|unit/.test(categoryHaystack)
+        return normalizeText(item.category) === normalizeText('Motorcycle Units')
       }
 
       if (activeTab === 'spare-parts') {
-        return /spare|part|kit|filter|belt|bearing|plug/.test(categoryHaystack)
+        return normalizeText(item.category) === normalizeText('Spare Parts')
       }
 
       return true
@@ -419,6 +417,11 @@ export default function InventorySection({
       return
     }
 
+    // Show confirmation dialog before proceeding
+    setConfirmModal({ open: true, action: 'add-spare-parts-confirm', itemId: 'spare' })
+  }
+
+  const handleProceedCreateSpareParts = async () => {
     setIsSavingItem(true)
     setFormMessage(null)
 
@@ -468,8 +471,16 @@ export default function InventorySection({
 
       setFormMessage({ type: 'success', text: 'Spare part added successfully and synced to the showroom.' })
       window.setTimeout(() => {
-        handleCloseAddSparepartsModal()
-      }, 600)
+        setIsAddSparepartsModalOpen(false)
+        setImageFile(null)
+        setImagePreview('')
+        setGalleryFiles([])
+        setGalleryPreviews([])
+        setSparePartsForm({ ...defaultItemForm, category: 'Spare Parts' })
+        setSelectedSparepartsCategory(null)
+        setSelectedSparepartsModel(null)
+        handleCollectionUpdate()
+      }, 1500)
     } catch (error) {
       console.error('Unable to create spare part', error)
       setFormMessage({
@@ -522,6 +533,13 @@ export default function InventorySection({
       setSelectedCategory(null)
       setSelectedModel(null)
       setSelectedVariant(null)
+      return
+    }
+
+    // Handle add spare parts confirmation
+    if (action === 'add-spare-parts-confirm') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      await handleProceedCreateSpareParts()
       return
     }
 
@@ -959,6 +977,7 @@ export default function InventorySection({
                     onChange={(e) => {
                       const category = categories.find(c => c.id === e.target.value)
                       setSelectedCategory(category || null)
+                      setSelectedModel(null) // Reset model when category changes
                     }}
                     className="dropdown-select"
                   >
@@ -978,11 +997,21 @@ export default function InventorySection({
                       setSelectedModel(model || null)
                     }}
                     className="dropdown-select"
+                    disabled={!selectedCategory}
                   >
-                    <option value="">Select Model...</option>
-                    {models.map((model) => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
+                    <option value="">
+                      {selectedCategory ? 'Select Model...' : 'Select Category First...'}
+                    </option>
+                    {selectedCategory 
+                      ? models
+                          .filter(m => m.categoryId === selectedCategory.id)
+                          .map((model) => (
+                            <option key={model.id} value={model.id}>{model.name}</option>
+                          ))
+                      : models.map((model) => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))
+                    }
                   </select>
                 </label>
 
@@ -1165,6 +1194,7 @@ export default function InventorySection({
                     onChange={(e) => {
                       const category = categories.find(c => c.id === e.target.value)
                       setSelectedSparepartsCategory(category || null)
+                      setSelectedSparepartsModel(null) // Reset model when category changes
                     }}
                     className="dropdown-select"
                   >
@@ -1184,11 +1214,21 @@ export default function InventorySection({
                       setSelectedSparepartsModel(model || null)
                     }}
                     className="dropdown-select"
+                    disabled={!selectedSparepartsCategory}
                   >
-                    <option value="">Select Unit/Model...</option>
-                    {models.map((model) => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
+                    <option value="">
+                      {selectedSparepartsCategory ? 'Select Unit/Model...' : 'Select Category First...'}
+                    </option>
+                    {selectedSparepartsCategory 
+                      ? models
+                          .filter(m => m.categoryId === selectedSparepartsCategory.id)
+                          .map((model) => (
+                            <option key={model.id} value={model.id}>{model.name}</option>
+                          ))
+                      : models.map((model) => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))
+                    }
                   </select>
                 </label>
 
@@ -1942,6 +1982,7 @@ export default function InventorySection({
         open={confirmModal.open}
         title={
           confirmModal.action === 'add-unit-confirm' ? 'Confirm Save Unit' :
+          confirmModal.action === 'add-spare-parts-confirm' ? 'Confirm Save Spare Part' :
           confirmModal.action === 'edit-update' ? 'Update Item' :
           confirmModal.action === 'edit-cancel' ? 'Discard Changes' :
           confirmModal.action === 'update-stocks' ? 'Confirm Stock Update' :
@@ -1952,6 +1993,7 @@ export default function InventorySection({
         }
         message={
           confirmModal.action === 'add-unit-confirm' ? 'Are you sure you want to save this unit? It will be added to the inventory and published to the showroom.' :
+          confirmModal.action === 'add-spare-parts-confirm' ? 'Are you sure you want to save this spare part? It will be added to the inventory and published to the showroom.' :
           confirmModal.action === 'edit-update' ? 'Are you sure you want to update this item? This change will be saved to the database.' :
           confirmModal.action === 'edit-cancel' ? 'You have unsaved changes. Are you sure you want to discard them?' :
           confirmModal.action === 'update-stocks' ? 'Are you sure you want to update the stock levels? This will permanently change the inventory counts.' :
@@ -1962,6 +2004,7 @@ export default function InventorySection({
         }
         confirmText={
           confirmModal.action === 'add-unit-confirm' ? 'Yes, Save Unit' :
+          confirmModal.action === 'add-spare-parts-confirm' ? 'Yes, Save Spare Part' :
           confirmModal.action === 'edit-update' ? 'Update' :
           confirmModal.action === 'edit-cancel' ? 'Discard' :
           confirmModal.action === 'update-stocks' ? 'Update Stocks' :
@@ -1972,6 +2015,7 @@ export default function InventorySection({
         }
         cancelText="Cancel"
         isDangerous={['delete', 'edit-cancel', 'update-stocks-cancel', 'add-unit-cancel', 'add-spare-parts-cancel'].includes(confirmModal.action)}
+        isPositive={['add-unit-confirm', 'add-spare-parts-confirm'].includes(confirmModal.action)}
         isDarkMode={isDarkMode}
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmModal({ open: false, action: null, itemId: null })}
