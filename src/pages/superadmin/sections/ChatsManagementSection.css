@@ -1,0 +1,226 @@
+.chats-management-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1px;
+  height: 100vh;
+  background: #131313;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.conversations-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #1c1b1b;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-header h3 {
+  margin: 0;
+}
+
+.conversations-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.conversation-item {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+}
+
+.conversation-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.conversation-item.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid #3b82f6;
+  padding-left: calc(1.25rem - 3px);
+}
+
+.conversation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.conversation-item p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  background: #131313;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.chat-header p {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.message-bubble {
+  display: flex;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble.user-message {
+  justify-content: flex-end;
+}
+
+.message-bubble.admin-message {
+  justify-content: flex-start;
+}
+
+.message-bubble .message-content {
+  max-width: 70%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.875rem;
+  word-wrap: break-word;
+}
+
+.user-message .message-content {
+  background: #e10100;
+  color: white;
+  border-radius: 0.875rem 0.875rem 0.25rem 0.875rem;
+}
+
+.admin-message .message-content {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e5e2e1;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.875rem 0.875rem 0.875rem 0.25rem;
+}
+
+.response-input {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: #1c1b1b;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.response-input textarea {
+  color: white;
+}
+
+.response-input textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.response-input textarea:focus {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling */
+.conversations-list::-webkit-scrollbar,
+.messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.conversations-list::-webkit-scrollbar-track,
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.conversations-list::-webkit-scrollbar-thumb,
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.conversations-list::-webkit-scrollbar-thumb:hover,
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .chats-management-container {
+    grid-template-columns: 1fr;
+  }
+
+  .conversations-sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    display: none;
+  }
+
+  .conversations-sidebar.active {
+    display: flex;
+  }
+
+  .message-bubble .message-content {
+    max-width: 90%;
+  }
+}

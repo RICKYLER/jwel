@@ -10,6 +10,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 import { db } from '../../firebase'
+import ChatBox from '../../components/ChatBox'
 
 const showroomLinks = [
   { label: 'Home', href: '/', id: 'home' },
@@ -94,7 +95,7 @@ const mapInventoryToShowroomModel = (item) => {
   }
 }
 
-export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateSpareParts, onOpenSignup }) {
+export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateSpareParts, onOpenSignup, currentUser }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
@@ -739,6 +740,8 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
           </div>
         </div>
       )}
+
+      <ChatBox currentUser={currentUser} />
     </div>
   )
 }

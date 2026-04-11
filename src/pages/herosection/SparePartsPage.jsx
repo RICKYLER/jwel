@@ -10,6 +10,7 @@ import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 import { db } from '../../firebase'
+import ChatBox from '../../components/ChatBox'
 
 const sparePartsLinks = [
   { label: 'Home', href: '/', id: 'home' },
@@ -83,7 +84,7 @@ const mapInventoryToSparePartModel = (item) => {
   }
 }
 
-export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateShowroom, onOpenSignup }) {
+export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateShowroom, onOpenSignup, currentUser }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
@@ -659,6 +660,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
           </div>
         </div>
       </footer>
+
+      <ChatBox currentUser={currentUser} />
     </div>
   )
 }

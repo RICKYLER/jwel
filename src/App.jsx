@@ -1096,6 +1096,7 @@ function App() {
         onNavigateService={() => goToHomeSection('service', 'Service')}
         onNavigateSpareParts={() => navigateTo('/spare-parts')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
+        currentUser={currentUser}
       />,
     )
   }
@@ -1108,6 +1109,7 @@ function App() {
         onNavigateService={() => goToHomeSection('service', 'Service')}
         onNavigateShowroom={() => navigateTo('/showroom')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
+        currentUser={currentUser}
       />,
     )
   }

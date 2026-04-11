@@ -177,5 +177,17 @@ service cloud.firestore {
       allow create, update: if isStaffOrHigher();
       allow delete: if isAdminOrHigher();
     }
+
+    match /conversations/{docId} {
+      allow read: if isAdminOrHigher() || resource.data.isGuest == true || emailMatches(resource.data.userEmail) || request.auth.uid == resource.data.userId;
+      allow create: if true;
+      allow update: if isAdminOrHigher() || request.auth.uid == resource.data.userId;
+      
+      match /messages/{messageId} {
+        allow read: if isAdminOrHigher() || get(/databases/$(database)/documents/conversations/$(docId)).data.isGuest == true || request.auth.uid == get(/databases/$(database)/documents/conversations/$(docId)).data.userId;
+        allow create: if true;
+        allow update: if isAdminOrHigher();
+      }
+    }
   }
 }

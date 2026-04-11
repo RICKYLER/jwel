@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
+import { db } from '../firebase'
 
-export default function ChatBox() {
+export default function ChatBox({ currentUser }) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
     {
@@ -11,10 +13,13 @@ export default function ChatBox() {
       type: 'bot',
       text: 'Hey there! 👋 Welcome to BYKELINK. How can we help you today?',
       timestamp: new Date(),
+      sender: 'bot',
     },
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [conversationId, setConversationId] = useState(null)
+  const [isInitializing, setIsInitializing] = useState(true)
   const messagesEndRef = useRef(null)
 
   const scrollToBottom = () => {
@@ -25,21 +30,102 @@ export default function ChatBox() {
     scrollToBottom()
   }, [messages])
 
+  // Initialize or get existing conversation
+  useEffect(() => {
+    const initializeConversation = async () => {
+      setIsInitializing(true)
+      
+      try {
+        const conversationsRef = collection(db, 'conversations')
+        
+        // For authenticated users, check for existing open conversation
+        if (currentUser?.uid) {
+          const q = query(
+            conversationsRef,
+            where('userId', '==', currentUser.uid),
+            where('status', '==', 'open')
+          )
+          const querySnapshot = await getDocs(q)
+
+          if (querySnapshot.docs.length > 0) {
+            // Use existing conversation
+            const existingConv = querySnapshot.docs[0]
+            setConversationId(existingConv.id)
+            setIsInitializing(false)
+            return
+          }
+
+          // Create new conversation for authenticated user
+          const newConvRef = await addDoc(conversationsRef, {
+            userId: currentUser.uid,
+            userEmail: currentUser.email || 'anonymous@bykelink.com',
+            userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Guest',
+            isGuest: false,
+            status: 'open',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            messageCount: 0,
+          })
+          setConversationId(newConvRef.id)
+        } else {
+          // For guests, create a new conversation each session
+          const newConvRef = await addDoc(conversationsRef, {
+            userId: `guest_${Date.now()}`,
+            userEmail: 'guest@bykelink.com',
+            userName: 'Guest User',
+            isGuest: true,
+            status: 'open',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            messageCount: 0,
+          })
+          setConversationId(newConvRef.id)
+        }
+      } catch (error) {
+        console.error('Error initializing conversation:', error)
+      } finally {
+        setIsInitializing(false)
+      }
+    }
+
+    initializeConversation()
+  }, [currentUser?.uid, currentUser?.email, currentUser?.displayName])
+
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!inputValue.trim()) return
+    if (!conversationId || isInitializing) {
+      console.warn('Conversation still initializing or not available')
+      return
+    }
 
-    // Add user message
+    // Add user message to local state
     const userMessage = {
       id: messages.length + 1,
       type: 'user',
       text: inputValue,
       timestamp: new Date(),
+      sender: currentUser?.email || 'guest@bykelink.com',
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const messageText = inputValue
     setInputValue('')
     setIsLoading(true)
+
+    try {
+      // Save user message to Firestore (works for both authenticated and guest users)
+      await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+        type: 'user',
+        text: messageText,
+        sender: currentUser?.email || 'guest@bykelink.com',
+        senderName: currentUser?.displayName || 'Guest User',
+        timestamp: serverTimestamp(),
+        read: false,
+      })
+    } catch (error) {
+      console.error('Error saving message:', error)
+    }
 
     // Simulate bot response delay
     setTimeout(() => {
@@ -58,9 +144,21 @@ export default function ChatBox() {
         type: 'bot',
         text: randomResponse,
         timestamp: new Date(),
+        sender: 'bot',
       }
 
       setMessages((prev) => [...prev, botMessage])
+
+      // Save bot response to Firestore
+      addDoc(collection(db, `conversations/${conversationId}/messages`), {
+        type: 'bot',
+        text: randomResponse,
+        sender: 'bot',
+        senderName: 'BYKELINK Support',
+        timestamp: serverTimestamp(),
+        read: false,
+      }).catch((error) => console.error('Error saving bot response:', error))
+
       setIsLoading(false)
     }, 1000)
   }
@@ -150,13 +248,13 @@ export default function ChatBox() {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={isInitializing ? 'Initializing chat...' : 'Type a message...'}
                 className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-neutral-500 outline-none transition focus:border-blue-600/50 focus:bg-white/10 backdrop-blur-sm"
-                disabled={isLoading}
+                disabled={isLoading || isInitializing}
               />
               <button
                 type="submit"
-                disabled={isLoading || !inputValue.trim()}
+                disabled={isLoading || !inputValue.trim() || isInitializing}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white transition duration-300 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 aria-label="Send message"
               >

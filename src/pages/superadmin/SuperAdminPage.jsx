@@ -4,6 +4,7 @@ import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, 
 import { httpsCallable } from 'firebase/functions'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
+import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
 import EngineeringRoundedIcon from '@mui/icons-material/EngineeringRounded'
 import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded'
@@ -19,6 +20,7 @@ import ProfileSection from './components/ProfileSection'
 import SuperAdminHeader from './components/SuperAdminHeader'
 import SuperAdminSidebar from './components/SuperAdminSidebar'
 import AnalyticsSection from './sections/AnalyticsSection'
+import ChatsManagementSection from './sections/ChatsManagementSection'
 import DashboardSection from './sections/DashboardSection'
 import InventorySection from './sections/InventorySection'
 import InventoryReportsSection from './sections/InventoryReportsSection'
@@ -64,7 +66,7 @@ const sidebarItems = [
       { id: 'master-variants', label: 'Variants' },
     ]
   },
-  { id: 'event-tracking', label: 'Event Tracking', icon: TwoWheelerRoundedIcon },
+  { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { id: 'service-logs', label: 'Service Logs', icon: BuildRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
@@ -893,7 +895,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
   const renderActiveSection = () => {
     switch (activeSection) {
-      case 'event-tracking':
       case 'service-logs':
       case 'service-requests':
         return (
@@ -906,6 +907,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             formatDate={formatDate}
             getStatusClasses={getStatusClasses}
             isDarkMode={isDarkMode}
+          />
+        )
+      case 'chats-management':
+        return (
+          <ChatsManagementSection
+            searchTerm={searchTerm}
           />
         )
       case 'technicians':
