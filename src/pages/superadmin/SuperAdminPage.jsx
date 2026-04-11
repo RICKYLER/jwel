@@ -52,6 +52,13 @@ const sidebarItems = [
       { id: 'inventory', label: 'Inventory Items' },
       { id: 'inventory-reports', label: 'Inventory Reports' },
       { id: 'inventory-delete-archived', label: 'Inventory Delete Archived' },
+    ]
+  },
+  {
+    id: 'unit-management',
+    label: 'Unit Management',
+    icon: TwoWheelerRoundedIcon,
+    subitems: [
       { id: 'master-categories', label: 'Categories' },
       { id: 'master-models', label: 'Models' },
       { id: 'master-variants', label: 'Variants' },

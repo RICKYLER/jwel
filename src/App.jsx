@@ -14,10 +14,12 @@ import {
 import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import HeroSection from './pages/herosection/HeroSection'
+import LoginPage from './pages/LoginPage'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
+import GlobalLoadingScreen from './components/GlobalLoadingScreen'
 import { auth, db, functions, googleProvider } from './firebase'
 
 const navLinks = [
@@ -143,6 +145,7 @@ const formatAuthError = (error) => {
 }
 
 const normalizePath = (path) => {
+  if (path?.startsWith('/login')) return '/login'
   if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/service')) return '/service'
   if (path?.startsWith('/superadmin')) return '/superadmin'
@@ -327,6 +330,7 @@ function App() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [isAuthInitializing, setIsAuthInitializing] = useState(true)
   const [isAccessResolving, setIsAccessResolving] = useState(false)
+  const [isLoadingScreenComplete, setIsLoadingScreenComplete] = useState(false)
   const [authMessage, setAuthMessage] = useState(null)
   const [authForm, setAuthForm] = useState({
     fullName: '',
@@ -350,7 +354,7 @@ function App() {
   useEffect(() => {
     const timerId = window.setTimeout(() => {
       setIsPageLoading(false)
-    }, 1200)
+    }, 5000) // Extended to account for GlobalLoadingScreen completion (~4.3s)
 
     return () => window.clearTimeout(timerId)
   }, [])
@@ -594,6 +598,11 @@ function App() {
     setCurrentPath('/')
     setActiveNav(label)
 
+    // Set authMode to 'login' when navigating to the login section
+    if (sectionId === 'login') {
+      setAuthMode('login')
+    }
+
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         const section = document.getElementById(sectionId)
@@ -628,6 +637,18 @@ function App() {
     setAuthPersona(persona)
     setAuthMode((current) => (persona === 'customer' ? current : 'login'))
     setAuthMessage(null)
+  }
+
+  const handleToggleAuthMode = (mode) => {
+    setAuthMode(mode)
+    setAuthMessage(null)
+    setAuthForm({
+      fullName: '',
+      phone: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    })
   }
 
   const handleAuthFieldChange = (event) => {
@@ -781,7 +802,8 @@ function App() {
   const completeAccessFlow = async (user, requestedRole, successText) => {
     const profile = await resolveRoleAfterLogin(user, requestedRole)
 
-    if (requestedRole !== 'customer' && !profile.authorized) {
+    // If trying to access a higher privilege role than they have
+    if (requestedRole !== 'customer' && !profile.authorized && !profile.isPrivileged) {
       await signOut(auth)
       setAccessProfile(defaultAccessProfile)
       setAuthMessage({
@@ -1019,20 +1041,6 @@ function App() {
     ? canAccessRole(accessProfile.role, requiredDashboardRole)
     : false
 
-  const displayAuthMessage =
-    authMessage ||
-    (requiredDashboardRole && !currentUser
-      ? {
-          type: 'error',
-          text: `Sign in with an authorized ${roleLabels[requiredDashboardRole].toLowerCase()} email to access this dashboard.`,
-        }
-      : requiredDashboardRole && currentUser && !isAccessResolving && !canViewCurrentDashboard
-        ? {
-            type: 'error',
-            text: `${currentUser.email} is signed in, but it is not authorized for ${roleLabels[requiredDashboardRole]} access.`,
-          }
-        : null)
-
   const shouldShowAccessLoader =
     (Boolean(requiredDashboardRole) && (isAuthInitializing || isAccessResolving)) ||
     (currentPath === '/' &&
@@ -1058,12 +1066,30 @@ function App() {
     </>
   )
 
+  if (currentPath === '/login') {
+    return withSecurityModal(
+      <LoginPage
+        authMode={authMode}
+        onGoogleSignIn={handleGoogleSignIn}
+        onAuthFieldChange={handleAuthFieldChange}
+        onAuthSubmit={handleAuthSubmit}
+        onSelectAuthPersona={handleSelectAuthPersona}
+        onToggleAuthMode={handleToggleAuthMode}
+        authForm={authForm}
+        authLoading={authLoading || isAccessResolving}
+        googleLoading={googleLoading}
+        onNavigateBack={() => navigateTo('/')}
+        authMessage={authMessage}
+        onClearAuthMessage={() => setAuthMessage(null)}
+      />,
+    )
+  }
+
   if (currentPath === '/showroom') {
     return withSecurityModal(
       <ShowroomPage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onNavigateSection={goToHomeSection}
-        onNavigateService={() => navigateTo('/service')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
       />,
     )
@@ -1080,23 +1106,14 @@ function App() {
     )
   }
 
-  if (shouldShowAccessLoader) {
-    return withSecurityModal(
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 text-white">
-        <div className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-white/5 p-8 text-center shadow-[0_30px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:p-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.45em] text-[#e10100]">Bykelink Secure Access</p>
-          <h1 className="mt-4 font-['Epilogue'] text-3xl font-black uppercase italic tracking-tighter sm:text-5xl">
-            Preparing{' '}
-            <span className="text-[#e10100]">{requiredDashboardRole ? roleLabels[requiredDashboardRole] : 'Dashboard'}</span>
-          </h1>
-          <p className="mt-3 text-sm text-white/60 sm:text-base">
-            Verifying your session and routing you to the correct access page.
-          </p>
-          <div className="mx-auto mt-6 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-white/10">
-            <div className="h-full w-1/2 animate-pulse rounded-full bg-[#e10100]" />
-          </div>
-        </div>
-      </div>,
+  // Block page rendering until loading screen completes for dashboard only
+  if (shouldShowAccessLoader && (isPageLoading && !isLoadingScreenComplete)) {
+    return (
+      <GlobalLoadingScreen
+        role={requiredDashboardRole ? roleLabels[requiredDashboardRole] : 'Dashboard'}
+        delay={300}
+        onComplete={() => setIsLoadingScreenComplete(true)}
+      />
     )
   }
 
@@ -1118,24 +1135,11 @@ function App() {
       activeSlide={activeSlide}
       currentUser={currentUser}
       customerName={customerName}
-      authMode={authMode}
-      authPersona={authPersona}
-      accessProfile={accessProfile}
-      authLoading={authLoading || isAccessResolving}
-      googleLoading={googleLoading}
-      authMessage={displayAuthMessage}
-      authForm={authForm}
       onSelectSlide={setActiveSlide}
-      onOpenAuthPanel={openAuthPanel}
       onOpenAuthSection={openAuthSection}
-      onSelectAuthPersona={handleSelectAuthPersona}
-      onGoogleSignIn={handleGoogleSignIn}
-      onAuthFieldChange={handleAuthFieldChange}
-      onAuthSubmit={handleAuthSubmit}
       onNavigateShowroom={() => navigateTo('/showroom')}
-      onNavigateService={() => navigateTo('/service')}
+      onNavigateLogin={() => navigateTo('/login')}
       onNavigateSection={goToHomeSection}
-      onOpenDashboard={() => accessProfile.dashboardPath && navigateTo(accessProfile.dashboardPath)}
       onSignOut={handleSignOut}
     />,
   )

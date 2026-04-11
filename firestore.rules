@@ -148,22 +148,22 @@ service cloud.firestore {
     }
 
     match /masterData/inventory/categories/{docId} {
-      allow read: if isStaffOrHigher();
+      allow read: if true;
       allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/models/{docId} {
-      allow read: if isStaffOrHigher();
+      allow read: if true;
       allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/variants/{docId} {
-      allow read: if isStaffOrHigher();
+      allow read: if true;
       allow create, update, delete: if isAdminOrHigher();
     }
 
     match /masterData/inventory/series/{docId} {
-      allow read: if isStaffOrHigher();
+      allow read: if true;
       allow create, update, delete: if isAdminOrHigher();
     }
 

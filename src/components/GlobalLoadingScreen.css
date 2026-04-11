@@ -1,0 +1,542 @@
+/* Yamaha Kinetic Console Loading Screen */
+
+:root {
+  --primary-container: #e10100;
+  --surface: #131313;
+  --surface-container-highest: #353534;
+  --surface-container-low: #1c1b1b;
+  --on-surface: #e5e2e1;
+}
+
+/* Animations */
+@keyframes pulse-red {
+  0%, 100% {
+    opacity: 0.3;
+    filter: blur(40px);
+  }
+  50% {
+    opacity: 0.6;
+    filter: blur(60px);
+  }
+}
+
+@keyframes speed-line {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(200%);
+    opacity: 0;
+  }
+}
+
+@keyframes needle-sweep {
+  0% {
+    transform: rotate(-120deg);
+  }
+  100% {
+    transform: rotate(120deg);
+  }
+}
+
+@keyframes motorcycle-vibrate {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Main Screen */
+.kinetic-loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  overflow: hidden;
+  animation: fade-in-up 0.6s ease-out;
+}
+
+.kinetic-loading-screen.is-completing {
+  animation: screen-complete 1s ease-out forwards;
+}
+
+@keyframes screen-complete {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* Background Layer */
+.kinetic-background-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(to bottom, rgba(19, 19, 19, 0.2), rgba(19, 19, 19, 1));
+}
+
+.kinetic-glow-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(225, 1, 0, 0.4) 0%, rgba(225, 1, 0, 0.1) 40%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse-red 4s ease-in-out infinite;
+  filter: blur(40px);
+}
+
+.kinetic-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(19, 19, 19, 0) 0%, rgba(19, 19, 19, 0.5) 100%);
+}
+
+/* Main Content */
+.kinetic-main-content {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+/* Header */
+.kinetic-header {
+  position: absolute;
+  top: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: fade-in-up 0.8s ease-out;
+}
+
+.kinetic-brand-title {
+  font-family: 'Epilogue', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.kinetic-brand-highlight {
+  color: var(--primary-container);
+  text-shadow: 0 0 20px rgba(225, 1, 0, 0.5);
+}
+
+.kinetic-brand-separator {
+  opacity: 0.4;
+  font-weight: 300;
+}
+
+.kinetic-brand-tagline {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--primary-container);
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Loading Cluster */
+.kinetic-loading-cluster {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 64px;
+  animation: fade-in-up 1s ease-out 0.2s both;
+}
+
+/* Spinner Container */
+.kinetic-spinner-container {
+  position: relative;
+  width: 256px;
+  height: 256px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kinetic-outer-ring {
+  position: absolute;
+  inset: 0;
+  border: 4px solid var(--surface-container-highest);
+  border-radius: 50%;
+  opacity: 0.2;
+}
+
+.kinetic-spinner-edge {
+  position: absolute;
+  inset: 0;
+  border-top: 4px solid var(--primary-container);
+  border-radius: 50%;
+  animation: spin-slow 3s linear infinite;
+  box-shadow: 0 0 20px rgba(225, 1, 0, 0.4);
+}
+
+.kinetic-speedometer-ticks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  stroke-dasharray: 1 4;
+  color: var(--on-surface);
+}
+
+.kinetic-needle {
+  position: absolute;
+  width: 4px;
+  height: 96px;
+  background: linear-gradient(to top, transparent, rgba(225, 1, 0, 0.8), var(--primary-container));
+  border-radius: 2px;
+  transform-origin: bottom center;
+  transform: translateY(-48px);
+  animation: needle-sweep 3s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 8px rgba(225, 1, 0, 0.6));
+}
+
+.kinetic-center-icon {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: motorcycle-vibrate 0.1s linear infinite;
+}
+
+.kinetic-motorcycle-icon {
+  font-size: 64px;
+  line-height: 1;
+  filter: drop-shadow(0 0 15px rgba(225, 1, 0, 0.5));
+}
+
+.kinetic-icon-glow {
+  position: absolute;
+  bottom: -16px;
+  width: 48px;
+  height: 4px;
+  background: var(--primary-container);
+  border-radius: 2px;
+  filter: blur(8px);
+  opacity: 0.5;
+}
+
+/* Speed Lines */
+.kinetic-speed-lines {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.kinetic-speed-line {
+  position: absolute;
+  height: 1px;
+  background: var(--primary-container);
+  animation: speed-line 1.5s linear infinite;
+}
+
+.kinetic-speed-line:nth-child(1) {
+  top: 25%;
+  left: 0;
+  width: 48px;
+}
+
+.kinetic-speed-line:nth-child(2) {
+  top: 50%;
+  left: 0;
+  width: 80px;
+}
+
+.kinetic-speed-line:nth-child(3) {
+  top: 66%;
+  left: 0;
+  width: 64px;
+}
+
+/* Glass Panel */
+.kinetic-glass-panel {
+  width: 100%;
+  max-width: 480px;
+  padding: 32px;
+  background: rgba(32, 31, 31, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  border: 1px solid rgba(225, 1, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fade-in-up 1.2s ease-out 0.4s both;
+}
+
+/* Panel Header */
+.kinetic-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.kinetic-panel-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kinetic-status-label {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--primary-container);
+  font-weight: 700;
+  margin: 0;
+}
+
+.kinetic-panel-title {
+  font-family: 'Epilogue', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.kinetic-progress-number {
+  font-family: 'Epilogue', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--on-surface);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.kinetic-progress-unit {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.5;
+  margin-left: 4px;
+}
+
+/* Progress Bar */
+.kinetic-progress-bar-wrapper {
+  position: relative;
+  height: 8px;
+  width: 100%;
+  background: var(--surface-container-highest);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(225, 1, 0, 0.2);
+}
+
+.kinetic-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-container), #ff6b6b, var(--primary-container));
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(225, 1, 0, 0.6), inset 0 0 8px rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.kinetic-progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: speed-line 1.5s infinite;
+}
+
+/* Metadata Grid */
+.kinetic-metadata-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(225, 1, 0, 0.1);
+}
+
+.kinetic-metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kinetic-metadata-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-container);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  box-shadow: 0 0 8px rgba(225, 1, 0, 0.4);
+}
+
+.kinetic-metadata-item p {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(229, 226, 225, 0.6);
+  opacity: 0.6;
+  margin: 0;
+}
+
+/* Footer */
+.kinetic-footer {
+  position: absolute;
+  bottom: 48px;
+  width: 100%;
+  padding: 0 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  opacity: 0.4;
+  animation: fade-in-up 1.4s ease-out 0.6s both;
+}
+
+.kinetic-footer-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.kinetic-footer-label {
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.kinetic-footer-value {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+/* Tailwind Pulse Animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .kinetic-brand-title {
+    font-size: 24px;
+  }
+
+  .kinetic-loading-cluster {
+    gap: 48px;
+  }
+
+  .kinetic-spinner-container {
+    width: 200px;
+    height: 200px;
+  }
+
+  .kinetic-motorcycle-icon {
+    font-size: 48px;
+  }
+
+  .kinetic-glass-panel {
+    padding: 24px;
+    max-width: 90%;
+  }
+
+  .kinetic-footer {
+    padding: 0 24px;
+    font-size: 12px;
+  }
+
+  .kinetic-header {
+    top: 40px;
+  }
+}
+
+@media (max-width: 640px) {
+  .kinetic-brand-title {
+    font-size: 20px;
+    gap: 8px;
+  }
+
+  .kinetic-spinner-container {
+    width: 160px;
+    height: 160px;
+  }
+
+  .kinetic-motorcycle-icon {
+    font-size: 40px;
+  }
+
+  .kinetic-panel-title {
+    font-size: 16px;
+  }
+
+  .kinetic-progress-number {
+    font-size: 24px;
+  }
+
+  .kinetic-glow-pulse {
+    width: 400px;
+    height: 400px;
+  }
+}
+

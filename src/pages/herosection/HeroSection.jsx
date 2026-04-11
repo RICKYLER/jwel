@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { db } from '../../firebase'
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
@@ -18,12 +20,13 @@ import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
+import GlobalLoadingScreen from '../../components/GlobalLoadingScreen'
+import ChatBox from '../../components/ChatBox'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
   { label: 'Showroom', href: '/showroom', id: 'showroom', icon: StorefrontRoundedIcon },
-  { label: 'Service', href: '/service', id: 'service', icon: BuildRoundedIcon },
   { label: 'About', href: '/#about', id: 'about', icon: InfoRoundedIcon },
   { label: 'Contact', href: '/#contact', id: 'contact', icon: CallRoundedIcon },
 ]
@@ -97,27 +100,39 @@ export default function HeroSection({
   activeSlide,
   currentUser,
   customerName,
-  authMode,
-  accessProfile,
-  authLoading,
-  googleLoading,
-  authMessage,
-  authForm,
   onSelectSlide,
-  onOpenAuthPanel,
   onOpenAuthSection,
-  onGoogleSignIn,
-  onAuthFieldChange,
-  onAuthSubmit,
   onNavigateShowroom,
-  onNavigateService,
+  onNavigateLogin,
   onNavigateSection,
-  onOpenDashboard,
   onSignOut,
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [authPasswordVisible, setAuthPasswordVisible] = useState(false)
-  const [authConfirmPasswordVisible, setAuthConfirmPasswordVisible] = useState(false)
+  const [isLoadingComplete, setIsLoadingComplete] = useState(false)
+  const [unitsReady, setUnitsReady] = useState(0)
+  const [happyRiders, setHappyRiders] = useState(0)
+  const [serviceRating, setServiceRating] = useState(0)
+  const [liveCategories, setLiveCategories] = useState([])
+  const [liveModels, setLiveModels] = useState([])
+  const [liveSpareParts, setLiveSpareParts] = useState([])
+  const [carouselIndex, setCarouselIndex] = useState(0)
+
+  // Generate SVG placeholder image
+  const getPlaceholderImage = (text, width = 400, height = 300) => {
+    const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#353534;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#1c1b1b;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect width="${width}" height="${height}" fill="url(#grad)"/>
+      <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="18" fill="#666" text-anchor="middle" dominant-baseline="middle">
+        ${text}
+      </text>
+    </svg>`
+    return `data:image/svg+xml;base64,${btoa(svg)}`
+  }
 
   const currentHeroImage = useMemo(
     () => heroImages[activeSlide % heroImages.length],
@@ -136,8 +151,120 @@ export default function HeroSection({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const accessLabel = accessProfile?.label || 'Customer'
-  const dashboardLabel = accessProfile?.label ? `${accessProfile.label} Console` : 'Dashboard'
+  // Animate counters when page loading completes
+  useEffect(() => {
+    if (!isLoadingComplete) return
+
+    const animateCounter = (target, setter, duration = 2000) => {
+      const startTime = Date.now()
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        
+        if (target === 1200) {
+          setter(Math.floor(progress * target))
+        } else if (target === 4.9) {
+          setter(Math.round(progress * target * 10) / 10)
+        } else {
+          setter(Math.floor(progress * target))
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animate)
+        }
+      }
+
+      animate()
+    }
+
+    animateCounter(40, setUnitsReady)
+    animateCounter(1200, setHappyRiders)
+    animateCounter(4.9, setServiceRating)
+  }, [isLoadingComplete])
+
+  // Fetch popular categories with highest stock items
+  useEffect(() => {
+    const q = query(
+      collection(db, 'inventory'),
+      orderBy('stockQuantity', 'desc')
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const inventoryItems = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      // Group by category and get highest stock item for each category
+      const categoryMap = new Map()
+      inventoryItems.forEach((item) => {
+        const categoryName = item.category || item.name || 'Unknown'
+        if (!categoryMap.has(categoryName) || (item.stockQuantity || 0) > (categoryMap.get(categoryName).stockQuantity || 0)) {
+          categoryMap.set(categoryName, item)
+        }
+      })
+
+      // Convert to array and limit to 6
+      const categoriesWithHighestStock = Array.from(categoryMap.values()).slice(0, 6)
+      setLiveCategories(categoriesWithHighestStock)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch featured models (motorcycle units only) from Firestore
+  useEffect(() => {
+    const q = query(
+      collection(db, 'inventory'),
+      orderBy('createdAt', 'desc')
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        // Filter to only motorcycle units
+        .filter((item) => item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle')
+        .slice(0, 10)
+      setLiveModels(data)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch spare parts from Firestore
+  useEffect(() => {
+    const q = query(
+      collection(db, 'inventory'),
+      orderBy('createdAt', 'desc')
+    )
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((item) => item.category === 'Spare Parts')
+      setLiveSpareParts(data.slice(0, 8))
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  // Auto-scroll carousel every 5 seconds
+  useEffect(() => {
+    if (liveModels.length === 0) return
+
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % Math.max(1, liveModels.length))
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [liveModels.length])
 
   const handleNavClick = (event, link) => {
     event.preventDefault()
@@ -148,29 +275,21 @@ export default function HeroSection({
       return
     }
 
-    if (link.id === 'service') {
-      onNavigateService()
-      return
-    }
-
     onNavigateSection(link.id, link.label)
   }
 
   return (
     <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-['Manrope']">
-      <div
-        className={`pointer-events-none fixed inset-0 z-100 flex items-center justify-center bg-[#131313] transition-all duration-500 ${
-          isPageLoading ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
-        <div className="flex flex-col items-center gap-4 rounded-[28px] border border-white/10 bg-white/5 px-8 py-7 text-center shadow-[0_20px_80px_rgba(225,1,0,0.18)] backdrop-blur-xl">
-          <img src={bykelinkLogo} alt="Bykelink Motor" className="h-14 w-14 object-contain" />
-          <p className="text-xs font-black uppercase tracking-[0.35em] text-[#ffb4a8]">BYKELINK</p>
-          <p className="text-sm text-zinc-300">Loading the Yamaha experience...</p>
-        </div>
-      </div>
+      {isPageLoading && (
+        <GlobalLoadingScreen
+          role="Yamaha Experience"
+          delay={200}
+          onComplete={() => setIsLoadingComplete(true)}
+        />
+      )}
 
-      <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl shadow-2xl shadow-red-900/10">
+      <div className={`transition-opacity duration-500 ${isPageLoading && !isLoadingComplete ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl shadow-2xl shadow-blue-900/10">
         <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <button
             type="button"
@@ -199,7 +318,7 @@ export default function HeroSection({
                   onClick={(event) => handleNavClick(event, link)}
                   className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
                     isActive
-                      ? 'border-red-600 text-red-600'
+                      ? 'border-blue-600 text-blue-600'
                       : 'border-transparent text-neutral-400 hover:text-neutral-100'
                   }`}
                 >
@@ -222,28 +341,20 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={onSignOut}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-[#e10100] hover:text-white"
+                  className="rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-blue-500 hover:text-white"
                 >
                   Sign Out
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onOpenAuthSection('signup')}
-                  className="text-sm font-bold uppercase tracking-tight text-neutral-100 font-['Epilogue']"
-                >
-                  Sign Up
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigateSection('contact', 'Contact')}
-                  className="rounded-full bg-[#e10100] px-5 py-2 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition hover:shadow-lg hover:shadow-red-600/20"
-                >
-                  Inquire
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={onNavigateLogin}
+                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95"
+              >
+                Get Started
+                <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+              </button>
             )}
           </div>
 
@@ -272,27 +383,28 @@ export default function HeroSection({
                 </a>
               ))}
 
-              {!currentUser ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false)
-                    onOpenAuthSection('signup')
-                  }}
-                  className="rounded-xl bg-[#e10100] px-4 py-3 text-sm font-black uppercase tracking-tight text-white"
-                >
-                  Sign Up
-                </button>
-              ) : (
+              {currentUser ? (
                 <button
                   type="button"
                   onClick={() => {
                     setIsMenuOpen(false)
                     onSignOut()
                   }}
-                  className="rounded-xl bg-white px-4 py-3 text-sm font-black uppercase tracking-tight text-black"
+                  className="rounded-xl bg-white px-4 py-3 text-sm font-black uppercase tracking-tight text-black transition hover:bg-blue-500 hover:text-white"
                 >
                   Sign Out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    onNavigateLogin()
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white transition duration-300 hover:bg-blue-700"
+                >
+                  Get Started
+                  <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
               )}
             </div>
@@ -330,16 +442,17 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={onNavigateShowroom}
-                  className="rounded-full bg-[linear-gradient(135deg,#e10100_0%,#930100_100%)] px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white shadow-xl shadow-red-900/20 transition hover:scale-[1.02] font-['Epilogue']"
+                  className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-blue-700 px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white shadow-xl shadow-blue-600/25 transition duration-300 hover:scale-[1.02] hover:shadow-blue-600/40 active:scale-95 font-['Epilogue']"
                 >
                   Explore Showroom
+                  <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => onOpenAuthSection('signup')}
-                  className="rounded-full border border-white/10 bg-white/10 px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white backdrop-blur-md transition hover:bg-white/15 font-['Epilogue']"
+                  onClick={onNavigateLogin}
+                  className="rounded-full border border-white/10 bg-white/10 px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white backdrop-blur-md transition duration-300 hover:bg-white/15 hover:border-white/20 font-['Epilogue']"
                 >
-                  Book a Test Ride
+                  BOOK APPOINTMENT
                 </button>
               </div>
 
@@ -351,7 +464,7 @@ export default function HeroSection({
                     onClick={() => onSelectSlide(index)}
                     aria-label={`Show hero ${index + 1}`}
                     className={`h-2.5 rounded-full transition-all ${
-                      activeSlide === index ? 'w-10 bg-[#e10100]' : 'w-2.5 bg-white/35'
+                      activeSlide === index ? 'w-10 bg-blue-600' : 'w-2.5 bg-white/35'
                     }`}
                   />
                 ))}
@@ -361,19 +474,19 @@ export default function HeroSection({
 
           <div className="absolute bottom-10 right-4 hidden gap-10 text-right xl:flex xl:right-8">
             <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">40+</div>
+              <div className="text-5xl font-black text-white font-['Epilogue']">{unitsReady}+</div>
               <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
                 Units Ready
               </div>
             </div>
             <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">1.2k+</div>
+              <div className="text-5xl font-black text-white font-['Epilogue']">{happyRiders.toLocaleString()}+</div>
               <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
                 Happy Riders
               </div>
             </div>
             <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">4.9/5</div>
+              <div className="text-5xl font-black text-white font-['Epilogue']">{serviceRating.toFixed(1)}/5</div>
               <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
                 Service Rating
               </div>
@@ -387,25 +500,26 @@ export default function HeroSection({
           </h2>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:auto-rows-[290px]">
-            {categories.map((category) => (
+            {(liveCategories.length > 0 ? liveCategories : categories).map((category, index) => (
               <article
-                key={category.title}
-                className={`group relative overflow-hidden rounded-2xl ${
-                  category.large ? 'md:col-span-2 md:row-span-2' : ''
+                key={category.id || category.title}
+                className={`group relative overflow-hidden rounded-2xl cursor-pointer ${
+                  category.featured || index === 0 ? 'md:col-span-2 md:row-span-2' : ''
                 }`}
+                onClick={() => onNavigateShowroom()}
               >
                 <img
-                  src={category.image}
-                  alt={category.title}
+                  src={category.imageUrl || category.image || category.mainImage || category.categoryImage || getPlaceholderImage(category.category || category.name || category.title, 500, 400)}
+                  alt={category.category || category.name || category.title}
                   className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent" />
                 <div className="absolute bottom-6 left-6">
                   <h3 className="text-2xl font-black uppercase text-white font-['Epilogue'] sm:text-3xl">
-                    {category.title}
+                    {category.category || category.name || category.title}
                   </h3>
                   <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#bee9ff] sm:text-sm">
-                    {category.subtitle}
+                    {category.name || category.description || category.subtitle || 'Premium Selection'}
                   </p>
                 </div>
               </article>
@@ -420,7 +534,7 @@ export default function HeroSection({
                 <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
                   Featured Models
                 </h2>
-                <div className="mt-4 h-1 w-20 bg-[#e10100]" />
+                <div className="mt-4 h-1 w-20 bg-blue-600" />
               </div>
               <button
                 type="button"
@@ -431,62 +545,151 @@ export default function HeroSection({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {featuredModels.map((model) => (
-                <article
-                  key={model.name}
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a]"
-                >
-                  <div className="relative h-80 overflow-hidden">
-                    <img
-                      src={model.image}
-                      alt={model.name}
-                      className="h-full w-full object-cover transition duration-500 hover:scale-105"
-                    />
-                    <div className="absolute right-4 top-4 rounded-full bg-[#e10100] px-3 py-1 text-[10px] font-black uppercase tracking-tight text-white font-['Epilogue']">
-                      {model.badge}
-                    </div>
-                  </div>
-
-                  <div className="p-6 sm:p-8">
-                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="text-2xl font-black text-white font-['Epilogue'] sm:text-3xl">
-                          {model.name}
-                        </h3>
-                        <p className="text-sm text-neutral-300">{model.description}</p>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <p className="text-2xl font-black text-[#ffb4a8] font-['Epilogue']">
-                          {model.price}
-                        </p>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-neutral-400">
-                          {model.note}
-                        </p>
+            <div className="relative overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+              <div className="flex gap-8 transition-transform duration-700"
+                style={{
+                  transform: `translateX(calc(-${carouselIndex * 100}% - ${carouselIndex * 2}rem))`,
+                }}
+              >
+                {(liveModels.length > 0 ? liveModels : featuredModels).map((model) => (
+                  <article
+                    key={model.id || model.name}
+                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a] cursor-pointer transition duration-300 hover:border-blue-600"
+                    onClick={() => onNavigateShowroom()}
+                  >
+                    <div className="relative h-80 overflow-hidden">
+                      <img
+                        src={model.imageUrl || model.mainImage || model.image || model.motorcycleImage || getPlaceholderImage(model.modelName || model.name, 400, 300)}
+                        alt={model.modelName || model.name}
+                        className="h-full w-full object-cover transition duration-500 hover:scale-105"
+                      />
+                      <div className="absolute right-4 top-4 rounded-full bg-amber-500 px-3 py-1 text-[10px] font-black uppercase tracking-tight text-black font-['Epilogue']">
+                        {model.series || 'Premium'}
                       </div>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {model.specs.map((spec) => (
-                        <div key={spec.label} className="rounded-xl bg-[#353534] px-4 py-3 text-center">
-                          <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
-                            {spec.label}
-                          </span>
-                          <span className="block text-sm font-black text-white">{spec.value}</span>
+                    <div className="p-6 sm:p-8">
+                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="text-2xl font-black text-white font-['Epilogue'] sm:text-3xl">
+                            {model.modelName || model.name}
+                          </h3>
+                          <p className="text-sm text-neutral-300">{model.variant || model.description || 'Premium motorcycle'}</p>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl bg-[#353534] px-4 py-3 text-center">
+                          <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+                            Engine
+                          </span>
+                          <span className="block text-sm font-black text-white">{model.engineCC || model.engine || 'N/A'}</span>
+                        </div>
+                        <div className="rounded-xl bg-[#353534] px-4 py-3 text-center">
+                          <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
+                            Stock
+                          </span>
+                          <span className="block text-sm font-black text-white">{model.stockQuantity || model.stock || 0}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                ))}
+              </div>
+
+              {/* Carousel navigation buttons */}
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCarouselIndex((prev) => Math.max(0, prev - 1))}
+                  className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                  aria-label="Previous model"
+                >
+                  <ArrowForwardRoundedIcon sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
+                </button>
+
+                {(liveModels.length > 0 ? liveModels : featuredModels).map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setCarouselIndex(index)}
+                    className={`h-2 rounded-full transition-all ${
+                      carouselIndex === index ? 'w-6 bg-blue-600' : 'w-2 bg-white/35'
+                    }`}
+                    aria-label={`Go to model ${index + 1}`}
+                  />
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCarouselIndex((prev) => prev + 1)}
+                  className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                  aria-label="Next model"
+                >
+                  <ArrowForwardRoundedIcon sx={{ fontSize: 20 }} />
+                </button>
+              </div>
             </div>
           </div>
         </section>
 
+        {/* Spare Parts Section */}
+        {liveSpareParts.length > 0 && (
+          <section className="bg-[#1c1c1c] py-20 lg:py-24">
+            <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+              <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
+                    Genuine Spare Parts
+                  </h2>
+                  <div className="mt-4 h-1 w-20 bg-blue-600" />
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateShowroom}
+                  className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-[#ffb4a8] font-['Epilogue']"
+                >
+                  View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+                </button>
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {liveSpareParts.map((part) => (
+                  <div
+                    key={part.id}
+                    className="group overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a] transition duration-300 hover:border-blue-600 cursor-pointer"
+                    onClick={() => onNavigateShowroom()}
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={part.imageUrl || part.mainImage || part.image || part.partImage || getPlaceholderImage(part.name || 'Spare Part', 300, 200)}
+                        alt={part.name}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
+
+                    <div className="p-4 sm:p-5">
+                      <h3 className="text-lg font-black text-white font-['Epilogue'] truncate">
+                        {part.name}
+                      </h3>
+                      <p className="mt-2 text-xs text-neutral-400 line-clamp-2">{part.description || 'Genuine spare part'}</p>
+                      
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-sm font-bold text-blue-400">{part.price || 'Contact'}</span>
+                        <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         <section id="service" className="py-20 lg:py-24">
           <div className="mx-auto grid max-w-screen-2xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:gap-16 lg:px-8">
             <div className="relative" data-reveal="left">
-              <div className="absolute -left-6 -top-6 h-32 w-32 rounded-full bg-[#e10100]/20 blur-3xl" />
+              <div className="absolute -left-6 -top-6 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl" />
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa3ZvD7ILXRdhgV7PpGMefVAXZR4s-CLQgLElKYhGBkp1js5RJuBc0oUH7vdWNROe_OMuK6rtgXOXjA8YlKd3bq2h4FjDZgytxHU7bJyU_5YyHGjW4gGsK72grMkCIvccEoJCNn9NlQ1Y8LJCV4m4pQscsSr8e7EnYURTnS4KNBrIz8BKZuAUdgehAhfkq-qkPbU_3aLR9cm0GFMiuGiOUTyDAb6dRhqk0gvfIaERiiC0PbPZOVa5vxFvJ3Uv1mUmiDaMh-h65GG0"
                 alt="Motorcycle workshop"
@@ -494,7 +697,7 @@ export default function HeroSection({
               />
               <div className="absolute -bottom-5 right-0 z-20 rounded-2xl border border-white/10 bg-[#2a2a2a] p-4 sm:-right-4 sm:p-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e10100] text-white">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 text-white">
                     <VerifiedRoundedIcon sx={{ fontSize: 20 }} />
                   </div>
                   <div>
@@ -528,8 +731,8 @@ export default function HeroSection({
 
               <button
                 type="button"
-                onClick={onNavigateService}
-                className="inline-flex items-center gap-3 rounded-full bg-white px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition hover:bg-[#e10100] hover:text-white font-['Epilogue']"
+                onClick={onNavigateLogin}
+                className="inline-flex items-center gap-3 rounded-full bg-white px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition duration-300 hover:bg-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-600/30 active:scale-95 font-['Epilogue']"
               >
                 Schedule Appointment
                 <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />
@@ -576,14 +779,14 @@ export default function HeroSection({
                   <div className="flex gap-3">
                     <a
                       href="tel:+63288889999"
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition hover:border-[#e10100]"
+                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
                       aria-label="Call Bykelink"
                     >
                       <CallRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
                     </a>
                     <a
                       href="mailto:sales@bykelink.com"
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition hover:border-[#e10100]"
+                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
                       aria-label="Email Bykelink"
                     >
                       <MailRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
@@ -594,7 +797,7 @@ export default function HeroSection({
                         event.preventDefault()
                         onNavigateSection('about', 'About')
                       }}
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition hover:border-[#e10100]"
+                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
                       aria-label="About Bykelink"
                     >
                       <InfoRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
@@ -609,9 +812,9 @@ export default function HeroSection({
                   alt="Showroom map"
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-[#e10100]/10 mix-blend-multiply" />
+                <div className="absolute inset-0 bg-blue-600/10 mix-blend-multiply" />
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#e10100] text-white shadow-lg shadow-red-900/30">
+                  <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-900/30">
                     <LocationOnRoundedIcon sx={{ fontSize: 30 }} />
                   </div>
                 </div>
@@ -622,10 +825,7 @@ export default function HeroSection({
 
         <section id="about" className="py-20 lg:py-24">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div id="signup" className="relative -top-24" />
-            <div id="login" className="relative -top-24" />
-
-            <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+            <div className="grid gap-8">
               <div className="rounded-[28px] border border-white/10 bg-[#1c1b1b] p-6 sm:p-8">
                 <p className="mb-3 text-xs font-bold uppercase tracking-[0.32em] text-[#ffb4a8] font-['Epilogue']">
                   Authorized Dealer
@@ -640,310 +840,18 @@ export default function HeroSection({
 
                 <div className="space-y-3 text-sm text-neutral-200">
                   <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <VerifiedRoundedIcon sx={{ fontSize: 18 }} className="text-[#e10100]" />
+                    <VerifiedRoundedIcon sx={{ fontSize: 18 }} className="text-green-500" />
                     <span>Official Yamaha-backed service and genuine parts</span>
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-[#e10100]" />
+                    <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-purple-500" />
                     <span>Showroom assistance for scooters, underbones, and big bikes</span>
                   </div>
                   <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <CallRoundedIcon sx={{ fontSize: 18 }} className="text-[#e10100]" />
+                    <CallRoundedIcon sx={{ fontSize: 18 }} className="text-cyan-500" />
                     <span>Fast inquiry handling for test rides, promos, and availability</span>
                   </div>
                 </div>
-              </div>
-
-              <div className="rounded-[28px] border border-white/10 bg-[#1c1b1b] p-6 sm:p-8">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-emerald-200">
-                      <CheckCircleRoundedIcon sx={{ fontSize: 14 }} />
-                      Secure Account Setup
-                    </div>
-                    <h3 className="mt-3 text-2xl font-black text-white font-['Epilogue']">
-                      {currentUser
-                        ? `Welcome back, ${customerName}`
-                        : authMode === 'signup'
-                          ? 'Create your secure account'
-                          : 'Log in to your account'}
-                    </h3>
-                    <p className="mt-2 text-sm text-neutral-400">
-                      Use Google or email/password to continue. New password accounts now require stronger credentials and email verification before first login.
-                    </p>
-                  </div>
-
-                  {!currentUser && (
-                    <div className="inline-flex rounded-full border border-white/10 bg-[#131313] p-1">
-                      <button
-                        type="button"
-                        onClick={() => onOpenAuthPanel('login', 'customer')}
-                        className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] ${
-                          authMode === 'login' ? 'bg-white text-black' : 'text-neutral-400'
-                        }`}
-                      >
-                        Login
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenAuthPanel('signup', 'customer')}
-                        className={`rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] ${
-                          authMode === 'signup' ? 'bg-[#e10100] text-white' : 'text-neutral-400'
-                        }`}
-                      >
-                        Sign Up
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {authMessage && (
-                  <div
-                    className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${
-                      authMessage.type === 'success'
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
-                        : 'border-red-500/30 bg-red-500/10 text-red-200'
-                    }`}
-                  >
-                    {authMessage.text}
-                  </div>
-                )}
-
-                {currentUser ? (
-                  <div className="space-y-4">
-                    <div className="rounded-2xl bg-white/5 p-4">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-neutral-400">
-                            Signed in as
-                          </p>
-                          <p className="mt-2 text-xl font-bold text-white">{customerName}</p>
-                          <p className="text-sm text-neutral-300">{currentUser.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.24em] text-neutral-400">
-                            Access role
-                          </p>
-                          <p className="mt-2 inline-flex rounded-full bg-[#e10100]/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-[#ffb4a8]">
-                            {accessLabel}
-                          </p>
-                          <p className="mt-2 text-sm text-neutral-400">
-                            Verified via{' '}
-                            {accessProfile?.source === 'authorized-admin-collection'
-                              ? 'authorizedAdmin collection'
-                              : accessProfile?.source === 'cloud-function'
-                                ? 'Cloud Functions'
-                                : 'local fallback'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3">
-                      {accessProfile?.dashboardPath && (
-                        <button
-                          type="button"
-                          onClick={onOpenDashboard}
-                          className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#e10100_0%,#930100_100%)] px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white font-['Epilogue']"
-                        >
-                          <VerifiedRoundedIcon sx={{ fontSize: 18 }} />
-                          Open {dashboardLabel}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={onSignOut}
-                        className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition hover:bg-[#e10100] hover:text-white font-['Epilogue']"
-                      >
-                        <LoginRoundedIcon sx={{ fontSize: 18 }} />
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <button
-                      type="button"
-                      onClick={onGoogleSignIn}
-                      disabled={googleLoading || authLoading}
-                      className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#131313] px-5 py-3 text-sm font-bold text-white transition hover:border-[#e10100]/40 hover:bg-white/5 disabled:opacity-70"
-                    >
-                      <GoogleIcon sx={{ fontSize: 18 }} />
-                      {googleLoading ? 'Connecting to Google...' : 'Continue with Google'}
-                    </button>
-
-                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.28em] text-neutral-500">
-                      <span className="h-px flex-1 bg-white/10" />
-                      or use email and password
-                      <span className="h-px flex-1 bg-white/10" />
-                    </div>
-
-                    <form onSubmit={onAuthSubmit} className="space-y-4">
-                      {authMode === 'signup' && (
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <label className="block text-sm text-neutral-200">
-                            <span className="mb-2 block">Full name</span>
-                            <input
-                              type="text"
-                              name="fullName"
-                              value={authForm.fullName}
-                              onChange={onAuthFieldChange}
-                              required
-                              autoComplete="name"
-                              placeholder="Juan Dela Cruz"
-                              className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
-                            />
-                          </label>
-                          <label className="block text-sm text-neutral-200">
-                            <span className="mb-2 block">Phone number</span>
-                            <input
-                              type="tel"
-                              name="phone"
-                              value={authForm.phone}
-                              onChange={onAuthFieldChange}
-                              autoComplete="tel"
-                              placeholder="09xx xxx xxxx"
-                              className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      <label className="block text-sm text-neutral-200">
-                        <span className="mb-2 block">Email address</span>
-                        <input
-                          type="email"
-                          name="email"
-                          value={authForm.email}
-                          onChange={onAuthFieldChange}
-                          required
-                          autoComplete="email"
-                          placeholder="you@example.com"
-                          className="w-full rounded-2xl border border-white/10 bg-[#131313] px-4 py-3 text-white outline-none transition focus:border-[#e10100]"
-                        />
-                      </label>
-
-                      <label className="block text-sm text-neutral-200">
-                        <span className="mb-2 block">Password</span>
-                        <div className="hero-password-input-wrapper">
-                          <input
-                            type={authPasswordVisible ? 'text' : 'password'}
-                            name="password"
-                            value={authForm.password}
-                            onChange={onAuthFieldChange}
-                            required
-                            minLength={8}
-                            autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
-                            placeholder="8+ characters with upper, lower, and number"
-                            className="password-input"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setAuthPasswordVisible(!authPasswordVisible)}
-                            className="hero-password-toggle"
-                            aria-label={authPasswordVisible ? 'Hide password' : 'Show password'}
-                            tabIndex="-1"
-                          >
-                            {authPasswordVisible ? (
-                              <VisibilityOffRoundedIcon sx={{ fontSize: 16 }} />
-                            ) : (
-                              <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
-                            )}
-                          </button>
-                        </div>
-                      </label>
-
-                      {authMode === 'signup' && (
-                        <>
-                          <label className="block text-sm text-neutral-200">
-                            <span className="mb-2 block">Confirm password</span>
-                            <div className="hero-password-input-wrapper">
-                              <input
-                                type={authConfirmPasswordVisible ? 'text' : 'password'}
-                                name="confirmPassword"
-                                value={authForm.confirmPassword || ''}
-                                onChange={onAuthFieldChange}
-                                required
-                                minLength={8}
-                                autoComplete="new-password"
-                                placeholder="Re-enter your password"
-                                className="password-input"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setAuthConfirmPasswordVisible(!authConfirmPasswordVisible)}
-                                className="hero-password-toggle"
-                                aria-label={authConfirmPasswordVisible ? 'Hide password' : 'Show password'}
-                                tabIndex="-1"
-                              >
-                                {authConfirmPasswordVisible ? (
-                                  <VisibilityOffRoundedIcon sx={{ fontSize: 16 }} />
-                                ) : (
-                                  <VisibilityRoundedIcon sx={{ fontSize: 16 }} />
-                                )}
-                              </button>
-                            </div>
-                          </label>
-
-                          <div className="rounded-2xl border border-white/10 bg-[#131313] p-4 text-sm text-neutral-300">
-                            <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#ffb4a8]">
-                              Password security checklist
-                            </p>
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              {[
-                                {
-                                  label: 'At least 8 characters',
-                                  met: (authForm.password || '').length >= 8,
-                                },
-                                {
-                                  label: 'Upper and lowercase letters',
-                                  met:
-                                    /[a-z]/.test(authForm.password || '') &&
-                                    /[A-Z]/.test(authForm.password || ''),
-                                },
-                                {
-                                  label: 'At least one number',
-                                  met: /\d/.test(authForm.password || ''),
-                                },
-                                {
-                                  label: 'Passwords match',
-                                  met:
-                                    Boolean(authForm.confirmPassword) &&
-                                    authForm.password === authForm.confirmPassword,
-                                },
-                              ].map((item) => (
-                                <div key={item.label} className="flex items-center gap-2">
-                                  <span
-                                    className={`h-2.5 w-2.5 rounded-full ${
-                                      item.met ? 'bg-emerald-400' : 'bg-neutral-600'
-                                    }`}
-                                  />
-                                  <span>{item.label}</span>
-                                </div>
-                              ))}
-                            </div>
-                            <p className="mt-3 text-xs text-neutral-500">
-                              We’ll send a verification email before your first password login is allowed.
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={authLoading}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#e10100_0%,#930100_100%)] px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70 font-['Epilogue']"
-                      >
-                        <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />
-                        {authLoading
-                          ? 'Please wait...'
-                          : authMode === 'signup'
-                            ? 'Create Secure Account'
-                            : 'Login Now'}
-                      </button>
-                    </form>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1016,6 +924,9 @@ export default function HeroSection({
           </div>
         </div>
       </footer>
+      
+      <ChatBox />
+      </div>
     </div>
   )
 }
