@@ -2,7 +2,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded'
 import './NotificationsDrawer.css'
 
-export default function NotificationsDrawer({ open, notifications, onClose }) {
+export default function NotificationsDrawer({ open, notifications, onClose, onNotificationClick }) {
   return (
     <>
       {open && <button type="button" className="notifications-overlay" onClick={onClose} aria-label="Close notifications overlay" />}
@@ -19,15 +19,23 @@ export default function NotificationsDrawer({ open, notifications, onClose }) {
 
         <div className="space-y-3 px-4 py-4">
           {notifications.map((item) => (
-            <article key={item.id} className="notification-card rounded-2xl p-4">
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onNotificationClick?.(item)}
+              className={`notification-card w-full rounded-2xl p-4 text-left transition hover:scale-[1.01] ${item.read ? 'opacity-75' : 'ring-1 ring-[#e10100]/30'}`}
+            >
               <div className="mb-2 flex items-center gap-2 text-[#ffb4a8]">
                 <NotificationsActiveRoundedIcon sx={{ fontSize: 16 }} />
                 <span className="text-[10px] font-black uppercase tracking-[0.22em]">{item.type}</span>
+                <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${item.read ? 'bg-white/10 text-white/60' : 'bg-[#e10100]/20 text-[#ffb4a8]'}`}>
+                  {item.read ? 'Read' : 'New'}
+                </span>
               </div>
               <p className="text-sm font-semibold text-white">{item.title}</p>
               <p className="mt-1 text-xs text-white/60">{item.description}</p>
               <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-white/40">{item.time}</p>
-            </article>
+            </button>
           ))}
 
           {!notifications.length && (

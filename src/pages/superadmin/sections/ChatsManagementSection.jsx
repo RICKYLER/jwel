@@ -7,7 +7,12 @@ import CircleRoundedIcon from '@mui/icons-material/CircleRounded'
 import { db } from '../../../firebase'
 import './ChatsManagementSection.css'
 
-export default function ChatsManagementSection({ searchTerm = '', onUnreadCountChange }) {
+export default function ChatsManagementSection({
+  searchTerm = '',
+  onUnreadCountChange,
+  focusRequest,
+  onConversationRead,
+}) {
   const [conversations, setConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
@@ -15,6 +20,7 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState(null)
+  const [viewMode, setViewMode] = useState('active')
   const [conversationLastMessages, setConversationLastMessages] = useState({})
   const unsubscribersRef = useRef(new Map())
 
@@ -31,6 +37,9 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
           ...doc.data(),
         }))
         setConversations(conversationsList)
+        setSelectedConversation((current) => (
+          current ? conversationsList.find((conversation) => conversation.id === current.id) ?? null : null
+        ))
         
         // Set up real-time listeners for last message of each conversation
         conversationsList.forEach((conv) => {
@@ -107,17 +116,35 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
     return () => unsubscribe()
   }, [selectedConversation, onUnreadCountChange])
 
-  // Filter conversations based on search
+  const activeConversationCount = useMemo(
+    () => conversations.filter((conv) => conv.status !== 'archived' && conv.status !== 'deleted').length,
+    [conversations],
+  )
+
+  const archivedConversationCount = useMemo(
+    () => conversations.filter((conv) => conv.status === 'archived').length,
+    [conversations],
+  )
+
+  // Filter conversations based on search and active/archived mode
   const filteredConversations = useMemo(() => {
-    if (!searchTerm.trim()) return conversations
+    const baseConversations = conversations.filter((conv) => {
+      if (viewMode === 'archived') {
+        return conv.status === 'archived'
+      }
+
+      return conv.status !== 'archived' && conv.status !== 'deleted'
+    })
+
+    if (!searchTerm.trim()) return baseConversations
 
     const searchLower = searchTerm.toLowerCase()
-    return conversations.filter(
+    return baseConversations.filter(
       (conv) =>
         conv.userName?.toLowerCase().includes(searchLower) ||
         conv.userEmail?.toLowerCase().includes(searchLower)
     )
-  }, [conversations, searchTerm])
+  }, [conversations, searchTerm, viewMode])
 
   const handleSendResponse = async () => {
     if (!responseText.trim() || !selectedConversation) return
@@ -166,10 +193,55 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
   // Mark messages as read when conversation is selected
   useEffect(() => {
     if (selectedConversation) {
-      // Import where for this query
       markMessagesAsRead(selectedConversation.id)
+      onConversationRead?.(selectedConversation.id)
     }
-  }, [selectedConversation])
+  }, [onConversationRead, selectedConversation])
+
+  useEffect(() => {
+    if (!focusRequest?.conversationId || !conversations.length) {
+      return
+    }
+
+    const targetConversation = conversations.find((conversation) => conversation.id === focusRequest.conversationId)
+    if (!targetConversation) {
+      return
+    }
+
+    setViewMode(targetConversation.status === 'archived' ? 'archived' : 'active')
+    setSelectedConversation(targetConversation)
+  }, [conversations, focusRequest])
+
+  const handleConversationStatusChange = async (conversationId, status) => {
+    try {
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        status,
+        updatedAt: serverTimestamp(),
+      })
+
+      setSelectedConversation((current) => (
+        current?.id === conversationId
+          ? { ...current, status }
+          : current
+      ))
+
+      if (status === 'archived') {
+        setViewMode('archived')
+      }
+
+      if (status === 'open') {
+        setViewMode('active')
+      }
+
+      if (status === 'deleted' && selectedConversation?.id === conversationId) {
+        setSelectedConversation(null)
+        setMessages([])
+        setViewMode('active')
+      }
+    } catch (error) {
+      console.error(`Error updating conversation status to ${status}:`, error)
+    }
+  }
 
   const formatDate = (date) => {
     if (!date) return ''
@@ -197,8 +269,24 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
       {/* Conversations List */}
       <div className="conversations-sidebar">
         <div className="sidebar-header">
-          <h3 className="text-lg font-bold text-white">Active Chats</h3>
-          <p className="text-xs text-neutral-400 mt-1">{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</p>
+          <h3 className="text-lg font-bold text-white">{viewMode === 'archived' ? 'Archived Messages' : 'Active Chats'}</h3>
+          <p className="mt-1 text-xs text-neutral-400">{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('active')}
+              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'active' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+            >
+              Active Chats ({activeConversationCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('archived')}
+              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'archived' ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+            >
+              Archived Messages ({archivedConversationCount})
+            </button>
+          </div>
         </div>
 
         <div className="conversations-list">
@@ -228,7 +316,7 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
                       <h4 className="font-semibold text-white">{conv.userName}</h4>
                       <CircleRoundedIcon
                         sx={{ fontSize: 8 }}
-                        className={conv.status === 'open' ? 'text-emerald-500' : 'text-neutral-600'}
+                        className={conv.status === 'archived' ? 'text-amber-400' : conv.status === 'open' ? 'text-emerald-500' : 'text-neutral-600'}
                       />
                     </div>
                     <span className="text-xs text-neutral-500">{formatDate(conv.updatedAt?.toDate?.(new Date()))}</span>
@@ -239,7 +327,7 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
             })
           ) : (
             <div className="pt-8 text-center text-neutral-500">
-              <p className="text-sm">No conversations yet</p>
+              <p className="text-sm">{viewMode === 'archived' ? 'No archived conversations yet' : 'No conversations yet'}</p>
             </div>
           )}
         </div>
@@ -255,13 +343,39 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
                 <h3 className="text-lg font-bold text-white">{selectedConversation.userName}</h3>
                 <p className="text-xs text-neutral-400">{selectedConversation.userEmail}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedConversation(null)}
-                className="md:hidden p-2 hover:bg-white/10 rounded-lg text-white transition"
-              >
-                <CloseRoundedIcon sx={{ fontSize: 24 }} />
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedConversation.status === 'archived' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleConversationStatusChange(selectedConversation.id, 'open')}
+                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleConversationStatusChange(selectedConversation.id, 'archived')}
+                    className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-black transition hover:bg-amber-400"
+                  >
+                    Archive
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleConversationStatusChange(selectedConversation.id, 'deleted')}
+                  className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-700"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedConversation(null)}
+                  className="rounded-lg p-2 text-white transition hover:bg-white/10 md:hidden"
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 24 }} />
+                </button>
+              </div>
             </div>
 
             {/* Messages */}
@@ -292,14 +406,15 @@ export default function ChatsManagementSection({ searchTerm = '', onUnreadCountC
               <textarea
                 value={responseText}
                 onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Type your response..."
+                placeholder={selectedConversation.status === 'archived' ? 'Restore this conversation to reply...' : 'Type your response...'}
                 rows="3"
-                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-neutral-500 resize-none focus:border-blue-600/50 focus:outline-none"
+                disabled={selectedConversation.status === 'archived'}
+                className="flex-1 resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-neutral-500 focus:border-blue-600/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 onClick={handleSendResponse}
-                disabled={isSending || !responseText.trim()}
-                className="mt-2 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+                disabled={isSending || !responseText.trim() || selectedConversation.status === 'archived'}
+                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
               >
                 <SendRoundedIcon sx={{ fontSize: 18 }} />
                 {isSending ? 'Sending...' : 'Send Response'}

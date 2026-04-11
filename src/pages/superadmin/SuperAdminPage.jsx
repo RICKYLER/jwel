@@ -135,6 +135,19 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     typeof window === 'undefined' ? true : window.innerWidth >= 1024,
   )
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [chatNotifications, setChatNotifications] = useState(() => {
+    if (typeof window === 'undefined') {
+      return []
+    }
+
+    try {
+      const storedNotifications = window.localStorage.getItem('bykelink-chat-notifications')
+      return storedNotifications ? JSON.parse(storedNotifications) : []
+    } catch {
+      return []
+    }
+  })
+  const [chatFocusRequest, setChatFocusRequest] = useState(null)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') {
       return true
@@ -205,6 +218,17 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
     return undefined
   }, [isDarkMode])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.localStorage.setItem(
+      'bykelink-chat-notifications',
+      JSON.stringify(chatNotifications.slice(0, 50)),
+    )
+  }, [chatNotifications])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -349,6 +373,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
         snapshot.docs.forEach((conversationDoc) => {
           const conversationId = conversationDoc.id
+          const conversationData = conversationDoc.data()
 
           if (unreadListeners.has(conversationId)) {
             return
@@ -364,6 +389,42 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             unreadMessagesQuery,
             (unreadSnapshot) => {
               unreadConversationCountsRef.current[conversationId] = unreadSnapshot.size
+
+              unreadSnapshot.docChanges().forEach((change) => {
+                if (change.type !== 'added') {
+                  return
+                }
+
+                const messageData = change.doc.data()
+                const createdAt = messageData.timestamp?.toDate?.() || new Date()
+                const notificationId = `${conversationId}-${change.doc.id}`
+
+                setChatNotifications((current) => {
+                  const existingIndex = current.findIndex((item) => item.id === notificationId)
+                  const nextNotification = {
+                    id: notificationId,
+                    type: 'CHAT',
+                    title: `${conversationData.userName || 'Guest User'} sent a message`,
+                    description: messageData.text || 'New customer message received.',
+                    conversationId,
+                    messageId: change.doc.id,
+                    read: false,
+                    createdAt: createdAt.toISOString(),
+                  }
+
+                  if (existingIndex >= 0) {
+                    const updated = [...current]
+                    updated[existingIndex] = {
+                      ...updated[existingIndex],
+                      ...nextNotification,
+                    }
+                    return updated
+                  }
+
+                  return [nextNotification, ...current].slice(0, 50)
+                })
+              })
+
               recountUnreadMessages()
               setLoadingState((current) => ({ ...current, conversations: false }))
             },
@@ -604,18 +665,13 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const chartBars = useMemo(() => buildChartBars(filteredServiceRequests), [filteredServiceRequests])
 
   const notificationItems = useMemo(() => {
-    const items = []
-    if (unreadChatCount > 0) {
-      items.push({
-        id: 'unread-chats',
-        type: 'CHAT',
-        title: `${unreadChatCount} Unread Message${unreadChatCount !== 1 ? 's' : ''}`,
-        description: 'You have new messages from customers waiting for response.',
-        time: 'Just now',
-      })
-    }
-    return items
-  }, [unreadChatCount])
+    return [...chatNotifications]
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .map((item) => ({
+        ...item,
+        time: item.time || formatDate(new Date(item.createdAt || Date.now())),
+      }))
+  }, [chatNotifications])
 
   const sidebarItems = useMemo(() => {
     return baseSidebarItems.map((item) => {
@@ -891,6 +947,34 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
+  const markConversationNotificationsRead = useCallback((conversationId) => {
+    setChatNotifications((current) =>
+      current.map((item) =>
+        item.conversationId === conversationId
+          ? { ...item, read: true }
+          : item,
+      ),
+    )
+  }, [])
+
+  const handleNotificationClick = useCallback((notification) => {
+    if (!notification?.conversationId) {
+      return
+    }
+
+    markConversationNotificationsRead(notification.conversationId)
+    setChatFocusRequest({
+      conversationId: notification.conversationId,
+      requestedAt: Date.now(),
+    })
+    setIsNotificationsOpen(false)
+    setActiveSection('chats-management')
+
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setIsSidebarOpen(false)
+    }
+  }, [markConversationNotificationsRead])
+
   const handleEditUserSave = async (event) => {
     event.preventDefault()
 
@@ -1136,6 +1220,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           <ChatsManagementSection
             searchTerm={searchTerm}
             onUnreadCountChange={recountUnreadMessages}
+            focusRequest={chatFocusRequest}
+            onConversationRead={markConversationNotificationsRead}
           />
         )
       case 'technicians':
@@ -1265,6 +1351,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         open={isNotificationsOpen}
         notifications={notificationItems}
         onClose={() => setIsNotificationsOpen(false)}
+        onNotificationClick={handleNotificationClick}
       />
 
       <NewUserModal
