@@ -14,6 +14,17 @@ import { db, storage } from '../../../firebase'
 import ConfirmationModal from '../components/ConfirmationModal'
 import './InventorySection.css'
 
+const COLOR_PALETTE = [
+  { name: 'Signature Black', swatch: 'bg-neutral-900' },
+  { name: 'Velocity Red', swatch: 'bg-red-700' },
+  { name: 'Metallic Gray', swatch: 'bg-zinc-500' },
+  { name: 'Pearl White', swatch: 'bg-white border-neutral-400' },
+  { name: 'Ocean Blue', swatch: 'bg-blue-700' },
+  { name: 'Forest Green', swatch: 'bg-green-800' },
+  { name: 'Midnight Purple', swatch: 'bg-purple-900' },
+  { name: 'Sunset Orange', swatch: 'bg-orange-600' },
+]
+
 const inventoryTabs = [
   { id: 'all', label: 'All' },
   { id: 'motorcycle-parts', label: 'Motorcycle Units' },
@@ -28,6 +39,8 @@ const defaultItemForm = {
   description: '',
   stock: '1',
   price: '',
+  colors: [],
+  colorVariants: [],
   status: 'In Stock',
   badge: 'New Arrival',
   showInShowroom: true,
@@ -80,6 +93,10 @@ export default function InventorySection({
   const [editGalleryFiles, setEditGalleryFiles] = useState([])
   const [editGalleryPreviews, setEditGalleryPreviews] = useState([])
   const [stockSearchTerm, setStockSearchTerm] = useState('')
+  const [selectedColorForVariant, setSelectedColorForVariant] = useState(null)
+  const [colorVariantStock, setColorVariantStock] = useState('')
+  const [editSelectedColorForVariant, setEditSelectedColorForVariant] = useState(null)
+  const [editColorVariantStock, setEditColorVariantStock] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null })
   const [archivedItems, setArchivedItems] = useState([])
   const [stockNumberPadOpen, setStockNumberPadOpen] = useState(false)
@@ -236,6 +253,8 @@ export default function InventorySection({
     setImageFile(null)
     setImagePreview('')
     setFormMessage(null)
+    setSelectedColorForVariant(null)
+    setColorVariantStock('')
     setIsAddUnitModalOpen(true)
   }
 
@@ -255,6 +274,8 @@ export default function InventorySection({
     setSelectedCategory(null)
     setSelectedModel(null)
     setSelectedVariant(null)
+    setSelectedColorForVariant(null)
+    setColorVariantStock('')
   }
 
   const handleOpenAddSparepartsModal = () => {
@@ -333,6 +354,10 @@ export default function InventorySection({
         galleryUrls.push(galleryUrl)
       }
 
+      const totalStock = Array.isArray(itemForm.colorVariants) && itemForm.colorVariants.length > 0
+        ? itemForm.colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : Number(itemForm.stock || 0)
+
       await addDoc(collection(db, 'inventory'), {
         name: itemForm.name.trim(),
         model: selectedModel.name,
@@ -341,10 +366,11 @@ export default function InventorySection({
         variantId: selectedVariant?.id || '',
         category: 'Motorcycle Units',
         description: itemForm.description.trim(),
-        stock: Number(itemForm.stock || 0),
+        stock: totalStock,
         price: Number(itemForm.price || 0),
         status: itemForm.status,
         badge: itemForm.badge.trim() || 'New Arrival',
+        colorVariants: itemForm.colorVariants,
         imageUrl,
         gallery: imageUrl ? [imageUrl, ...galleryUrls] : galleryUrls,
         showInShowroom: Boolean(itemForm.showInShowroom),
@@ -668,14 +694,20 @@ export default function InventorySection({
         }
       }
 
+      const colorVariants = editFormData.colorVariants !== undefined ? editFormData.colorVariants : (editingItem.colorVariants ?? [])
+      const editTotalStock = Array.isArray(colorVariants) && colorVariants.length > 0
+        ? colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : Number(editFormData.stock ?? editingItem.stock ?? 0)
+
       const updateData = {
         name: editFormData.name ?? editingItem.name,
         model: editFormData.model ?? editingItem.model,
         modelId: editFormData.modelId ?? editingItem.modelId,
         variant: editFormData.variant ?? editingItem.variant ?? '',
         variantId: editFormData.variantId ?? editingItem.variantId ?? '',
-        stock: Number(editFormData.stock ?? editingItem.stock ?? 0),
+        stock: editTotalStock,
         price: Number(editFormData.price ?? editingItem.price ?? 0),
+        colorVariants: colorVariants,
         description: editFormData.description ?? editingItem.description ?? '',
         imageUrl,
         gallery: galleryUrls.filter(Boolean),
@@ -693,6 +725,8 @@ export default function InventorySection({
       setEditGalleryPreviews([])
       setEditSelectedModel(null)
       setEditSelectedVariant(null)
+      setEditSelectedColorForVariant(null)
+      setEditColorVariantStock('')
       handleCollectionUpdate()
     } catch (error) {
       console.error('Error updating item:', error)
@@ -896,6 +930,8 @@ export default function InventorySection({
                           setEditImagePreview('')
                           setEditGalleryFiles([])
                           setEditGalleryPreviews([])
+                          setEditSelectedColorForVariant(null)
+                          setEditColorVariantStock('')
                           const modelItem = models.find(m => m.id === item.modelId)
                           const variantItem = variants.find(v => v.id === item.variantId)
                           setEditSelectedModel(modelItem || null)
@@ -1043,7 +1079,23 @@ export default function InventorySection({
 
                 <label className="inventory-field">
                   <span>Stock</span>
-                  <input type="number" name="stock" min="0" value={itemForm.stock} onChange={(e) => handleFormChange(e, 'unit')} placeholder="10" />
+                  <input 
+                    type="number" 
+                    name="stock" 
+                    min="0" 
+                    value={Array.isArray(itemForm.colorVariants) && itemForm.colorVariants.length > 0 
+                      ? itemForm.colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+                      : itemForm.stock
+                    }
+                    onChange={(e) => {
+                      if (!itemForm.colorVariants || itemForm.colorVariants.length === 0) {
+                        handleFormChange(e, 'unit')
+                      }
+                    }}
+                    placeholder="10"
+                    disabled={Array.isArray(itemForm.colorVariants) && itemForm.colorVariants.length > 0}
+                    className={Array.isArray(itemForm.colorVariants) && itemForm.colorVariants.length > 0 ? 'opacity-60 cursor-not-allowed' : ''}
+                  />
                 </label>
 
                 <label className="inventory-field">
@@ -1058,6 +1110,111 @@ export default function InventorySection({
                     }} 
                     placeholder="145000" 
                   />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Color Variants with Stock</span>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Select Color</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {COLOR_PALETTE.map((color) => {
+                          const isSelected = selectedColorForVariant?.name === color.name
+                          return (
+                            <button
+                              key={color.name}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setSelectedColorForVariant(color)
+                              }}
+                              className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
+                                isSelected ? 'border-[#e10100] ring-2 ring-[#e10100]/20' : 'border-neutral-600 hover:border-neutral-500'
+                              }`}
+                              title={color.name}
+                              aria-label={color.name}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {selectedColorForVariant && (
+                      <div className="flex gap-2 items-end">
+                        <label className="inventory-field flex-1">
+                          <span>Stock for {selectedColorForVariant.name}</span>
+                          <div className="flex gap-2">
+                            <input 
+                              type="number" 
+                              value={colorVariantStock} 
+                              onChange={(e) => setColorVariantStock(e.target.value)}
+                              placeholder="Enter stock quantity"
+                              min="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (colorVariantStock && parseInt(colorVariantStock) > 0) {
+                                  setItemForm((current) => {
+                                    const variantExists = current.colorVariants?.some(v => v.color.name === selectedColorForVariant.name)
+                                    if (variantExists) {
+                                      return {
+                                        ...current,
+                                        colorVariants: current.colorVariants.map(v =>
+                                          v.color.name === selectedColorForVariant.name
+                                            ? { ...v, stock: parseInt(colorVariantStock) }
+                                            : v
+                                        )
+                                      }
+                                    }
+                                    return {
+                                      ...current,
+                                      colorVariants: [...(current.colorVariants || []), { color: selectedColorForVariant, stock: parseInt(colorVariantStock) }]
+                                    }
+                                  })
+                                  setColorVariantStock('')
+                                  setSelectedColorForVariant(null)
+                                }
+                              }}
+                              className="bg-[#e10100] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+
+                    {Array.isArray(itemForm.colorVariants) && itemForm.colorVariants.length > 0 && (
+                      <div className="bg-neutral-900/30 rounded-lg p-3 space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62">Added Colors</p>
+                        {itemForm.colorVariants.map((variant, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-neutral-800 p-2 rounded">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-full border ${variant.color.swatch}`} />
+                              <span className="text-sm font-medium">{variant.color.name}</span>
+                              <span className="text-sm text-white/60">Stock: {variant.stock}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                setItemForm((current) => ({
+                                  ...current,
+                                  colorVariants: current.colorVariants.filter((_, i) => i !== idx)
+                                }))
+                              }}
+                              className="text-red-500 hover:text-red-400 text-sm font-bold"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </label>
               </div>
 
@@ -1095,9 +1252,9 @@ export default function InventorySection({
               )}
 
               <div className="inventory-gallery-upload-section">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
-                <div className="grid grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((index) => (
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 3 images</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {[0, 1, 2].map((index) => (
                     <label key={index} className="inventory-gallery-upload-box">
                       <input
                         type="file"
@@ -1628,7 +1785,13 @@ export default function InventorySection({
                   <span>Stock</span>
                   <input 
                     type="number"
-                    value={editingItem?.stock ?? 0}
+                    value={(() => {
+                      const colorVariants = editFormData.colorVariants ?? editingItem?.colorVariants
+                      if (Array.isArray(colorVariants) && colorVariants.length > 0) {
+                        return colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+                      }
+                      return editingItem?.stock ?? 0
+                    })()}
                     disabled
                     className="opacity-60 cursor-not-allowed"
                   />
@@ -1645,6 +1808,115 @@ export default function InventorySection({
                     }}
                     placeholder="0"
                   />
+                </label>
+
+                <label className="inventory-field">
+                  <span>Color Variants with Stock</span>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Select Color</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {COLOR_PALETTE.map((color) => {
+                          const isSelected = editSelectedColorForVariant?.name === color.name
+                          return (
+                            <button
+                              key={color.name}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setEditSelectedColorForVariant(color)
+                              }}
+                              className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
+                                isSelected ? 'border-[#e10100] ring-2 ring-[#e10100]/20' : 'border-neutral-600 hover:border-neutral-500'
+                              }`}
+                              title={color.name}
+                              aria-label={color.name}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {editSelectedColorForVariant && (
+                      <div className="flex gap-2 items-end">
+                        <label className="inventory-field flex-1">
+                          <span>Stock for {editSelectedColorForVariant.name}</span>
+                          <div className="flex gap-2">
+                            <input 
+                              type="number" 
+                              value={editColorVariantStock} 
+                              onChange={(e) => setEditColorVariantStock(e.target.value)}
+                              placeholder="Enter stock quantity"
+                              min="0"
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (editColorVariantStock && parseInt(editColorVariantStock) > 0) {
+                                  setEditFormData((current) => {
+                                    const colorVariants = current.colorVariants ?? (editingItem?.colorVariants || [])
+                                    const variantExists = colorVariants.some(v => v.color.name === editSelectedColorForVariant.name)
+                                    if (variantExists) {
+                                      return {
+                                        ...current,
+                                        colorVariants: colorVariants.map(v =>
+                                          v.color.name === editSelectedColorForVariant.name
+                                            ? { ...v, stock: parseInt(editColorVariantStock) }
+                                            : v
+                                        )
+                                      }
+                                    }
+                                    return {
+                                      ...current,
+                                      colorVariants: [...(colorVariants || []), { color: editSelectedColorForVariant, stock: parseInt(editColorVariantStock) }]
+                                    }
+                                  })
+                                  setEditColorVariantStock('')
+                                  setEditSelectedColorForVariant(null)
+                                }
+                              }}
+                              className="bg-[#e10100] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const currentVariants = editFormData.colorVariants ?? editingItem?.colorVariants ?? []
+                      return currentVariants.length > 0 && (
+                        <div className="bg-neutral-900/30 rounded-lg p-3 space-y-2">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62">Added Colors</p>
+                          {currentVariants.map((variant, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-neutral-800 p-2 rounded">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-full border ${variant.color.swatch}`} />
+                                <span className="text-sm font-medium">{variant.color.name}</span>
+                                <span className="text-sm text-white/60">Stock: {variant.stock}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  setEditFormData((current) => ({
+                                    ...current,
+                                    colorVariants: (current.colorVariants ?? editingItem?.colorVariants ?? []).filter((_, i) => i !== idx)
+                                  }))
+                                }}
+                                className="text-red-500 hover:text-red-400 text-sm font-bold"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
                 </label>
               </div>
 
@@ -1704,9 +1976,9 @@ export default function InventorySection({
 
               {(editingItem.gallery && editingItem.gallery.length > 0) || editGalleryPreviews.length > 0 ? (
                 <div className="inventory-gallery-section max-w-full">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
-                  <div className="grid grid-cols-4 gap-3">
-                    {[0, 1, 2, 3].map((index) => {
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 3 images</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[0, 1, 2].map((index) => {
                       const galleryImage = editGalleryPreviews[index] || editingItem.gallery?.[index]
                       return (
                         <label key={index} className="relative group">
@@ -1786,9 +2058,9 @@ export default function InventorySection({
                 </div>
               ) : (
                 <div className="inventory-gallery-upload-section">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 4 images</p>
-                  <div className="grid grid-cols-4 gap-3">
-                    {[0, 1, 2, 3].map((index) => (
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Sub Images (Gallery) - Up to 3 images</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[0, 1, 2].map((index) => (
                       <label key={index} className="inventory-gallery-upload-box cursor-pointer">
                         <input
                           type="file"

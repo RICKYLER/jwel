@@ -14,7 +14,6 @@ export default function LoginPage({
   authLoading,
   googleLoading,
   authMode,
-  onSelectAuthPersona,
   onToggleAuthMode,
   onNavigateBack,
   authMessage,
