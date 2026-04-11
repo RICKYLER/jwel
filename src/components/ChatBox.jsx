@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot, orderBy } from 'firebase/firestore'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
@@ -68,9 +68,30 @@ export default function ChatBox({ currentUser }) {
           })
           setConversationId(newConvRef.id)
         } else {
-          // For guests, create a new conversation each session
+          // For guests, check localStorage for existing guest conversation ID
+          const storedGuestConvId = localStorage.getItem('bykelink_guest_conversation_id')
+          const storedGuestUserId = localStorage.getItem('bykelink_guest_user_id')
+
+          if (storedGuestConvId && storedGuestUserId) {
+            // Try to retrieve existing conversation
+            try {
+              const convDoc = await getDocs(
+                query(conversationsRef, where('userId', '==', storedGuestUserId), where('status', '==', 'open'))
+              )
+              if (convDoc.docs.length > 0) {
+                setConversationId(storedGuestConvId)
+                setIsInitializing(false)
+                return
+              }
+            } catch (e) {
+              console.warn('Could not retrieve stored guest conversation', e)
+            }
+          }
+
+          // Create new guest conversation
+          const guestUserId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
           const newConvRef = await addDoc(conversationsRef, {
-            userId: `guest_${Date.now()}`,
+            userId: guestUserId,
             userEmail: 'guest@bykelink.com',
             userName: 'Guest User',
             isGuest: true,
@@ -79,6 +100,11 @@ export default function ChatBox({ currentUser }) {
             updatedAt: serverTimestamp(),
             messageCount: 0,
           })
+          
+          // Store guest conversation in localStorage
+          localStorage.setItem('bykelink_guest_conversation_id', newConvRef.id)
+          localStorage.setItem('bykelink_guest_user_id', guestUserId)
+          
           setConversationId(newConvRef.id)
         }
       } catch (error) {
@@ -90,6 +116,35 @@ export default function ChatBox({ currentUser }) {
 
     initializeConversation()
   }, [currentUser?.uid, currentUser?.email, currentUser?.displayName])
+
+  // Listen for messages from admin/bot in real-time
+  useEffect(() => {
+    if (!conversationId || isInitializing) return
+
+    const messagesRef = collection(db, `conversations/${conversationId}/messages`)
+    const q = query(messagesRef, orderBy('timestamp', 'asc'))
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const loadedMessages = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp?.toDate?.() || new Date(),
+        }))
+
+        // Only update if we have messages from Firestore
+        if (loadedMessages.length > 0) {
+          setMessages(loadedMessages)
+        }
+      },
+      (error) => {
+        console.error('Error listening to messages:', error)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [conversationId, isInitializing])
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -125,42 +180,9 @@ export default function ChatBox({ currentUser }) {
       })
     } catch (error) {
       console.error('Error saving message:', error)
-    }
-
-    // Simulate bot response delay
-    setTimeout(() => {
-      const botResponses = [
-        'Great question! I can help you with that.',
-        'That sounds interesting. Let me connect you with our team.',
-        'We have some great options for you!',
-        'Thank you for reaching out. How can I assist you further?',
-        'Feel free to ask me anything about our yamaha motorcycles.',
-      ]
-
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)]
-
-      const botMessage = {
-        id: messages.length + 2,
-        type: 'bot',
-        text: randomResponse,
-        timestamp: new Date(),
-        sender: 'bot',
-      }
-
-      setMessages((prev) => [...prev, botMessage])
-
-      // Save bot response to Firestore
-      addDoc(collection(db, `conversations/${conversationId}/messages`), {
-        type: 'bot',
-        text: randomResponse,
-        sender: 'bot',
-        senderName: 'BYKELINK Support',
-        timestamp: serverTimestamp(),
-        read: false,
-      }).catch((error) => console.error('Error saving bot response:', error))
-
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (

@@ -936,7 +936,7 @@ export default function HeroSection({
         </div>
       </footer>
       
-      <ChatBox />
+      <ChatBox currentUser={currentUser} />
       </div>
     </div>
   )

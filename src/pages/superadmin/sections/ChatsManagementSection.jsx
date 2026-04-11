@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, limit } from 'firebase/firestore'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
@@ -15,6 +15,7 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState(null)
+  const [conversationLastMessages, setConversationLastMessages] = useState({})
 
   // Load all conversations
   useEffect(() => {
@@ -29,6 +30,22 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
           ...doc.data(),
         }))
         setConversations(conversationsList)
+        
+        // Fetch last message for each conversation
+        conversationsList.forEach((conv) => {
+          const messagesRef = collection(db, `conversations/${conv.id}/messages`)
+          const msgQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1))
+          getDocs(msgQuery).then((snapshot) => {
+            if (snapshot.docs.length > 0) {
+              const lastMsg = snapshot.docs[0].data()
+              setConversationLastMessages((prev) => ({
+                ...prev,
+                [conv.id]: lastMsg,
+              }))
+            }
+          })
+        })
+        
         setError(null)
         setIsLoading(false)
       },
@@ -151,9 +168,7 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
             </div>
           ) : filteredConversations.length ? (
             filteredConversations.map((conv) => {
-              const lastMessage = messages.find(
-                (m) => m.id === messages[messages.length - 1]?.id
-              ) || { text: 'No messages yet' }
+              const lastMessage = conversationLastMessages[conv.id] || { text: 'No messages yet' }
               const isSelected = selectedConversation?.id === conv.id
 
               return (

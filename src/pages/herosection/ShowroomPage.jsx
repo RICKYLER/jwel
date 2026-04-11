@@ -421,20 +421,20 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                     if (colorVariants.length === 0) return null
                     
                     return (
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-6">
                         {colorVariants.map((variant, index) => (
                           <button
                             key={variant.color?.name || index}
                             type="button"
                             onClick={() => setActiveColor(index)}
-                            className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                              activeColor === index
-                                ? 'border-blue-600 bg-blue-600/10 ring-2 ring-blue-600/20'
-                                : 'border-neutral-600 hover:border-neutral-500'
-                            }`}
+                            className="flex flex-col items-center gap-2 transition-all"
                           >
-                            <div className={`h-8 w-8 rounded-full border-2 ${variant.color?.swatch || 'bg-neutral-700'}`} />
-                            <div className="flex-1 text-left">
+                            <div className={`h-10 w-10 rounded-full border-4 transition-all ${
+                              activeColor === index
+                                ? 'border-blue-600 ring-2 ring-blue-600/50'
+                                : 'border-neutral-600'
+                            } ${variant.color?.swatch || 'bg-neutral-700'}`} />
+                            <div className="text-center">
                               <p className="text-sm font-bold text-white">{variant.color?.name}</p>
                               <p className="text-xs text-[#b7b5b4]">
                                 {variant.stock > 0 ? `${variant.stock} in stock` : 'Out of stock'}
