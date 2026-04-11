@@ -82,11 +82,18 @@ export default function SuperAdminSidebar({
                 >
                   <Icon sx={{ fontSize: 20 }} className="mr-4" />
                   {item.label}
-                  {hasSubitems && (
-                    <ExpandMoreRoundedIcon
-                      sx={{ fontSize: 18, marginLeft: 'auto', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
-                    />
-                  )}
+                  <div className="ml-auto flex items-center gap-2">
+                    {item.badge && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e10100] px-1.5 text-[11px] font-black text-white">
+                        {Math.min(item.badge, 9)}
+                      </span>
+                    )}
+                    {hasSubitems && (
+                      <ExpandMoreRoundedIcon
+                        sx={{ fontSize: 18, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
+                      />
+                    )}
+                  </div>
                 </button>
 
                 {hasSubitems && isExpanded && (

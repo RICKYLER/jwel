@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot, orderBy } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc, onSnapshot, orderBy } from 'firebase/firestore'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
@@ -73,18 +73,25 @@ export default function ChatBox({ currentUser }) {
           const storedGuestUserId = localStorage.getItem('bykelink_guest_user_id')
 
           if (storedGuestConvId && storedGuestUserId) {
-            // Try to retrieve existing conversation
+            // Try to retrieve existing conversation safely by document id
             try {
-              const convDoc = await getDocs(
-                query(conversationsRef, where('userId', '==', storedGuestUserId), where('status', '==', 'open'))
-              )
-              if (convDoc.docs.length > 0) {
-                setConversationId(storedGuestConvId)
-                setIsInitializing(false)
-                return
+              const convRef = doc(db, 'conversations', storedGuestConvId)
+              const convSnap = await getDoc(convRef)
+
+              if (convSnap.exists()) {
+                const conversationData = convSnap.data()
+                if (
+                  conversationData?.isGuest === true
+                  && conversationData?.userId === storedGuestUserId
+                  && conversationData?.status === 'open'
+                ) {
+                  setConversationId(storedGuestConvId)
+                  setIsInitializing(false)
+                  return
+                }
               }
             } catch (e) {
-              console.warn('Could not retrieve stored guest conversation', e)
+              console.warn('Could not restore stored guest conversation; creating a new one instead.', e)
             }
           }
 

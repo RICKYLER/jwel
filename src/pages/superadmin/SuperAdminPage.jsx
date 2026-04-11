@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs } from 'firebase/firestore'
+import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
@@ -43,7 +43,7 @@ import {
 } from './sections/superadminUtils'
 import './SuperAdminPage.css'
 
-const sidebarItems = [
+const baseSidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardRoundedIcon },
   { id: 'user-management', label: 'User Management', icon: ManageAccountsRoundedIcon },
   { 
@@ -104,6 +104,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [variants, setVariants] = useState([])
   const [inventoryLogs, setInventoryLogs] = useState([])
   const [deletedItems, setDeletedItems] = useState([])
+  const [unreadChatCount, setUnreadChatCount] = useState(0)
+  const [previousUnreadCount, setPreviousUnreadCount] = useState(0)
+  const audioContextRef = useRef(null)
+  const hasHydratedUnreadRef = useRef(false)
+  const unreadConversationCountsRef = useRef({})
+  const unreadListenersRef = useRef(new Map())
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -116,6 +122,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     models: true,
     variants: true,
     inventoryLogs: true,
+    conversations: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -152,7 +159,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   })
 
   const sectionTitle = useMemo(() => {
-    return sidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
+    return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
 
   const adminName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Administrator'
@@ -304,6 +311,90 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }, [canEditOperations, consoleLabel])
 
+  // Load unread user messages in real time across all chat conversations
+  const recountUnreadMessages = useCallback(() => {
+    const totalUnread = Object.values(unreadConversationCountsRef.current).reduce(
+      (sum, count) => sum + (Number.isFinite(count) ? count : 0),
+      0,
+    )
+    setUnreadChatCount(totalUnread)
+  }, [])
+
+  useEffect(() => {
+    if (!canEditOperations || !currentUser?.uid) {
+      unreadListenersRef.current.forEach((unsubscribe) => unsubscribe())
+      unreadListenersRef.current.clear()
+      unreadConversationCountsRef.current = {}
+      setUnreadChatCount(0)
+      setLoadingState((current) => ({ ...current, conversations: false }))
+      return undefined
+    }
+
+    const conversationsRef = collection(db, 'conversations')
+    const conversationsQuery = query(conversationsRef, limit(100))
+    const unreadListeners = unreadListenersRef.current
+
+    const unsubscribe = onSnapshot(
+      conversationsQuery,
+      (snapshot) => {
+        const activeConversationIds = new Set(snapshot.docs.map((conversationDoc) => conversationDoc.id))
+
+        unreadListeners.forEach((stopListening, conversationId) => {
+          if (!activeConversationIds.has(conversationId)) {
+            stopListening()
+            unreadListeners.delete(conversationId)
+            delete unreadConversationCountsRef.current[conversationId]
+          }
+        })
+
+        snapshot.docs.forEach((conversationDoc) => {
+          const conversationId = conversationDoc.id
+
+          if (unreadListeners.has(conversationId)) {
+            return
+          }
+
+          const unreadMessagesQuery = query(
+            collection(db, `conversations/${conversationId}/messages`),
+            where('read', '==', false),
+            where('type', '==', 'user'),
+          )
+
+          const stopUnreadListener = onSnapshot(
+            unreadMessagesQuery,
+            (unreadSnapshot) => {
+              unreadConversationCountsRef.current[conversationId] = unreadSnapshot.size
+              recountUnreadMessages()
+              setLoadingState((current) => ({ ...current, conversations: false }))
+            },
+            (error) => {
+              console.error(`Error loading unread messages for conversation ${conversationId}:`, error)
+              unreadConversationCountsRef.current[conversationId] = 0
+              recountUnreadMessages()
+              setLoadingState((current) => ({ ...current, conversations: false }))
+            },
+          )
+
+          unreadListeners.set(conversationId, stopUnreadListener)
+        })
+
+        recountUnreadMessages()
+        setLoadingState((current) => ({ ...current, conversations: false }))
+      },
+      (error) => {
+        console.error('Error loading chat notification conversations:', error)
+        setLoadingState((current) => ({ ...current, conversations: false }))
+      },
+    )
+
+    return () => {
+      unsubscribe()
+      unreadListeners.forEach((stopListening) => stopListening())
+      unreadListeners.clear()
+      unreadConversationCountsRef.current = {}
+    }
+  }, [canEditOperations, currentUser?.uid, recountUnreadMessages])
+
   // Load master data collections
   useEffect(() => {
     const loadMasterData = async () => {
@@ -326,6 +417,113 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
     loadMasterData()
   }, [])
+
+  const ensureNotificationAudioReady = useCallback(async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext
+    if (!AudioContextClass) {
+      return
+    }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass()
+    }
+
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume()
+      } catch (error) {
+        console.warn('Could not resume notification audio:', error)
+      }
+    }
+  }, [])
+
+  // Unlock notification audio after the first user interaction
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+
+    const unlockAudio = () => {
+      ensureNotificationAudioReady()
+    }
+
+    window.addEventListener('pointerdown', unlockAudio, { once: true })
+    window.addEventListener('keydown', unlockAudio, { once: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio)
+      window.removeEventListener('keydown', unlockAudio)
+    }
+  }, [ensureNotificationAudioReady])
+
+  // Play notification sound when new unread messages arrive
+  const playNotificationSound = useCallback(async () => {
+    try {
+      await ensureNotificationAudioReady()
+
+      const audioContext = audioContextRef.current
+      if (!audioContext) {
+        return
+      }
+
+      const now = audioContext.currentTime
+      const oscillator = audioContext.createOscillator()
+      const envelope = audioContext.createGain()
+
+      oscillator.connect(envelope)
+      envelope.connect(audioContext.destination)
+      oscillator.type = 'sine'
+      oscillator.frequency.setValueAtTime(880, now)
+      envelope.gain.setValueAtTime(0.0001, now)
+      envelope.gain.exponentialRampToValueAtTime(0.25, now + 0.02)
+      envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.28)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.28)
+    } catch (error) {
+      console.warn('Could not play notification sound:', error)
+    }
+  }, [ensureNotificationAudioReady])
+
+  useEffect(() => {
+    if (!hasHydratedUnreadRef.current) {
+      hasHydratedUnreadRef.current = true
+      setPreviousUnreadCount(unreadChatCount)
+      return
+    }
+
+    if (unreadChatCount > previousUnreadCount) {
+      playNotificationSound()
+
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('New Chat Message', {
+          body: `You have ${unreadChatCount} unread message${unreadChatCount !== 1 ? 's' : ''} from customers.`,
+          tag: 'bykelink-chat-notification',
+          renotify: true,
+        })
+      }
+    }
+
+    setPreviousUnreadCount(unreadChatCount)
+  }, [playNotificationSound, unreadChatCount, previousUnreadCount])
+
+  const handleToggleNotifications = useCallback(async () => {
+    await ensureNotificationAudioReady()
+
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        await Notification.requestPermission()
+      } catch (error) {
+        console.warn('Could not request notification permission:', error)
+      }
+    }
+
+    setIsNotificationsOpen((current) => !current)
+  }, [ensureNotificationAudioReady])
 
   const visibleTechnicians = technicians.length ? technicians : fallbackTechnicians
   const normalizedSearchTerm = normalizeText(searchTerm)
@@ -405,7 +603,31 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     : 0
   const chartBars = useMemo(() => buildChartBars(filteredServiceRequests), [filteredServiceRequests])
 
-  const notificationItems = useMemo(() => [], [])
+  const notificationItems = useMemo(() => {
+    const items = []
+    if (unreadChatCount > 0) {
+      items.push({
+        id: 'unread-chats',
+        type: 'CHAT',
+        title: `${unreadChatCount} Unread Message${unreadChatCount !== 1 ? 's' : ''}`,
+        description: 'You have new messages from customers waiting for response.',
+        time: 'Just now',
+      })
+    }
+    return items
+  }, [unreadChatCount])
+
+  const sidebarItems = useMemo(() => {
+    return baseSidebarItems.map((item) => {
+      if (item.id === 'chats-management') {
+        return {
+          ...item,
+          badge: unreadChatCount > 0 ? unreadChatCount : null,
+        }
+      }
+      return item
+    })
+  }, [unreadChatCount])
 
   const metricCards = useMemo(
     () => [
@@ -913,6 +1135,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         return (
           <ChatsManagementSection
             searchTerm={searchTerm}
+            onUnreadCountChange={recountUnreadMessages}
           />
         )
       case 'technicians':
@@ -1085,8 +1308,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           isDarkMode={isDarkMode}
           onToggleTheme={() => setIsDarkMode((current) => !current)}
           onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
-          onToggleNotifications={() => setIsNotificationsOpen((current) => !current)}
-          notificationCount={notificationItems.length}
+          onToggleNotifications={handleToggleNotifications}
+          notificationCount={unreadChatCount}
           adminName={adminName}
           consoleLabel={consoleLabel}
           onOpenProfile={() => handleSectionChange('profile')}

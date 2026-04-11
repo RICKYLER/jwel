@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { collection, getDocs, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, limit } from 'firebase/firestore'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { collection, getDocs, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, limit, where } from 'firebase/firestore'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
@@ -7,7 +7,7 @@ import CircleRoundedIcon from '@mui/icons-material/CircleRounded'
 import { db } from '../../../firebase'
 import './ChatsManagementSection.css'
 
-export default function ChatsManagementSection({ searchTerm = '' }) {
+export default function ChatsManagementSection({ searchTerm = '', onUnreadCountChange }) {
   const [conversations, setConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
@@ -16,6 +16,7 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState(null)
   const [conversationLastMessages, setConversationLastMessages] = useState({})
+  const unsubscribersRef = useRef(new Map())
 
   // Load all conversations
   useEffect(() => {
@@ -31,19 +32,32 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
         }))
         setConversations(conversationsList)
         
-        // Fetch last message for each conversation
+        // Set up real-time listeners for last message of each conversation
         conversationsList.forEach((conv) => {
+          // Unsubscribe from previous listener if exists
+          if (unsubscribersRef.current.has(conv.id)) {
+            unsubscribersRef.current.get(conv.id)()
+          }
+
           const messagesRef = collection(db, `conversations/${conv.id}/messages`)
           const msgQuery = query(messagesRef, orderBy('timestamp', 'desc'), limit(1))
-          getDocs(msgQuery).then((snapshot) => {
-            if (snapshot.docs.length > 0) {
-              const lastMsg = snapshot.docs[0].data()
-              setConversationLastMessages((prev) => ({
-                ...prev,
-                [conv.id]: lastMsg,
-              }))
-            }
-          })
+          
+          // Use real-time listener instead of one-time fetch
+          const msgUnsubscribe = onSnapshot(
+            msgQuery,
+            (msgSnapshot) => {
+              if (msgSnapshot.docs.length > 0) {
+                const lastMsg = msgSnapshot.docs[0].data()
+                setConversationLastMessages((prev) => ({
+                  ...prev,
+                  [conv.id]: lastMsg,
+                }))
+              }
+            },
+            (error) => console.warn(`Error loading messages for conv ${conv.id}`, error)
+          )
+          
+          unsubscribersRef.current.set(conv.id, msgUnsubscribe)
         })
         
         setError(null)
@@ -56,7 +70,11 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
       }
     )
 
-    return () => unsubscribe()
+    return () => {
+      unsubscribe()
+      unsubscribersRef.current.forEach((unsub) => unsub())
+      unsubscribersRef.current.clear()
+    }
   }, [])
 
   // Load messages for selected conversation
@@ -75,6 +93,11 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
           timestamp: doc.data().timestamp?.toDate?.() || new Date(),
         }))
         setMessages(messagesList)
+        
+        // Trigger unread count update in parent when messages change
+        if (onUnreadCountChange) {
+          onUnreadCountChange()
+        }
       },
       (error) => {
         console.error('Error loading messages:', error)
@@ -82,7 +105,7 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
     )
 
     return () => unsubscribe()
-  }, [selectedConversation])
+  }, [selectedConversation, onUnreadCountChange])
 
   // Filter conversations based on search
   const filteredConversations = useMemo(() => {
@@ -124,6 +147,29 @@ export default function ChatsManagementSection({ searchTerm = '' }) {
       setIsSending(false)
     }
   }
+
+  // Mark unread messages as read when admin views a conversation
+  const markMessagesAsRead = async (conversationId) => {
+    try {
+      const messagesRef = collection(db, `conversations/${conversationId}/messages`)
+      const unreadQuery = query(messagesRef, where('read', '==', false), where('type', '==', 'user'))
+      const unreadSnap = await getDocs(unreadQuery)
+
+      for (const msgDoc of unreadSnap.docs) {
+        await updateDoc(msgDoc.ref, { read: true })
+      }
+    } catch (error) {
+      console.error('Error marking messages as read:', error)
+    }
+  }
+
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selectedConversation) {
+      // Import where for this query
+      markMessagesAsRead(selectedConversation.id)
+    }
+  }, [selectedConversation])
 
   const formatDate = (date) => {
     if (!date) return ''
