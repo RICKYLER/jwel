@@ -13,6 +13,7 @@ import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import { db, functions } from '../../firebase'
+import ConfirmationModal from './components/ConfirmationModal'
 import EditUserModal from './components/EditUserModal'
 import NewUserModal from './components/NewUserModal'
 import NotificationsDrawer from './components/NotificationsDrawer'
@@ -135,6 +136,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     typeof window === 'undefined' ? true : window.innerWidth >= 1024,
   )
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [notificationConfirmation, setNotificationConfirmation] = useState(null)
+  const [logoutConfirmation, setLogoutConfirmation] = useState(false)
   const [chatNotifications, setChatNotifications] = useState(() => {
     if (typeof window === 'undefined') {
       return []
@@ -229,6 +232,21 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       JSON.stringify(chatNotifications.slice(0, 50)),
     )
   }, [chatNotifications])
+
+  useEffect(() => {
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+    const now = Date.now()
+
+    setChatNotifications((current) => {
+      const filtered = current.filter((notification) => {
+        const createdAt = notification.createdAt instanceof Date
+          ? notification.createdAt.getTime()
+          : new Date(notification.createdAt).getTime()
+        return now - createdAt < ONE_WEEK_MS
+      })
+      return filtered.length < current.length ? filtered : current
+    })
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -975,6 +993,61 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }, [markConversationNotificationsRead])
 
+  const filterOldNotifications = useCallback((notifications) => {
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+    const now = Date.now()
+    return notifications.filter((notification) => {
+      const createdAt = notification.createdAt instanceof Date ? notification.createdAt.getTime() : new Date(notification.createdAt).getTime()
+      return now - createdAt < ONE_WEEK_MS
+    })
+  }, [])
+
+  const handleDeleteNotification = useCallback((notificationId) => {
+    setNotificationConfirmation({
+      type: 'delete',
+      notificationId,
+      title: 'Delete Notification',
+      message: 'Are you sure you want to delete this notification? This action cannot be undone.',
+    })
+  }, [])
+
+  const handleDeleteAllNotifications = useCallback(() => {
+    setNotificationConfirmation({
+      type: 'deleteAll',
+      title: 'Delete All Notifications',
+      message: 'Are you sure you want to delete all notifications? This action cannot be undone.',
+    })
+  }, [])
+
+  const handleMarkAllAsRead = useCallback(() => {
+    setChatNotifications((current) =>
+      current.map((item) => ({ ...item, read: true }))
+    )
+  }, [])
+
+  const confirmNotificationAction = useCallback(async () => {
+    if (!notificationConfirmation) return
+
+    if (notificationConfirmation.type === 'delete' && notificationConfirmation.notificationId) {
+      setChatNotifications((current) =>
+        current.filter((item) => item.id !== notificationConfirmation.notificationId)
+      )
+    } else if (notificationConfirmation.type === 'deleteAll') {
+      setChatNotifications([])
+    }
+
+    setNotificationConfirmation(null)
+  }, [notificationConfirmation])
+
+  const handleLogoutClick = useCallback(() => {
+    setLogoutConfirmation(true)
+  }, [])
+
+  const confirmLogout = useCallback(() => {
+    setLogoutConfirmation(false)
+    onSignOut?.()
+  }, [onSignOut])
+
   const handleEditUserSave = async (event) => {
     event.preventDefault()
 
@@ -1352,6 +1425,9 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         notifications={notificationItems}
         onClose={() => setIsNotificationsOpen(false)}
         onNotificationClick={handleNotificationClick}
+        onDeleteNotification={handleDeleteNotification}
+        onDeleteAllNotifications={handleDeleteAllNotifications}
+        onMarkAllAsRead={handleMarkAllAsRead}
       />
 
       <NewUserModal
@@ -1376,6 +1452,30 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         isSubmitting={isSubmitting}
       />
 
+      <ConfirmationModal
+        open={!!notificationConfirmation}
+        title={notificationConfirmation?.title || ''}
+        message={notificationConfirmation?.message || ''}
+        confirmText={notificationConfirmation?.type === 'deleteAll' ? 'Delete All' : 'Delete'}
+        cancelText="Cancel"
+        onConfirm={confirmNotificationAction}
+        onCancel={() => setNotificationConfirmation(null)}
+        isDangerous={true}
+        isDarkMode={isDarkMode}
+      />
+
+      <ConfirmationModal
+        open={logoutConfirmation}
+        title="Logout?"
+        message="Are you sure you want to log out? You will need to sign in again to access this dashboard."
+        confirmText="Logout"
+        cancelText="Cancel"
+        onConfirm={confirmLogout}
+        onCancel={() => setLogoutConfirmation(false)}
+        isDangerous={true}
+        isDarkMode={isDarkMode}
+      />
+
       <SuperAdminSidebar
         sidebarItems={sidebarItems}
         activeSection={activeSection}
@@ -1383,7 +1483,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         isSidebarOpen={isSidebarOpen}
         onCloseSidebar={() => setIsSidebarOpen(false)}
         onNavigateHome={onNavigateHome}
-        onSignOut={onSignOut ?? onNavigateHome}
+        onSignOut={handleLogoutClick}
         consoleLabel={consoleLabel}
       />
 
