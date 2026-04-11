@@ -17,6 +17,7 @@ import HeroSection from './pages/herosection/HeroSection'
 import LoginPage from './pages/LoginPage'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
+import SparePartsPage from './pages/herosection/SparePartsPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
@@ -147,6 +148,7 @@ const formatAuthError = (error) => {
 const normalizePath = (path) => {
   if (path?.startsWith('/login')) return '/login'
   if (path?.startsWith('/showroom')) return '/showroom'
+  if (path?.startsWith('/spare-parts')) return '/spare-parts'
   if (path?.startsWith('/service')) return '/service'
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
@@ -158,6 +160,7 @@ const getNavLabelForPath = (path, hash = '') => {
   const matchedLink = navLinks.find((link) => link.id === hash)
 
   if (path === '/showroom') return 'Showroom'
+  if (path === '/spare-parts') return 'Spare Parts'
   if (path === '/service') return 'Service'
   if (dashboardRequirements[path]) return 'Dashboard'
 
@@ -1090,6 +1093,20 @@ function App() {
       <ShowroomPage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onNavigateSection={goToHomeSection}
+        onNavigateService={() => goToHomeSection('service', 'Service')}
+        onNavigateSpareParts={() => navigateTo('/spare-parts')}
+        onOpenSignup={() => openAuthSection('signup', 'customer')}
+      />,
+    )
+  }
+
+  if (currentPath === '/spare-parts') {
+    return withSecurityModal(
+      <SparePartsPage
+        onNavigateHome={() => goToHomeSection('home', 'Home')}
+        onNavigateSection={goToHomeSection}
+        onNavigateService={() => goToHomeSection('service', 'Service')}
+        onNavigateShowroom={() => navigateTo('/showroom')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
       />,
     )
@@ -1138,6 +1155,7 @@ function App() {
       onSelectSlide={setActiveSlide}
       onOpenAuthSection={openAuthSection}
       onNavigateShowroom={() => navigateTo('/showroom')}
+      onNavigateSpareParts={() => navigateTo('/spare-parts')}
       onNavigateLogin={() => navigateTo('/login')}
       onNavigateSection={goToHomeSection}
       onSignOut={handleSignOut}

@@ -12,9 +12,9 @@ import bykelinkLogo from '../../assets/bykelinklogo.png'
 import { db } from '../../firebase'
 
 const showroomLinks = [
-  { label: 'Home', href: '/#home', id: 'home' },
+  { label: 'Home', href: '/', id: 'home' },
   { label: 'Showroom', href: '/showroom', id: 'showroom', active: true },
-  { label: 'Service', href: '/service', id: 'service' },
+  { label: 'Spare Parts', href: '/spare-parts', id: 'spare-parts' },
   { label: 'About', href: '/#about', id: 'about' },
   { label: 'Contact', href: '/#contact', id: 'contact' },
 ]
@@ -81,7 +81,7 @@ const mapInventoryToShowroomModel = (item) => {
   }
 }
 
-export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onOpenSignup }) {
+export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateSpareParts, onOpenSignup }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
@@ -145,6 +145,11 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
       return
     }
 
+    if (link.id === 'spare-parts') {
+      onNavigateSpareParts?.()
+      return
+    }
+
     onNavigateSection?.(link.id, link.label)
   }
 
@@ -173,50 +178,60 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
 
   return (
     <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-['Manrope']">
-      <nav className="fixed top-0 z-50 w-full bg-neutral-950/80 shadow-2xl shadow-red-900/10 backdrop-blur-xl">
+      <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl shadow-2xl shadow-blue-900/10">
         <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <button type="button" onClick={onNavigateHome} className="flex items-center gap-3 text-left">
-            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-white p-1.5" />
-            <div className="text-2xl font-black italic uppercase tracking-tighter text-neutral-100 font-['Epilogue']">
-              BYKELINK
+            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-xl bg-white/95 p-1.5" />
+            <div>
+              <div className="text-lg font-black uppercase tracking-tight text-neutral-100 font-['Epilogue'] sm:text-2xl">
+                BYKELINK
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 sm:text-[11px]">
+                Yamaha Dealer
+              </div>
             </div>
           </button>
 
-          <div className="hidden items-center gap-8 md:flex">
-            {showroomLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={(event) => handleNavLinkClick(event, link)}
-                className={`border-b-2 pb-1 font-['Epilogue'] text-sm uppercase tracking-tighter transition-colors duration-300 ${
-                  link.active
-                    ? 'border-red-600 text-red-600'
-                    : 'border-transparent font-medium text-neutral-400 hover:text-neutral-100'
-                }`}
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
+          <nav className="hidden items-center gap-7 md:flex">
+            {showroomLinks.map((link) => {
+              const isActive = link.active
 
-          <div className="flex items-center gap-3">
+              return (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={(event) => handleNavLinkClick(event, link)}
+                  className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
+                    isActive
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-neutral-400 hover:text-neutral-100'
+                  }`}
+                >
+                  {link.label}
+                </a>
+              )
+            })}
+          </nav>
+
+          <div className="hidden items-center gap-3 md:flex">
             <button
               type="button"
               onClick={onOpenSignup}
-              className="hidden rounded-full bg-[#e10100] px-5 py-2 text-sm font-bold text-white transition-transform active:scale-95 md:block"
+              className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95"
             >
               Inquire
             </button>
-            <button
-              type="button"
-              onClick={() => setIsMenuOpen((open) => !open)}
-              className="rounded-xl border border-white/10 bg-white/5 p-2 text-white md:hidden"
-              aria-label="Toggle menu"
-              aria-expanded={isMenuOpen}
-            >
-              {isMenuOpen ? <CloseRoundedIcon fontSize="small" /> : <MenuRoundedIcon fontSize="small" />}
-            </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            className="inline-flex rounded-xl border border-white/10 bg-white/5 p-2 text-white md:hidden"
+            aria-label="Toggle menu"
+            aria-expanded={isMenuOpen}
+          >
+            {isMenuOpen ? <CloseRoundedIcon fontSize="small" /> : <MenuRoundedIcon fontSize="small" />}
+          </button>
         </div>
 
         {isMenuOpen && (
@@ -238,14 +253,14 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                   setIsMenuOpen(false)
                   onOpenSignup?.()
                 }}
-                className="rounded-xl bg-[#e10100] px-4 py-3 text-sm font-black uppercase tracking-tight text-white"
+                className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white"
               >
                 Inquire
               </button>
             </div>
           </div>
         )}
-      </nav>
+      </header>
 
       <main className="mx-auto max-w-screen-2xl px-4 pb-12 pt-24 md:px-8">
         <nav className="mb-8 flex items-center gap-2 text-sm text-[#b7b5b4]">

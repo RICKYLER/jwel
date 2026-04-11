@@ -27,6 +27,7 @@ import bykelinkLogo from '../../assets/bykelinklogo.png'
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
   { label: 'Showroom', href: '/showroom', id: 'showroom', icon: StorefrontRoundedIcon },
+  { label: 'Spare Parts', href: '/spare-parts', id: 'spare-parts', icon: StorefrontRoundedIcon },
   { label: 'About', href: '/#about', id: 'about', icon: InfoRoundedIcon },
   { label: 'Contact', href: '/#contact', id: 'contact', icon: CallRoundedIcon },
 ]
@@ -103,6 +104,7 @@ export default function HeroSection({
   onSelectSlide,
   onOpenAuthSection,
   onNavigateShowroom,
+  onNavigateSpareParts,
   onNavigateLogin,
   onNavigateSection,
   onSignOut,
@@ -226,8 +228,12 @@ export default function HeroSection({
           id: doc.id,
           ...doc.data(),
         }))
-        // Filter to only motorcycle units
-        .filter((item) => item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle')
+        // Filter to only motorcycle units and ensure they have required data
+        .filter((item) => {
+          const isMotoUnit = item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle'
+          const hasName = item.modelName || item.name
+          return isMotoUnit && hasName
+        })
         .slice(0, 10)
       setLiveModels(data)
     })
@@ -272,6 +278,11 @@ export default function HeroSection({
 
     if (link.id === 'showroom') {
       onNavigateShowroom()
+      return
+    }
+
+    if (link.id === 'spare-parts') {
+      onNavigateSpareParts()
       return
     }
 
@@ -646,7 +657,7 @@ export default function HeroSection({
                 </div>
                 <button
                   type="button"
-                  onClick={onNavigateShowroom}
+                  onClick={onNavigateSpareParts}
                   className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-[#ffb4a8] font-['Epilogue']"
                 >
                   View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
@@ -658,7 +669,7 @@ export default function HeroSection({
                   <div
                     key={part.id}
                     className="group overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a] transition duration-300 hover:border-blue-600 cursor-pointer"
-                    onClick={() => onNavigateShowroom()}
+                    onClick={() => onNavigateSpareParts()}
                   >
                     <div className="relative h-48 overflow-hidden">
                       <img
@@ -916,7 +927,7 @@ export default function HeroSection({
 
         <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-3 border-t border-white/10 px-6 py-6 text-center md:flex-row lg:px-8">
           <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">
-            © 2024 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
+            © 2026 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </p>
           <div className="flex gap-6 text-xs uppercase tracking-[0.24em] text-neutral-500">
             <a href="#">Privacy Policy</a>
