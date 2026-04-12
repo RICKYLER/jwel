@@ -30,11 +30,11 @@ export default function LoginPage({
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-[#131313] text-[#e5e2e1]">
+    <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 text-white">
       {/* Left Section: High-Impact Visual */}
-      <section className="hidden md:flex relative w-1/2 h-screen flex-col justify-between p-12">
-        <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#131313]/40 to-[#131313] z-10" />
-        <div className="absolute inset-0 bg-neutral-950/20 z-10" />
+      <section className="hidden md:flex relative w-1/2 h-screen flex-col justify-between p-12 border-r border-slate-700/40">
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-slate-900/45 to-slate-900 z-10" />
+        <div className="absolute inset-0 bg-slate-950/30 z-10" />
         <img
           alt="Yamaha R1 Detail"
           className="absolute inset-0 w-full h-full object-cover"
@@ -43,32 +43,32 @@ export default function LoginPage({
 
         {/* Branding Overlay */}
         <div className="relative z-20">
-          <div className="text-2xl font-black italic text-[#e5e2e1] tracking-tighter uppercase font-['Epilogue']">
+          <div className="text-2xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
             Bykelink
           </div>
         </div>
 
         <div className="relative z-20 space-y-4">
-          <h1 className="text-7xl font-bold tracking-tighter font-['Epilogue'] uppercase leading-none">
-            Ignite <br /> The <span className="text-[#e10100]">Pulse</span>
+          <h1 className="text-7xl font-bold tracking-tighter font-['Epilogue'] uppercase leading-none text-white">
+            Ignite <br /> The <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-300 to-cyan-300">Pulse</span>
           </h1>
-          <p className="text-neutral-400 font-['Manrope'] uppercase tracking-widest text-sm max-w-sm">
+          <p className="text-slate-300 font-['Manrope'] uppercase tracking-widest text-sm max-w-sm">
             Experience the raw precision of engineering and the thrill of the open road.
           </p>
         </div>
 
         {/* Red Ambient Glow */}
-        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-[#e10100]/20 to-transparent z-10 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-cyan-500/20 to-transparent z-10 pointer-events-none" />
       </section>
 
       {/* Right Section: Login/Signup Form */}
-      <section className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-24 relative bg-[#131313]">
+      <section className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-24 relative bg-slate-900/70 backdrop-blur-sm">
         {/* Back Button */}
         {onNavigateBack && (
           <button
             type="button"
             onClick={onNavigateBack}
-            className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-neutral-400 hover:text-white transition-colors md:top-8 md:left-8"
+            className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-400 hover:text-blue-300 transition-colors md:top-8 md:left-8"
             aria-label="Go back to home"
           >
             ← Back
@@ -77,7 +77,7 @@ export default function LoginPage({
 
         {/* Mobile Logo */}
         <div className="md:hidden mb-12">
-          <div className="text-3xl font-black italic text-[#e5e2e1] tracking-tighter uppercase font-['Epilogue']">
+          <div className="text-3xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
             Bykelink
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function LoginPage({
               className={`mb-6 rounded-xl p-4 text-sm font-['Manrope'] ${
                 authMessage.type === 'error'
                   ? 'bg-red-900/20 border border-red-600/50 text-red-200'
-                  : 'bg-emerald-900/20 border border-emerald-600/50 text-emerald-200'
+                  : 'bg-emerald-900/20 border border-emerald-500/50 text-emerald-200'
               }`}
             >
               <p>{authMessage.text}</p>
@@ -110,7 +110,7 @@ export default function LoginPage({
             <h2 className="text-4xl font-extrabold font-['Epilogue'] uppercase tracking-tighter mb-2">
               {isSignup ? 'Create Account' : 'Welcome back'}
             </h2>
-            <p className="text-neutral-400 font-['Manrope'] text-sm uppercase tracking-widest">
+            <p className="text-slate-400 font-['Manrope'] text-sm uppercase tracking-widest">
               {isSignup ? 'Join the BYKELINK community' : 'Sign in to your garage dashboard'}
             </p>
           </div>
@@ -132,7 +132,7 @@ export default function LoginPage({
                     required
                     autoComplete="name"
                     placeholder="Juan Dela Cruz"
-                    className="w-full bg-[#353534] border-none rounded-xl py-4 px-6 text-white placeholder:text-neutral-500/50 focus:ring-2 focus:ring-[#e10100]/50 transition-all outline-none font-['Manrope']"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 px-6 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400 transition-all outline-none font-['Manrope']"
                   />
                 </div>
                 <div className="space-y-1">
@@ -146,7 +146,7 @@ export default function LoginPage({
                     onChange={onAuthFieldChange}
                     autoComplete="tel"
                     placeholder="09xx xxx xxxx"
-                    className="w-full bg-[#353534] border-none rounded-xl py-4 px-6 text-white placeholder:text-neutral-500/50 focus:ring-2 focus:ring-[#e10100]/50 transition-all outline-none font-['Manrope']"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 px-6 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400 transition-all outline-none font-['Manrope']"
                   />
                 </div>
               </div>
@@ -165,7 +165,7 @@ export default function LoginPage({
                 required
                 autoComplete="email"
                 placeholder="rider@bykelink.com"
-                className="w-full bg-[#353534] border-none rounded-xl py-4 px-6 text-white placeholder:text-neutral-500/50 focus:ring-2 focus:ring-[#e10100]/50 transition-all outline-none font-['Manrope']"
+                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 px-6 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400 transition-all outline-none font-['Manrope']"
               />
             </div>
 
@@ -176,7 +176,7 @@ export default function LoginPage({
                   Password
                 </label>
                 {!isSignup && (
-                  <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ffb4a8] hover:text-[#e10100] transition-colors">
+                  <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300 hover:text-cyan-200 transition-colors">
                     Forgot Password?
                   </a>
                 )}
@@ -191,12 +191,12 @@ export default function LoginPage({
                   minLength={8}
                   autoComplete={isSignup ? 'new-password' : 'current-password'}
                   placeholder={isSignup ? '8+ characters with upper, lower, and number' : '••••••••'}
-                  className="w-full bg-[#353534] border-none rounded-xl py-4 px-6 pr-12 text-white placeholder:text-neutral-500/50 focus:ring-2 focus:ring-[#e10100]/50 transition-all outline-none font-['Manrope']"
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 px-6 pr-12 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400 transition-all outline-none font-['Manrope']"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
                   tabIndex="-1"
                 >
                   {showPassword ? (
@@ -224,12 +224,12 @@ export default function LoginPage({
                     minLength={8}
                     autoComplete="new-password"
                     placeholder="Re-enter your password"
-                    className="w-full bg-[#353534] border-none rounded-xl py-4 px-6 pr-12 text-white placeholder:text-neutral-500/50 focus:ring-2 focus:ring-[#e10100]/50 transition-all outline-none font-['Manrope']"
+                    className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 px-6 pr-12 text-white placeholder:text-slate-500 focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400 transition-all outline-none font-['Manrope']"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
                     tabIndex="-1"
                   >
                     {showConfirmPassword ? (
@@ -244,8 +244,8 @@ export default function LoginPage({
 
             {/* Password Security Checklist (Signup only) */}
             {isSignup && (
-              <div className="rounded-xl border border-neutral-700/50 bg-[#1c1b1b] p-4 text-sm text-neutral-300 space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#ffb4a8]">
+              <div className="rounded-xl border border-slate-700/70 bg-slate-900/80 p-4 text-sm text-slate-300 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
                   Password security checklist
                 </p>
                 <div className="grid gap-2 grid-cols-2 text-xs">
@@ -274,7 +274,7 @@ export default function LoginPage({
                     <div key={item.label} className="flex items-center gap-2">
                       <span
                         className={`h-2 w-2 rounded-full ${
-                          item.met ? 'bg-emerald-400' : 'bg-neutral-600'
+                          item.met ? 'bg-emerald-400' : 'bg-slate-600'
                         }`}
                       />
                       <span>{item.label}</span>
@@ -292,7 +292,7 @@ export default function LoginPage({
                   id="remember"
                   checked={rememberSession}
                   onChange={(e) => setRememberSession(e.target.checked)}
-                  className="w-4 h-4 rounded border border-neutral-600 bg-[#353534] text-[#e10100] focus:ring-[#e10100] focus:ring-offset-[#131313] cursor-pointer"
+                  className="w-4 h-4 rounded border border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
                 />
                 <label htmlFor="remember" className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 cursor-pointer">
                   Remember this session
@@ -305,7 +305,7 @@ export default function LoginPage({
               <button
                 type="submit"
                 disabled={authLoading || googleLoading}
-                className="w-full bg-[#e10100] hover:bg-[#930100] disabled:opacity-70 text-white py-5 rounded-full font-['Epilogue'] font-bold uppercase tracking-widest text-sm shadow-lg shadow-[#e10100]/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:opacity-70 text-white py-5 rounded-full font-['Epilogue'] font-bold uppercase tracking-widest text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 {isSignup && <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />}
                 {authLoading ? 'Please wait...' : (isSignup ? 'Create Secure Account' : 'Login')}
@@ -314,13 +314,13 @@ export default function LoginPage({
           </form>
 
           {/* Divider */}
-          <div className="mt-8 pt-8 border-t border-neutral-700/30">
+          <div className="mt-8 pt-8 border-t border-slate-700/50">
             <div className="flex items-center justify-center space-x-4 mb-6">
-              <span className="h-px w-8 bg-neutral-700/30" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 whitespace-nowrap">
+              <span className="h-px w-8 bg-slate-700/50" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 whitespace-nowrap">
                 Or continue with
               </span>
-              <span className="h-px w-8 bg-neutral-700/30" />
+              <span className="h-px w-8 bg-slate-700/50" />
             </div>
 
             {/* Social Login Button */}
@@ -328,7 +328,7 @@ export default function LoginPage({
               type="button"
               onClick={onGoogleSignIn}
               disabled={googleLoading || authLoading}
-              className="w-full flex items-center justify-center gap-2 bg-[#1c1b1b] hover:bg-[#2a2a2a] disabled:opacity-50 py-3 rounded-xl transition-all border border-neutral-700/30"
+              className="w-full flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-700/80 disabled:opacity-50 py-3 rounded-xl transition-all border border-slate-700/60"
             >
               <GoogleIcon sx={{ fontSize: 18 }} />
               <span className="text-[10px] font-bold uppercase tracking-widest">
@@ -339,14 +339,14 @@ export default function LoginPage({
 
           {/* Toggle Between Login/Signup */}
           <div className="mt-8 text-center">
-            <p className="text-sm font-['Manrope'] text-neutral-500">
+            <p className="text-sm font-['Manrope'] text-slate-400">
               {isSignup ? (
                 <>
                   Already have an account?{' '}
                   <button
                     type="button"
                     onClick={() => onToggleAuthMode('login')}
-                    className="text-white font-bold hover:text-[#e10100] transition-colors"
+                    className="text-white font-bold hover:text-cyan-300 transition-colors"
                   >
                     Sign In
                   </button>
@@ -357,7 +357,7 @@ export default function LoginPage({
                   <button
                     type="button"
                     onClick={() => onToggleAuthMode('signup')}
-                    className="text-white font-bold hover:text-[#e10100] transition-colors"
+                    className="text-white font-bold hover:text-cyan-300 transition-colors"
                   >
                     Sign Up
                   </button>
@@ -371,23 +371,23 @@ export default function LoginPage({
         <div className="absolute top-12 right-12 opacity-5 pointer-events-none hidden lg:block">
           <TwoWheelerRoundedIcon sx={{ fontSize: 200 }} className="text-white" />
         </div>
-      </section>
 
-      {/* Footer Links */}
-      <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-12 md:translate-x-0 z-50">
-        <div className="flex space-x-6">
-          <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 hover:text-white transition-colors flex items-center gap-1">
-            <HelpOutlineRoundedIcon sx={{ fontSize: 16 }} />
-            Help
-          </a>
-          <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 hover:text-white transition-colors">
-            Privacy
-          </a>
-          <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-600 hover:text-white transition-colors">
-            Terms
-          </a>
-        </div>
-      </footer>
+        {/* Footer Links */}
+        <footer className="mt-10 w-full max-w-md border-t border-slate-700/50 pt-6">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2">
+            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors flex items-center gap-1">
+              <HelpOutlineRoundedIcon sx={{ fontSize: 16 }} />
+              Help
+            </a>
+            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors">
+              Privacy
+            </a>
+            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors">
+              Terms
+            </a>
+          </div>
+        </footer>
+      </section>
     </div>
   )
 }

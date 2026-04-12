@@ -33,14 +33,14 @@ export default function ConfirmationModal({
                     ? 'bg-red-950/40'
                     : 'bg-red-100'
                   : isDarkMode
-                    ? 'bg-yellow-950/40'
-                    : 'bg-yellow-100'
+                    ? 'bg-cyan-950/40'
+                    : 'bg-cyan-100'
               }`}
             >
               <WarningRoundedIcon
                 sx={{
                   fontSize: 24,
-                  color: isDangerous ? '#ff7070' : '#fbbf24',
+                  color: isDangerous ? '#ff7070' : '#22d3ee',
                 }}
               />
             </div>

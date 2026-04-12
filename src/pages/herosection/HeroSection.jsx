@@ -6,14 +6,12 @@ import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
 import CallRoundedIcon from '@mui/icons-material/CallRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import GoogleIcon from '@mui/icons-material/Google'
 import HomeRoundedIcon from '@mui/icons-material/HomeRounded'
 import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
@@ -22,7 +20,7 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import GlobalLoadingScreen from '../../components/GlobalLoadingScreen'
 import ChatBox from '../../components/ChatBox'
-import bykelinkLogo from '../../assets/bykelinklogo.png'
+import NavHeader from '../../components/NavHeader'
 
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
@@ -36,57 +34,6 @@ const heroImages = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDUXTztadQnPhgfPr6AAAzKnk9R4V-FusbLlr-opEiMM2xiC_7NLm_ZSIW_UcKiwm6RndIZIOm8EvIQo3MSSU7XXB8jJO1HU34CJBGDxZWAW5uFAysL1sO8KxAombPTzwYBmDpEgsYU-PVLjn_Hg_JgEsQU9AUT0YEq5s5USKEICdy8Fo8Yh-iPQJC7Pi7qtV_ql9hTM3INKbyaoW6FlR6g-15KQgJF4lQxehfuY50rPySLu-21iL0vE4gMmMEcOAywT87CYWch9X4',
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAWPZ6eH2GpP5vf76ITwW-sqFmRkBQUaOylfPb0O6fhAZtPX7QAVnv1nv0Z5R3DGX5sGy2o1PTzK9pMt_bBVNfXCRqiLmLhosIqxqPThr3cvo8ibfGY8mQ3uGl9JxWOVqS47S6VqypBiyFG85q6j7S4nDX_Qf4yHPIqJsamPOdABLRFx73XfqdjHSG51ty1ZIyplF3qNd9N30nVel8tE_nXn4C4LCjY-8SnDQ2c4UKPluczqIj1KgvPL4cCnafqEYAYAZAHfyUcydo',
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDPFwSe3L1EylQOxfwf4RgFBX4jhEy6Zejrh6uBRJ6RUj8pU5edtKrH4DZAajTvMKBVz6Q-vuGkjG69ISsvjUl2Lp9nIAAjyeDtXSKZVCgVI15pHAzij007ZZ_yLmMQXKwuf7jk-1NBwrRHz6uWsZsVFfd8dPg4tKPpbwGE9ED0FNyvXvHZV6OZiCX5UuLqtGAjm4Uhsq-NSE3aliZcOziTYCe05OSiI6EyuX3lrHxBIppOz5qvWGef9teH8PsfdVzC6o4KImTXNj4',
-]
-
-const categories = [
-  {
-    title: 'Scooters',
-    subtitle: 'The City Conquerors',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAWPZ6eH2GpP5vf76ITwW-sqFmRkBQUaOylfPb0O6fhAZtPX7QAVnv1nv0Z5R3DGX5sGy2o1PTzK9pMt_bBVNfXCRqiLmLhosIqxqPThr3cvo8ibfGY8mQ3uGl9JxWOVqS47S6VqypBiyFG85q6j7S4nDX_Qf4yHPIqJsamPOdABLRFx73XfqdjHSG51ty1ZIyplF3qNd9N30nVel8tE_nXn4C4LCjY-8SnDQ2c4UKPluczqIj1KgvPL4cCnafqEYAYAZAHfyUcydo',
-    large: true,
-  },
-  {
-    title: 'Underbone',
-    subtitle: 'Pure Performance',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuBDsEVbis-WqVJG_HnFZJ3yMM46Yb80aYgSiuYGAN71h_W4w2ESrhhseg6CQwAduBh5zM8LBQ7TjUH0U9pOb1j552UbgX7kVWh_Gv0ZTUCmMyY8V9aFkfRGuT0UuHc7nesX2z_ehlLXnSzI3eytCL6Tacmhk993kwDR1l453Mu1Ijqrlr7z0-8c6pAcUepNFOEJttFm0JTrOg0eFq166S2tuxiWwQTstazLC2M4k03weWxw-LDAl5kWLW__mUP4D56fGgyDuIK82jg',
-  },
-  {
-    title: 'Big Bikes',
-    subtitle: 'Unleash the Beast',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuAkBp_k4jLY8y4m3RKoF5e8NrmHj-tZsfF-b7E0We6X6tqiFIP0XefpdoOol_t8F9QgLNEdNeG8iwIcQZKdRdUcX5SSJc9jV7NDqaPxrdKYnboJjLmYhD_HALsDXrwtNnwLukncf0Hu0PffMdZP-RDAUK4TUSBpsCg2JGkZpQ0DNcTphK1kVywHyqHPjU_Xv0CbzrTaw-qJ2Rz6Gf4nQ48VRFwJtX7gr5wgDwKM2d86D6yXE_tIAkxz5Jb1HZ3UAOK8ca10v2CJnw0',
-  },
-]
-
-const featuredModels = [
-  {
-    name: 'Yamaha Mio Gravis',
-    description: 'Urban agility redefined for the modern explorer.',
-    price: '₱3,450',
-    note: 'Starting Monthly',
-    badge: 'Popular Choice',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuChfhwlpZbQzmJ-un4mRYtVKtEsNlPsK31Ty6GMuScM0k2vCZZrpha1z8G23TCaAghinEwGIe_IMuYEX5sUrcyMWB1gV7Y9rwTVbI12OvjbrwAElv5y3JeT6pLHSUDqS-utHYtyl5c7dayehcb9TdhdIK98kXqNj4b_Z2KOoaot9MCKrPM0DPzjWDiaI6QGgHEpc8UkkW-9eyww1AHSEkY7cgcfXWD65ZeHSOYX4OTb9bmMM3MMLk6rnhXFe-S23OKCQF0VomO82cQ',
-    specs: [
-      { label: 'Engine', value: '125cc Blue Core' },
-      { label: 'Weight', value: '100kg' },
-    ],
-  },
-  {
-    name: 'Yamaha NMAX',
-    description: 'The King of the road in style and comfort.',
-    price: '₱5,200',
-    note: 'Starting Monthly',
-    badge: 'Premium Grade',
-    image:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuDPFwSe3L1EylQOxfwf4RgFBX4jhEy6Zejrh6uBRJ6RUj8pU5edtKrH4DZAajTvMKBVz6Q-vuGkjG69ISsvjUl2Lp9nIAAjyeDtXSKZVCgVI15pHAzij007ZZ_yLmMQXKwuf7jk-1NBwrRHz6uWsZsVFfd8dPg4tKPpbwGE9ED0FNyvXvHZV6OZiCX5UuLqtGAjm4Uhsq-NSE3aliZcOziTYCe05OSiI6EyuX3lrHxBIppOz5qvWGef9teH8PsfdVzC6o4KImTXNj4',
-    specs: [
-      { label: 'Engine', value: '155cc VVA' },
-      { label: 'Brakes', value: 'Dual Channel ABS' },
-    ],
-  },
 ]
 
 const serviceChecks = [
@@ -109,7 +56,6 @@ export default function HeroSection({
   onNavigateSection,
   onSignOut,
 }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoadingComplete, setIsLoadingComplete] = useState(false)
   const [unitsReady, setUnitsReady] = useState(0)
   const [happyRiders, setHappyRiders] = useState(0)
@@ -117,6 +63,9 @@ export default function HeroSection({
   const [liveCategories, setLiveCategories] = useState([])
   const [liveModels, setLiveModels] = useState([])
   const [liveSpareParts, setLiveSpareParts] = useState([])
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
+  const [isModelsLoading, setIsModelsLoading] = useState(true)
+  const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
   const [carouselIndex, setCarouselIndex] = useState(0)
 
   // Generate SVG placeholder image
@@ -124,8 +73,8 @@ export default function HeroSection({
     const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" style="stop-color:#353534;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#1c1b1b;stop-opacity:1" />
+          <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
         </linearGradient>
       </defs>
       <rect width="${width}" height="${height}" fill="url(#grad)"/>
@@ -142,16 +91,38 @@ export default function HeroSection({
   )
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMenuOpen(false)
-      }
+    const revealElements = document.querySelectorAll('[data-reveal]')
+    if (revealElements.length === 0) return
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      revealElements.forEach((node) => {
+        node.style.transitionDelay = '0ms'
+        node.classList.add('reveal-visible')
+      })
+      return
     }
 
-    window.addEventListener('resize', handleResize)
+    revealElements.forEach((node) => {
+      const delay = Number(node.dataset.revealDelay || 0)
+      node.style.transitionDelay = `${delay}ms`
+    })
 
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible')
+            revealObserver.unobserve(entry.target)
+          }
+        })
+      },
+      { root: null, rootMargin: '0px 0px -10% 0px', threshold: 0.2 },
+    )
+
+    revealElements.forEach((node) => revealObserver.observe(node))
+
+    return () => revealObserver.disconnect()
+  }, [isLoadingComplete])
 
   // Animate counters when page loading completes
   useEffect(() => {
@@ -192,25 +163,32 @@ export default function HeroSection({
       orderBy('stockQuantity', 'desc')
     )
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const inventoryItems = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const inventoryItems = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
 
-      // Group by category and get highest stock item for each category
-      const categoryMap = new Map()
-      inventoryItems.forEach((item) => {
-        const categoryName = item.category || item.name || 'Unknown'
-        if (!categoryMap.has(categoryName) || (item.stockQuantity || 0) > (categoryMap.get(categoryName).stockQuantity || 0)) {
-          categoryMap.set(categoryName, item)
-        }
-      })
+        const categoryMap = new Map()
+        inventoryItems.forEach((item) => {
+          const categoryName = item.category || item.name || 'Unknown'
+          if (!categoryMap.has(categoryName) || (item.stockQuantity || 0) > (categoryMap.get(categoryName).stockQuantity || 0)) {
+            categoryMap.set(categoryName, item)
+          }
+        })
 
-      // Convert to array and limit to 6
-      const categoriesWithHighestStock = Array.from(categoryMap.values()).slice(0, 6)
-      setLiveCategories(categoriesWithHighestStock)
-    })
+        const categoriesWithHighestStock = Array.from(categoryMap.values()).slice(0, 6)
+        setLiveCategories(categoriesWithHighestStock)
+        setIsCategoriesLoading(false)
+      },
+      (error) => {
+        console.error('Unable to load hero categories', error)
+        setLiveCategories([])
+        setIsCategoriesLoading(false)
+      },
+    )
 
     return () => unsubscribe()
   }, [])
@@ -222,21 +200,29 @@ export default function HeroSection({
       orderBy('createdAt', 'desc')
     )
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        // Filter to only motorcycle units and ensure they have required data
-        .filter((item) => {
-          const isMotoUnit = item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle'
-          const hasName = item.modelName || item.name
-          return isMotoUnit && hasName
-        })
-        .slice(0, 10)
-      setLiveModels(data)
-    })
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((item) => {
+            const isMotoUnit = item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle'
+            const hasName = item.modelName || item.name
+            return isMotoUnit && hasName
+          })
+          .slice(0, 10)
+        setLiveModels(data)
+        setIsModelsLoading(false)
+      },
+      (error) => {
+        console.error('Unable to load hero featured models', error)
+        setLiveModels([])
+        setIsModelsLoading(false)
+      },
+    )
 
     return () => unsubscribe()
   }, [])
@@ -248,15 +234,24 @@ export default function HeroSection({
       orderBy('createdAt', 'desc')
     )
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((item) => item.category === 'Spare Parts')
-      setLiveSpareParts(data.slice(0, 8))
-    })
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((item) => item.category === 'Spare Parts')
+        setLiveSpareParts(data.slice(0, 8))
+        setIsSparePartsLoading(false)
+      },
+      (error) => {
+        console.error('Unable to load hero spare parts', error)
+        setLiveSpareParts([])
+        setIsSparePartsLoading(false)
+      },
+    )
 
     return () => unsubscribe()
   }, [])
@@ -272,10 +267,7 @@ export default function HeroSection({
     return () => clearInterval(interval)
   }, [liveModels.length])
 
-  const handleNavClick = (event, link) => {
-    event.preventDefault()
-    setIsMenuOpen(false)
-
+  const handleNavClick = (link) => {
     if (link.id === 'showroom') {
       onNavigateShowroom()
       return
@@ -290,7 +282,35 @@ export default function HeroSection({
   }
 
   return (
-    <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-['Manrope']">
+    <div className="min-h-screen overflow-x-hidden bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1] font-['Manrope']">
+      <style>{`
+        [data-reveal] {
+          opacity: 0;
+          transform: translateY(24px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+          will-change: opacity, transform;
+        }
+
+        [data-reveal="left"] {
+          transform: translateX(-24px);
+        }
+
+        [data-reveal="right"] {
+          transform: translateX(24px);
+        }
+
+        [data-reveal].reveal-visible {
+          opacity: 1;
+          transform: translate(0, 0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          [data-reveal] {
+            transition: none;
+          }
+        }
+      `}</style>
+
       {isPageLoading && (
         <GlobalLoadingScreen
           role="Yamaha Experience"
@@ -300,220 +320,137 @@ export default function HeroSection({
       )}
 
       <div className={`transition-opacity duration-500 ${isPageLoading && !isLoadingComplete ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-        <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl shadow-2xl shadow-blue-900/10">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            onClick={() => onNavigateSection('home', 'Home')}
-            className="flex items-center gap-3 text-left"
-          >
-            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-xl bg-white/95 p-1.5" />
-            <div>
-              <div className="text-lg font-black uppercase tracking-tight text-neutral-100 font-['Epilogue'] sm:text-2xl">
-                BYKELINK
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 sm:text-[11px]">
-                Yamaha Dealer
-              </div>
-            </div>
-          </button>
-
-          <nav className="hidden items-center gap-7 md:flex">
-            {navLinks.map((link) => {
-              const isActive = activeNav === link.label
-
-              return (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(event) => handleNavClick(event, link)}
-                  className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
-                    isActive
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-100'
-                  }`}
-                >
-                  {link.label}
-                </a>
-              )
-            })}
-          </nav>
-
-          <div className="hidden items-center gap-3 md:flex">
-            {currentUser ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onOpenAuthSection('login')}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white"
-                >
-                  {customerName}
-                </button>
-                <button
-                  type="button"
-                  onClick={onSignOut}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-blue-500 hover:text-white"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={onNavigateLogin}
-                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95"
-              >
-                Get Started
-                <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-              </button>
-            )}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className="inline-flex rounded-xl border border-white/10 bg-white/5 p-2 text-white md:hidden"
-            aria-label="Toggle menu"
-            aria-expanded={isMenuOpen}
-          >
-            {isMenuOpen ? <CloseRoundedIcon fontSize="small" /> : <MenuRoundedIcon fontSize="small" />}
-          </button>
-        </div>
-
-        {isMenuOpen && (
-          <div className="border-t border-white/10 bg-neutral-950/95 px-4 py-4 md:hidden">
-            <div className="flex flex-col gap-3">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(event) => handleNavClick(event, link)}
-                  className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white"
-                >
-                  {link.label}
-                </a>
-              ))}
-
-              {currentUser ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false)
-                    onSignOut()
-                  }}
-                  className="rounded-xl bg-white px-4 py-3 text-sm font-black uppercase tracking-tight text-black transition hover:bg-blue-500 hover:text-white"
-                >
-                  Sign Out
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false)
-                    onNavigateLogin()
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white transition duration-300 hover:bg-blue-700"
-                >
-                  Get Started
-                  <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+        <NavHeader
+          currentUser={currentUser}
+          customerName={customerName}
+          activeNav={activeNav}
+          navLinks={navLinks}
+          onLogoClick={() => onNavigateSection('home', 'Home')}
+          onNavigateClick={handleNavClick}
+          onUserMenuClick={() => onOpenAuthSection('login')}
+          onSignOut={onSignOut}
+          onAuthClick={onNavigateLogin}
+        />
 
       <main>
-        <section id="home" className="relative flex min-h-screen items-center overflow-hidden pt-20">
+        <section id="home" className="relative overflow-x-hidden pt-28 pb-14 sm:pt-32 lg:pt-28 lg:pb-20" data-reveal-delay="40">
           <div className="absolute inset-0">
             <img
               src={currentHeroImage}
               alt="Yamaha superbike hero"
               className="h-full w-full object-cover opacity-60 grayscale brightness-50"
             />
-            <div className="absolute inset-0 bg-linear-to-r from-[#131313] via-[#131313]/70 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/75 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950/90 via-transparent to-blue-500/10" />
           </div>
+
+          <div className="pointer-events-none absolute -left-20 top-14 h-56 w-56 rounded-full bg-blue-600/20 blur-3xl sm:h-72 sm:w-72" />
+          <div className="pointer-events-none absolute -right-16 bottom-16 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl sm:h-72 sm:w-72" />
 
           <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl" data-reveal="left">
-              <span className="mb-4 block text-sm font-extrabold uppercase tracking-[0.35em] text-[#e10100] font-['Epilogue']">
-                Authorized Yamaha Excellence
-              </span>
-              <h1 className="mb-6 text-5xl leading-none font-black tracking-tight text-white font-['Epilogue'] sm:text-6xl lg:text-8xl">
-                Ride the Future of <span className="italic text-[#e10100]">Yamaha</span>{' '}
-                Excellence
-              </h1>
-              <p className="mb-8 max-w-2xl text-base font-medium text-neutral-300 sm:text-lg">
-                Experience the raw power and precision engineering of Japan's finest
-                motorcycles. From urban commuting to racetrack dominance, we bring the Yamaha
-                philosophy to your garage.
-              </p>
+            <div className="grid items-start gap-6 xl:gap-10">
+              <div className="max-w-4xl" data-reveal="left">
+                <span className="mb-6 block text-xs font-extrabold uppercase tracking-[0.35em] text-red-600 font-['Epilogue']">
+                  Authorized Yamaha Excellence
+                </span>
+                <h1 className="mb-6 text-5xl leading-[1.1] font-black tracking-tight text-white font-['Epilogue'] sm:text-6xl lg:text-7xl xl:text-8xl">
+                  Ride the Future<br />
+                  of <span className="text-red-600">Yamaha</span><br />
+                  Excellence
+                </h1>
+                <p className="mb-10 max-w-2xl text-sm font-medium text-neutral-300 sm:text-base lg:text-lg">
+                  Experience the raw power and precision engineering of Japan's finest motorcycles. From urban commuting to racetrack dominance, we bring the Yamaha philosophy to your garage.
+                </p>
 
-              <div className="flex flex-wrap gap-4">
-                <button
-                  type="button"
-                  onClick={onNavigateShowroom}
-                  className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-blue-700 px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white shadow-xl shadow-blue-600/25 transition duration-300 hover:scale-[1.02] hover:shadow-blue-600/40 active:scale-95 font-['Epilogue']"
-                >
-                  Explore Showroom
-                  <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-                </button>
-                <button
-                  type="button"
-                  onClick={onNavigateLogin}
-                  className="rounded-full border border-white/10 bg-white/10 px-8 py-4 text-sm font-extrabold uppercase tracking-[0.18em] text-white backdrop-blur-md transition duration-300 hover:bg-white/15 hover:border-white/20 font-['Epilogue']"
-                >
-                  BOOK APPOINTMENT
-                </button>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={onNavigateShowroom}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white shadow-lg shadow-blue-600/30 transition duration-300 hover:scale-[1.02] active:scale-95 font-['Epilogue']"
+                  >
+                    Explore Showroom
+                    <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onNavigateLogin}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/50 bg-transparent px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white transition duration-300 hover:border-white hover:bg-white/10 font-['Epilogue']"
+                  >
+                    Book Appointment
+                  </button>
+                </div>
+
+                <div className="mt-8 flex items-center gap-2">
+                  {heroImages.map((image, index) => (
+                    <button
+                      key={image}
+                      type="button"
+                      onClick={() => onSelectSlide(index)}
+                      aria-label={`Show hero ${index + 1}`}
+                      className={`h-2 rounded-full transition-all ${
+                        activeSlide === index ? 'w-8 bg-blue-600' : 'w-2 bg-white/30'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <div className="mt-8 flex items-center gap-3">
-                {heroImages.map((image, index) => (
-                  <button
-                    key={image}
-                    type="button"
-                    onClick={() => onSelectSlide(index)}
-                    aria-label={`Show hero ${index + 1}`}
-                    className={`h-2.5 rounded-full transition-all ${
-                      activeSlide === index ? 'w-10 bg-blue-600' : 'w-2.5 bg-white/35'
-                    }`}
-                  />
-                ))}
+            <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-3 lg:max-w-4xl">
+              <div className="px-5 py-4 text-center">
+                <div className="text-3xl font-black text-white font-['Epilogue']">{unitsReady}+</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                  Units Ready
+                </div>
+              </div>
+              <div className="px-5 py-4 text-center">
+                <div className="text-3xl font-black text-white font-['Epilogue']">{happyRiders.toLocaleString()}+</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                  Happy Riders
+                </div>
+              </div>
+              <div className="px-5 py-4 text-center">
+                <div className="text-3xl font-black text-white font-['Epilogue']">{serviceRating.toFixed(1)}/5</div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                  Service Rating
+                </div>
               </div>
             </div>
           </div>
-
-          <div className="absolute bottom-10 right-4 hidden gap-10 text-right xl:flex xl:right-8">
-            <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">{unitsReady}+</div>
-              <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
-                Units Ready
-              </div>
-            </div>
-            <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">{happyRiders.toLocaleString()}+</div>
-              <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
-                Happy Riders
-              </div>
-            </div>
-            <div>
-              <div className="text-5xl font-black text-white font-['Epilogue']">{serviceRating.toFixed(1)}/5</div>
-              <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#ffb4a8]">
-                Service Rating
-              </div>
-            </div>
           </div>
         </section>
 
-        <section id="showroom" className="mx-auto max-w-screen-2xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
-          <h2 className="mb-10 text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
-            Popular Categories
-          </h2>
+        <section id="showroom" className="mx-auto max-w-screen-2xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24" data-reveal="up" data-reveal-delay="80">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="120">
+            <div>
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+                Curated For Riders
+              </p>
+              <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
+                Popular Categories
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={onNavigateShowroom}
+              className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
+            >
+              Browse Showroom <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+          </div>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:auto-rows-[290px]">
-            {(liveCategories.length > 0 ? liveCategories : categories).map((category, index) => (
+          <div className="rounded-[28px] border border-white/10 bg-slate-900/40 p-4 backdrop-blur-md sm:p-6" data-reveal="up" data-reveal-delay="160">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:auto-rows-[290px]">
+            {isCategoriesLoading ? (
+              <div className="md:col-span-3 rounded-2xl border border-white/10 bg-slate-900 p-8 text-center text-white/70">
+                Loading live categories...
+              </div>
+            ) : liveCategories.length === 0 ? (
+              <div className="md:col-span-3 rounded-2xl border border-white/10 bg-slate-900 p-8 text-center text-white/70">
+                No live categories available right now.
+              </div>
+            ) : liveCategories.map((category, index) => (
               <article
-                key={category.id || category.title}
+                key={category.id || category.title || category.name}
                 className={`group relative overflow-hidden rounded-2xl cursor-pointer ${
                   category.featured || index === 0 ? 'md:col-span-2 md:row-span-2' : ''
                 }`}
@@ -535,12 +472,13 @@ export default function HeroSection({
                 </div>
               </article>
             ))}
+            </div>
           </div>
         </section>
 
-        <section className="bg-[#1c1b1b] py-20 lg:py-24">
+        <section className="bg-linear-to-b from-slate-900/80 to-slate-900/20 py-20 lg:py-24" data-reveal="up" data-reveal-delay="100">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="140">
               <div>
                 <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
                   Featured Models
@@ -550,22 +488,32 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateShowroom}
-                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-[#ffb4a8] font-['Epilogue']"
+                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
               >
                 View All Models <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
               </button>
             </div>
 
-            <div className="relative overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-              <div className="flex gap-8 transition-transform duration-700"
-                style={{
-                  transform: `translateX(calc(-${carouselIndex * 100}% - ${carouselIndex * 2}rem))`,
-                }}
-              >
-                {(liveModels.length > 0 ? liveModels : featuredModels).map((model) => (
+            <div className="relative overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" data-reveal="up" data-reveal-delay="180">
+              {isModelsLoading ? (
+                <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                  Loading featured models...
+                </div>
+              ) : liveModels.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                  No live featured models available right now.
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-8 transition-transform duration-700"
+                    style={{
+                      transform: `translateX(calc(-${carouselIndex * 100}% - ${carouselIndex * 2}rem))`,
+                    }}
+                  >
+                    {liveModels.map((model) => (
                   <article
                     key={model.id || model.name}
-                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a] cursor-pointer transition duration-300 hover:border-blue-600"
+                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-blue-600 hover:shadow-2xl hover:shadow-blue-900/20"
                     onClick={() => onNavigateShowroom()}
                   >
                     <div className="relative h-80 overflow-hidden">
@@ -574,7 +522,7 @@ export default function HeroSection({
                         alt={model.modelName || model.name}
                         className="h-full w-full object-cover transition duration-500 hover:scale-105"
                       />
-                      <div className="absolute right-4 top-4 rounded-full bg-amber-500 px-3 py-1 text-[10px] font-black uppercase tracking-tight text-black font-['Epilogue']">
+                      <div className="absolute right-4 top-4 rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black uppercase tracking-tight text-white font-['Epilogue']">
                         {model.series || 'Premium'}
                       </div>
                     </div>
@@ -590,13 +538,13 @@ export default function HeroSection({
                       </div>
 
                       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl bg-[#353534] px-4 py-3 text-center">
+                        <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
                             Engine
                           </span>
                           <span className="block text-sm font-black text-white">{model.engineCC || model.engine || 'N/A'}</span>
                         </div>
-                        <div className="rounded-xl bg-[#353534] px-4 py-3 text-center">
+                        <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
                             Stock
                           </span>
@@ -605,50 +553,52 @@ export default function HeroSection({
                       </div>
                     </div>
                   </article>
-                ))}
-              </div>
+                    ))}
+                  </div>
 
-              {/* Carousel navigation buttons */}
-              <div className="mt-6 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setCarouselIndex((prev) => Math.max(0, prev - 1))}
-                  className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
-                  aria-label="Previous model"
-                >
-                  <ArrowForwardRoundedIcon sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
-                </button>
+                  {/* Carousel navigation buttons */}
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCarouselIndex((prev) => Math.max(0, prev - 1))}
+                      className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                      aria-label="Previous model"
+                    >
+                      <ArrowForwardRoundedIcon sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
+                    </button>
 
-                {(liveModels.length > 0 ? liveModels : featuredModels).map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCarouselIndex(index)}
-                    className={`h-2 rounded-full transition-all ${
-                      carouselIndex === index ? 'w-6 bg-blue-600' : 'w-2 bg-white/35'
-                    }`}
-                    aria-label={`Go to model ${index + 1}`}
-                  />
-                ))}
+                    {liveModels.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setCarouselIndex(index)}
+                        className={`h-2 rounded-full transition-all ${
+                          carouselIndex === index ? 'w-6 bg-blue-600' : 'w-2 bg-white/35'
+                        }`}
+                        aria-label={`Go to model ${index + 1}`}
+                      />
+                    ))}
 
-                <button
-                  type="button"
-                  onClick={() => setCarouselIndex((prev) => prev + 1)}
-                  className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
-                  aria-label="Next model"
-                >
-                  <ArrowForwardRoundedIcon sx={{ fontSize: 20 }} />
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setCarouselIndex((prev) => (prev + 1) % Math.max(1, liveModels.length))}
+                      className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                      aria-label="Next model"
+                    >
+                      <ArrowForwardRoundedIcon sx={{ fontSize: 20 }} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </section>
 
         {/* Spare Parts Section */}
-        {liveSpareParts.length > 0 && (
-          <section className="bg-[#1c1c1c] py-20 lg:py-24">
+        {!isSparePartsLoading && liveSpareParts.length > 0 && (
+          <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
             <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-              <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="160">
                 <div>
                   <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
                     Genuine Spare Parts
@@ -658,17 +608,17 @@ export default function HeroSection({
                 <button
                   type="button"
                   onClick={onNavigateSpareParts}
-                  className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-[#ffb4a8] font-['Epilogue']"
+                  className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
                 >
                   View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4" data-reveal="up" data-reveal-delay="200">
                 {liveSpareParts.map((part) => (
                   <div
                     key={part.id}
-                    className="group overflow-hidden rounded-2xl border border-white/10 bg-[#2a2a2a] transition duration-300 hover:border-blue-600 cursor-pointer"
+                    className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-blue-600 hover:shadow-2xl hover:shadow-blue-900/20 cursor-pointer"
                     onClick={() => onNavigateSpareParts()}
                   >
                     <div className="relative h-48 overflow-hidden">
@@ -697,7 +647,7 @@ export default function HeroSection({
           </section>
         )}
 
-        <section id="service" className="py-20 lg:py-24">
+        <section id="service" className="py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
           <div className="mx-auto grid max-w-screen-2xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:gap-16 lg:px-8">
             <div className="relative" data-reveal="left">
               <div className="absolute -left-6 -top-6 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl" />
@@ -706,7 +656,7 @@ export default function HeroSection({
                 alt="Motorcycle workshop"
                 className="relative z-10 rounded-2xl shadow-2xl"
               />
-              <div className="absolute -bottom-5 right-0 z-20 rounded-2xl border border-white/10 bg-[#2a2a2a] p-4 sm:-right-4 sm:p-5">
+              <div className="absolute -bottom-5 right-0 z-20 rounded-2xl border border-white/10 bg-slate-900 p-4 sm:-right-4 sm:p-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 text-white">
                     <VerifiedRoundedIcon sx={{ fontSize: 20 }} />
@@ -723,7 +673,7 @@ export default function HeroSection({
 
             <div data-reveal="right">
               <h2 className="mb-5 text-4xl font-black uppercase leading-tight text-white font-['Epilogue'] sm:text-5xl">
-                Authorized <span className="text-[#e10100]">Yamaha</span> Service
+                Authorized <span className="text-[#2563eb]">Yamaha</span> Service
               </h2>
               <p className="mb-8 text-base text-neutral-300 sm:text-lg">
                 Our master technicians use Yamaha-engineered diagnostics to keep your machine
@@ -734,7 +684,7 @@ export default function HeroSection({
               <ul className="mb-8 space-y-4">
                 {serviceChecks.map((item) => (
                   <li key={item} className="flex items-center gap-3 text-white">
-                    <CheckCircleRoundedIcon sx={{ fontSize: 20 }} className="text-[#e10100]" />
+                    <CheckCircleRoundedIcon sx={{ fontSize: 20 }} className="text-[#2563eb]" />
                     <span className="font-medium">{item}</span>
                   </li>
                 ))}
@@ -743,7 +693,7 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateLogin}
-                className="inline-flex items-center gap-3 rounded-full bg-white px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-black transition duration-300 hover:bg-blue-600 hover:text-white hover:shadow-lg hover:shadow-blue-600/30 active:scale-95 font-['Epilogue']"
+                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95 font-['Epilogue']"
               >
                 Schedule Appointment
                 <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />
@@ -752,128 +702,200 @@ export default function HeroSection({
           </div>
         </section>
 
-        <section id="contact" className="bg-[#0e0e0e] py-20 lg:py-24">
+        <section id="contact" className="bg-[#0e0e0e] py-20 lg:py-24" data-reveal="up" data-reveal-delay="140">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-[28px] bg-[#1c1b1b] shadow-2xl md:flex">
+            <div className="overflow-hidden rounded-4xl border border-white/10 bg-slate-900 shadow-2xl md:flex" data-reveal="up" data-reveal-delay="180">
               <div className="p-8 sm:p-10 lg:w-1/2 lg:p-14">
-                <h2 className="mb-8 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-cyan-300 font-['Epilogue']">
+                  Dealer Experience Center
+                </p>
+                <h2 className="mb-5 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl">
                   Visit Our Showroom
                 </h2>
+                <p className="mb-8 max-w-xl text-sm text-slate-300 sm:text-base">
+                  Drop by our flagship branch for test-ride assistance, inventory walk-through,
+                  and financing guidance from our showroom team.
+                </p>
 
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-[#ffb4a8] font-['Epilogue']">
-                      Flagship Location
+                <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+                    Flagship Location
+                  </h4>
+                  <p className="text-lg font-bold leading-snug text-white sm:text-xl">
+                    National Highway, Visayan Village, Tagum, 8100 Davao del Norte
+                  </p>
+                </div>
+
+                <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                      Opening Hours
                     </h4>
-                    <p className="text-lg font-bold text-white sm:text-xl">
-                      123 Moto Avenue, Central District, Metro City 4002
-                    </p>
+                    <p className="text-sm text-neutral-200">Mon - Sat: 9AM - 6PM</p>
+                    <p className="text-sm text-neutral-200">Sun: 10AM - 3PM</p>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-[#ffb4a8] font-['Epilogue']">
-                        Opening Hours
-                      </h4>
-                      <p className="text-sm text-neutral-300">Mon - Sat: 9AM - 6PM</p>
-                      <p className="text-sm text-neutral-300">Sun: 10AM - 3PM</p>
-                    </div>
-                    <div>
-                      <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-[#ffb4a8] font-['Epilogue']">
-                        Direct Contact
-                      </h4>
-                      <p className="text-sm text-neutral-300">+63 (2) 8888 9999</p>
-                      <p className="text-sm text-neutral-300">sales@bykelink.com</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <a
-                      href="tel:+63288889999"
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
-                      aria-label="Call Bykelink"
-                    >
-                      <CallRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                      Direct Contact
+                    </h4>
+                    <a href="tel:+63288889999" className="block text-sm text-white transition hover:text-cyan-300">
+                      +63 (2) 8888 9999
                     </a>
-                    <a
-                      href="mailto:sales@bykelink.com"
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
-                      aria-label="Email Bykelink"
-                    >
-                      <MailRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
-                    </a>
-                    <a
-                      href="#about"
-                      onClick={(event) => {
-                        event.preventDefault()
-                        onNavigateSection('about', 'About')
-                      }}
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-white/15 transition duration-300 hover:border-blue-600 hover:text-blue-600"
-                      aria-label="About Bykelink"
-                    >
-                      <InfoRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
+                    <a href="mailto:sales@bykelink.com" className="block text-sm text-white transition hover:text-cyan-300">
+                      sales@bykelink.com
                     </a>
                   </div>
                 </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href="tel:+63288889999"
+                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700"
+                    aria-label="Call Bykelink"
+                  >
+                    <CallRoundedIcon sx={{ fontSize: 16 }} />
+                    Call Now
+                  </a>
+                  <a
+                    href="mailto:sales@bykelink.com"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-blue-600 hover:text-blue-300"
+                    aria-label="Email Bykelink"
+                  >
+                    <MailRoundedIcon sx={{ fontSize: 16 }} />
+                    Send Email
+                  </a>
+                  <a
+                    href="#about"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      onNavigateSection('about', 'About')
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-blue-600 hover:text-blue-300"
+                    aria-label="About Bykelink"
+                  >
+                    <InfoRoundedIcon sx={{ fontSize: 16 }} />
+                    Learn More
+                  </a>
+                </div>
               </div>
 
-              <div className="relative min-h-90 lg:w-1/2">
+              <div className="relative min-h-96 lg:w-1/2">
                 <img
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQjl57CRTn4SiBdfFwQt3IAIy_Dku3o8FU06jTL7JIYQHZUUsIAu39pUcr3R3-eAemhy9qRXsI0HplUOF9TdhIFm0B2D_6wIKqnf21D_6utwsBBHq2hTua6D2F_NlwFEW2VllBmcSnhn6i9J_ocvHXC8LWsuy5YZxSTqcXq-671UPoJwK6rzT5wVU6sXrtPqnji5PSBACOa-6NtyaWQMYbHYGdxhCL-VEZU9vRr6VcJP7ia762oGGcjck0stn0aS-EzDLoD-JKurM"
                   alt="Showroom map"
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-blue-600/10 mix-blend-multiply" />
+                <div className="absolute inset-0 bg-linear-to-t from-slate-950/55 via-transparent to-blue-500/10" />
+                <div className="absolute left-6 top-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                    Main Branch
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">Tagum, Davao del Norte</p>
+                </div>
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                   <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-900/30">
                     <LocationOnRoundedIcon sx={{ fontSize: 30 }} />
                   </div>
+                </div>
+                <div className="absolute bottom-6 right-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-right backdrop-blur-md">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                    Showroom Hours
+                  </p>
+                  <p className="mt-1 text-sm text-white">Mon-Sat 9AM-6PM</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="about" className="py-20 lg:py-24">
+        <section id="about" className="pt-20 pb-24 lg:pt-24 lg:pb-28" data-reveal="up" data-reveal-delay="160">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-8">
-              <div className="rounded-[28px] border border-white/10 bg-[#1c1b1b] p-6 sm:p-8">
-                <p className="mb-3 text-xs font-bold uppercase tracking-[0.32em] text-[#ffb4a8] font-['Epilogue']">
-                  Authorized Dealer
-                </p>
-                <h2 className="mb-4 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl">
-                  Built for riders who expect premium service.
-                </h2>
-                <p className="mb-6 text-neutral-300">
-                  BYKELINK delivers showroom guidance, after-sales support, financing help, and
-                  a modern digital experience in one place.
-                </p>
+            <div className="rounded-4xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl sm:p-8 lg:p-10" data-reveal="up" data-reveal-delay="200">
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+                <div>
+                  <p className="mb-3 text-xs font-bold uppercase tracking-[0.32em] text-cyan-300 font-['Epilogue']">
+                    Authorized Dealer
+                  </p>
+                  <h2 className="mb-4 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl lg:text-5xl">
+                    Built for riders who expect premium service.
+                  </h2>
+                  <p className="mb-6 max-w-3xl text-neutral-300 sm:text-lg">
+                    BYKELINK delivers showroom guidance, after-sales support, financing help, and
+                    a modern digital experience in one place.
+                  </p>
 
-                <div className="space-y-3 text-sm text-neutral-200">
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <VerifiedRoundedIcon sx={{ fontSize: 18 }} className="text-green-500" />
-                    <span>Official Yamaha-backed service and genuine parts</span>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-purple-500" />
-                    <span>Showroom assistance for scooters, underbones, and big bikes</span>
-                  </div>
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3">
-                    <CallRoundedIcon sx={{ fontSize: 18 }} className="text-cyan-500" />
-                    <span>Fast inquiry handling for test rides, promos, and availability</span>
+                  <div className="space-y-3 text-sm text-neutral-200 sm:text-base">
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <VerifiedRoundedIcon sx={{ fontSize: 18 }} className="text-green-500" />
+                      <span>Official Yamaha-backed service and genuine parts</span>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-blue-500" />
+                      <span>Showroom assistance for scooters, underbones, and big bikes</span>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <CallRoundedIcon sx={{ fontSize: 18 }} className="text-cyan-500" />
+                      <span>Fast inquiry handling for test rides, promos, and availability</span>
+                    </div>
                   </div>
                 </div>
+
+                <aside className="rounded-3xl border border-white/10 bg-linear-to-b from-slate-800 to-slate-900 p-5">
+                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+                    Brand Promise
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-3xl font-black text-white font-['Epilogue']">20+</p>
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Years in Service</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-black text-white font-['Epilogue']">100%</p>
+                      <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Genuine Parts</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onNavigateLogin}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700"
+                    >
+                      Book a Service
+                      <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />
+                    </button>
+                  </div>
+                </aside>
               </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-neutral-950">
-        <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-10 px-6 py-16 md:grid-cols-4 lg:px-8">
+      <footer className="border-t border-white/10 bg-neutral-950" data-reveal="up" data-reveal-delay="100">
+        <div className="mx-auto max-w-screen-2xl px-6 py-14 lg:px-8">
+          <div className="mb-10 flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/40 p-5 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between" data-reveal="up" data-reveal-delay="160">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300 font-['Epilogue']">Stay Connected</p>
+              <p className="mt-2 text-sm text-slate-300">Get updates on new models, promos, and service advisories.</p>
+            </div>
+            <div className="flex w-full max-w-md gap-2">
+              <input
+                type="email"
+                placeholder="Your Email"
+                className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-[#2563eb]"
+              />
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-xl bg-[#2563eb] px-4 text-white transition hover:bg-blue-600"
+                aria-label="Send newsletter email"
+              >
+                <SendRoundedIcon sx={{ fontSize: 18 }} />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-4" data-reveal="up" data-reveal-delay="210">
           <div className="space-y-4">
-            <div className="text-xl font-bold text-neutral-100 font-['Manrope']">BYKELINK</div>
-            <p className="text-sm leading-relaxed text-neutral-500">
+            <div className="text-2xl font-black text-neutral-100 font-['Epilogue']">BYKELINK</div>
+            <p className="text-sm leading-relaxed text-slate-400">
               The premier destination for Yamaha enthusiasts. We deliver not just motorcycles,
               but a legacy of racing spirit and technical perfection.
             </p>
@@ -883,11 +905,11 @@ export default function HeroSection({
             <h4 className="mb-5 text-sm font-bold uppercase tracking-wider text-neutral-100">
               Models
             </h4>
-            <ul className="space-y-3 text-sm text-neutral-500">
-              <li>Supersport</li>
-              <li>Hyper Naked</li>
-              <li>Sport Touring</li>
-              <li>Off-Road</li>
+            <ul className="space-y-3 text-sm text-slate-400">
+              <li><a href="#" className="transition hover:text-white">Supersport</a></li>
+              <li><a href="#" className="transition hover:text-white">Hyper Naked</a></li>
+              <li><a href="#" className="transition hover:text-white">Sport Touring</a></li>
+              <li><a href="#" className="transition hover:text-white">Off-Road</a></li>
             </ul>
           </div>
 
@@ -895,11 +917,11 @@ export default function HeroSection({
             <h4 className="mb-5 text-sm font-bold uppercase tracking-wider text-neutral-100">
               Dealer Info
             </h4>
-            <ul className="space-y-3 text-sm text-neutral-500">
-              <li>Dealer Careers</li>
-              <li>Yamaha Racing</li>
-              <li>Find a Store</li>
-              <li>News & Events</li>
+            <ul className="space-y-3 text-sm text-slate-400">
+              <li><a href="#" className="transition hover:text-white">Dealer Careers</a></li>
+              <li><a href="#" className="transition hover:text-white">Yamaha Racing</a></li>
+              <li><a href="#" className="transition hover:text-white">Find a Store</a></li>
+              <li><a href="#" className="transition hover:text-white">News & Events</a></li>
             </ul>
           </div>
 
@@ -907,31 +929,19 @@ export default function HeroSection({
             <h4 className="mb-5 text-sm font-bold uppercase tracking-wider text-neutral-100">
               Newsletter
             </h4>
-            <p className="mb-4 text-sm text-neutral-500">Stay tuned for the latest releases.</p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Your Email"
-                className="flex-1 rounded-xl border border-white/10 bg-[#1c1b1b] px-3 py-2 text-sm text-white outline-none focus:border-[#e10100]"
-              />
-              <button
-                type="button"
-                className="rounded-xl bg-[#e10100] px-3 text-white"
-                aria-label="Send newsletter email"
-              >
-                <SendRoundedIcon sx={{ fontSize: 18 }} />
-              </button>
-            </div>
+            <p className="mb-4 text-sm text-slate-400">Stay tuned for the latest releases.</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">Yamaha Dealer Since 2026</p>
+          </div>
           </div>
         </div>
 
         <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-3 border-t border-white/10 px-6 py-6 text-center md:flex-row lg:px-8">
-          <p className="text-xs uppercase tracking-[0.24em] text-neutral-500">
+          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
             © 2026 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </p>
-          <div className="flex gap-6 text-xs uppercase tracking-[0.24em] text-neutral-500">
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+          <div className="flex gap-6 text-xs uppercase tracking-[0.24em] text-slate-400">
+            <a href="#" className="transition hover:text-white">Privacy Policy</a>
+            <a href="#" className="transition hover:text-white">Terms of Service</a>
           </div>
         </div>
       </footer>

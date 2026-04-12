@@ -18,6 +18,7 @@ import LoginPage from './pages/LoginPage'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
+import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
@@ -55,6 +56,7 @@ const rolePriority = {
 }
 
 const dashboardByRole = {
+  customer: '/customer',
   staff: '/staff',
   'mechanics personnel': '/staff',
   'inventory personnel': '/staff',
@@ -65,6 +67,7 @@ const dashboardByRole = {
 }
 
 const dashboardRequirements = {
+  '/customer': 'customer',
   '/staff': 'staff',
   '/admin': 'admin',
   '/superadmin': 'superadmin',
@@ -147,6 +150,7 @@ const formatAuthError = (error) => {
 
 const normalizePath = (path) => {
   if (path?.startsWith('/login')) return '/login'
+  if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
   if (path?.startsWith('/service')) return '/service'
@@ -529,12 +533,12 @@ function App() {
       currentPath === '/' &&
       currentUser &&
       !isAccessResolving &&
-      accessProfile.isPrivileged &&
-      accessProfile.dashboardPath
+      accessProfile.dashboardPath &&
+      (accessProfile.isPrivileged || accessProfile.role === 'customer')
     ) {
       navigateTo(accessProfile.dashboardPath)
     }
-  }, [currentPath, currentUser, isAccessResolving, accessProfile.isPrivileged, accessProfile.dashboardPath])
+  }, [currentPath, currentUser, isAccessResolving, accessProfile.role, accessProfile.isPrivileged, accessProfile.dashboardPath])
 
   useEffect(() => {
     if (currentUser) {
@@ -772,6 +776,20 @@ function App() {
     const authorizedAdminProfile =
       authorizedAdminResult.status === 'fulfilled' ? authorizedAdminResult.value : null
     const cloudData = cloudResult.status === 'fulfilled' ? cloudResult.value?.data ?? null : null
+
+    // For customer logins, explicitly handle without depending on cloud function
+    if (requestedRole === 'customer' && !authorizedAdminProfile) {
+      return {
+        role: 'customer',
+        label: roleLabels['customer'] || 'Customer',
+        dashboardPath: '/customer',
+        isPrivileged: false,
+        authorized: true,
+        mustChangePassword: false,
+        firstLoginRequired: false,
+        source: 'customer-login',
+      }
+    }
 
     const candidateRoles = [normalizeAccessRole(cloudData?.role), authorizedAdminProfile?.role].filter(Boolean)
 
@@ -1125,7 +1143,15 @@ function App() {
     )
   }
 
-  // Block page rendering until loading screen completes for dashboard only
+  if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
+    return withSecurityModal(
+      <CustomerShowroomPage
+        currentUser={currentUser}
+        onNavigateHome={() => goToHomeSection('home', 'Home')}
+        onSignOut={handleSignOut}
+      />,
+    )
+  }
   if (shouldShowAccessLoader && (isPageLoading && !isLoadingScreenComplete)) {
     return (
       <GlobalLoadingScreen

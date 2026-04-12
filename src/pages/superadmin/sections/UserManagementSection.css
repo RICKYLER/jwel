@@ -5,7 +5,7 @@
 .user-management-primary-action {
   min-width: 11rem;
   border: 0;
-  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
   box-shadow: 0 16px 28px rgba(225, 1, 0, 0.28);
 }
 
@@ -355,7 +355,7 @@
 
 .user-pagination-button.is-active {
   border-color: rgba(225, 1, 0, 0.5);
-  background: #e10100;
+  background: #2563eb;
   color: #fff;
 }
 

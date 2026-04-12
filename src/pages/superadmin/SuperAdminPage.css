@@ -36,7 +36,7 @@
 }
 
 .superadmin-brand-mark {
-  background: linear-gradient(135deg, #e10100 0%, #8b0000 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
   box-shadow: 0 10px 24px rgba(225, 1, 0, 0.35);
 }
 
@@ -156,9 +156,12 @@
   color: var(--superadmin-text-muted) !important;
 }
 
-.superadmin-shell .text-\[\#ffb4a8\],
-.superadmin-shell .text-\[\#e10100\] {
-  color: #c1121f !important;
+.superadmin-shell .text-\[\#ffb4a8\] {
+  color: #67e8f9 !important;
+}
+
+.superadmin-shell .text-\[\#2563eb\] {
+  color: #60a5fa !important;
 }
 
 .superadmin-shell .text-black,
@@ -275,9 +278,9 @@
 }
 
 .superadmin-shell.light-mode .text-\[\#ffb4a8\],
-.superadmin-shell.light-mode .text-\[\#e10100\],
-.superadmin-shell.light-mode .text-red-400,
-.superadmin-shell.light-mode .text-red-500,
+.superadmin-shell.light-mode .text-\[\#2563eb\],
+.superadmin-shell.light-mode .text-blue-400,
+.superadmin-shell.light-mode .text-blue-500,
 .superadmin-shell.light-mode .text-emerald-300,
 .superadmin-shell.light-mode .text-emerald-400 {
   filter: saturate(1.1);

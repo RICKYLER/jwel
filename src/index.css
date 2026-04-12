@@ -12,6 +12,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 * {
@@ -23,6 +24,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: auto;
   background: #131313;
   color: #e5e2e1;
   font-family: 'Manrope', Inter, 'Segoe UI', sans-serif;
@@ -55,6 +57,7 @@ body[data-theme='dark'] {
 #root {
   min-height: 100vh;
   overflow-x: hidden;
+  overflow-y: visible;
 }
 
 img {

@@ -1,11 +1,11 @@
 .inventory-reports-title span {
-  color: #e10100;
+  color: #2563eb;
 }
 
 .inventory-reports-export-button,
 .inventory-reports-submit-button {
   border: 0;
-  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
   box-shadow: 0 16px 28px rgba(225, 1, 0, 0.28);
 }
 

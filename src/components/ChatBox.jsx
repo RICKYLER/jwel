@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { collection, addDoc, serverTimestamp, query, where, getDocs, getDoc, doc, onSnapshot, orderBy } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot, orderBy } from 'firebase/firestore'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
@@ -69,29 +69,24 @@ export default function ChatBox({ currentUser }) {
           setConversationId(newConvRef.id)
         } else {
           // For guests, check localStorage for existing guest conversation ID
-          const storedGuestConvId = localStorage.getItem('bykelink_guest_conversation_id')
           const storedGuestUserId = localStorage.getItem('bykelink_guest_user_id')
 
-          if (storedGuestConvId && storedGuestUserId) {
-            // Try to retrieve existing conversation safely by document id
-            try {
-              const convRef = doc(db, 'conversations', storedGuestConvId)
-              const convSnap = await getDoc(convRef)
+          if (storedGuestUserId) {
+            // Restore using a query scoped to guest user id instead of direct doc reads.
+            const guestConversationQuery = query(
+              conversationsRef,
+              where('userId', '==', storedGuestUserId),
+              where('isGuest', '==', true),
+              where('status', '==', 'open')
+            )
+            const guestConversationSnapshot = await getDocs(guestConversationQuery)
 
-              if (convSnap.exists()) {
-                const conversationData = convSnap.data()
-                if (
-                  conversationData?.isGuest === true
-                  && conversationData?.userId === storedGuestUserId
-                  && conversationData?.status === 'open'
-                ) {
-                  setConversationId(storedGuestConvId)
-                  setIsInitializing(false)
-                  return
-                }
-              }
-            } catch (e) {
-              console.warn('Could not restore stored guest conversation; creating a new one instead.', e)
+            if (guestConversationSnapshot.docs.length > 0) {
+              const existingGuestConversation = guestConversationSnapshot.docs[0]
+              localStorage.setItem('bykelink_guest_conversation_id', existingGuestConversation.id)
+              setConversationId(existingGuestConversation.id)
+              setIsInitializing(false)
+              return
             }
           }
 

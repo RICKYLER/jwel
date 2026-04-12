@@ -3,14 +3,14 @@ import { collection, limit, onSnapshot, query, where } from 'firebase/firestore'
 import CallRoundedIcon from '@mui/icons-material/CallRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 import { db } from '../../firebase'
 import ChatBox from '../../components/ChatBox'
+import NavHeader from '../../components/NavHeader'
 
 const sparePartsLinks = [
   { label: 'Home', href: '/', id: 'home' },
@@ -85,7 +85,6 @@ const mapInventoryToSparePartModel = (item) => {
 }
 
 export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateShowroom, onOpenSignup, currentUser }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
   const [selectedModelId, setSelectedModelId] = useState('')
@@ -129,10 +128,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
     [inventoryModels, selectedModel?.id],
   )
 
-  const handleNavLinkClick = (event, link) => {
-    event.preventDefault()
-    setIsMenuOpen(false)
-
+  const handleNavLinkClick = (link) => {
     if (link.active) {
       return
     }
@@ -229,111 +225,61 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
   const primaryImage = selectedModel?.gallery?.[activeImage] || selectedModel?.gallery?.[0] || bykelinkLogo
 
   return (
-    <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-['Manrope']">
-      <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl shadow-2xl shadow-blue-900/10">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <button type="button" onClick={onNavigateHome} className="flex items-center gap-3 text-left">
-            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-xl bg-white/95 p-1.5" />
-            <div>
-              <div className="text-lg font-black uppercase tracking-tight text-neutral-100 font-['Epilogue'] sm:text-2xl">
-                BYKELINK
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 sm:text-[11px]">
-                Yamaha Dealer
-              </div>
+    <div className="min-h-screen overflow-x-hidden bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-white font-['Manrope']">
+      <NavHeader
+        currentUser={false}
+        customerName=""
+        activeNav="Spare Parts"
+        navLinks={sparePartsLinks}
+        onLogoClick={onNavigateHome}
+        onNavigateClick={handleNavLinkClick}
+        onUserMenuClick={() => {}}
+        onSignOut={() => {}}
+        onAuthClick={goToLoginPage}
+      />
+
+      <main className="pt-24">
+        <section className="relative flex min-h-88 items-center overflow-hidden bg-linear-to-r from-blue-600 via-cyan-600 to-slate-800">
+          <div className="absolute inset-0 opacity-20">
+            <img
+              alt={selectedModel?.label || 'Spare parts highlight'}
+              className="h-full w-full object-cover"
+              src={primaryImage}
+            />
+          </div>
+          <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl">
+              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-blue-100">Genuine Spare Parts</p>
+              <h1 className="mb-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
+                Keep Every Ride <span className="bg-linear-to-r from-blue-100 to-cyan-100 bg-clip-text text-transparent">Factory Ready</span>
+              </h1>
+              <p className="max-w-2xl text-base text-slate-100 sm:text-lg">
+                Find current parts inventory, compare compatible items, and review stock information through the same polished catalog experience as our customer showroom.
+              </p>
             </div>
-          </button>
+          </div>
+        </section>
 
-          <nav className="hidden items-center gap-7 md:flex">
-            {sparePartsLinks.map((link) => {
-              const isActive = link.active
-
-              return (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(event) => handleNavLinkClick(event, link)}
-                  className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
-                    isActive
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-100'
-                  }`}
-                >
-                  {link.label}
-                </a>
-              )
-            })}
+        <div className="mx-auto max-w-screen-2xl px-4 pb-12 pt-8 md:px-8">
+          <nav className="mb-8 flex items-center gap-2 text-sm text-slate-400">
+            <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-blue-400">
+              Home
+            </button>
+            <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
+            <span className="text-blue-400">Spare Parts</span>
+            <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
+            <span className="text-white">{selectedModel?.label || 'Live Inventory'}</span>
           </nav>
 
-          <div className="hidden items-center gap-3 md:flex">
-            <button
-              type="button"
-              onClick={goToLoginPage}
-              className="rounded-full bg-blue-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95"
-            >
-              Get Started
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className="inline-flex rounded-xl border border-white/10 bg-white/5 p-2 text-white md:hidden"
-            aria-label="Toggle menu"
-            aria-expanded={isMenuOpen}
-          >
-            {isMenuOpen ? <CloseRoundedIcon fontSize="small" /> : <MenuRoundedIcon fontSize="small" />}
-          </button>
-        </div>
-
-        {isMenuOpen && (
-          <div className="border-t border-white/10 bg-neutral-950/95 px-4 py-4 md:hidden">
-            <div className="flex flex-col gap-3">
-              {sparePartsLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(event) => handleNavLinkClick(event, link)}
-                  className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white"
-                >
-                  {link.label}
-                </a>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMenuOpen(false)
-                  goToLoginPage()
-                }}
-                className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <main className="mx-auto max-w-screen-2xl px-4 pb-12 pt-24 md:px-8">
-        <nav className="mb-8 flex items-center gap-2 text-sm text-[#b7b5b4]">
-          <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-blue-400">
-            Home
-          </button>
-          <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
-          <span className="text-blue-400">Spare Parts</span>
-          <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
-          <span className="text-white">{selectedModel?.label || 'Live Inventory'}</span>
-        </nav>
-
         {isInventoryLoading ? (
-          <div className="rounded-3xl border border-white/10 bg-[#1a1a1a] px-6 py-16 text-center text-white/70">
+          <div className="rounded-3xl border border-white/10 bg-slate-900/80 px-6 py-16 text-center text-white/70">
             Loading spare parts inventory...
           </div>
         ) : selectedModel ? (
           <>
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-12">
               <div className="space-y-6 lg:col-span-7">
-                <div className="relative aspect-4/3 overflow-hidden rounded-2xl bg-[#201f1f]">
+                <div className="relative aspect-4/3 overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl shadow-blue-950/20">
                   <img
                     src={primaryImage}
                     alt={selectedModel.label}
@@ -342,7 +288,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   <div className="absolute bottom-5 right-5 flex gap-2">
                     <button
                       type="button"
-                      className="rounded-full bg-neutral-950/60 p-3 text-white transition-colors hover:bg-blue-600"
+                      className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-blue-600"
                       aria-label="Expand image"
                     >
                       <OpenInFullRoundedIcon sx={{ fontSize: 20 }} />
@@ -358,8 +304,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       onClick={() => setActiveImage(index)}
                       className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${
                         activeImage === index
-                          ? 'border-blue-600'
-                          : 'border-transparent bg-[#2a2a2a] opacity-80 hover:opacity-100'
+                          ? 'border-blue-500'
+                          : 'border-transparent bg-slate-800 opacity-80 hover:opacity-100'
                       }`}
                     >
                       <img src={image} alt={`${selectedModel.label} view ${index + 1}`} className="h-full w-full object-cover" />
@@ -369,27 +315,27 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
               </div>
 
               <div className="space-y-8 lg:col-span-5">
-                <header>
-                  <div className="mb-4 inline-block rounded-full border border-blue-600/20 bg-blue-600/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-blue-400">
+                <header className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-blue-950/10 sm:p-8">
+                  <div className="mb-4 inline-block rounded-full border border-blue-600/20 bg-blue-600/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-blue-300">
                     {selectedModel.badge}
                   </div>
                   <h1 className="text-4xl font-black leading-tight tracking-tighter text-white font-['Epilogue'] sm:text-5xl md:text-6xl">
                     {selectedModel.name}
                   </h1>
-                  <p className="mt-4 max-w-md text-lg text-[#b7b5b4]">{selectedModel.description}</p>
+                  <p className="mt-4 max-w-md text-lg text-slate-300">{selectedModel.description}</p>
                 </header>
 
-                <div>
-                  <div className="mb-3 text-sm font-bold uppercase tracking-[0.24em] text-[#b7b5b4]">
+                <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-blue-950/10 sm:p-8">
+                  <div className="mb-3 text-sm font-bold uppercase tracking-[0.24em] text-slate-400">
                     Price
                   </div>
-                  <div className="text-4xl font-black text-blue-400 font-['Epilogue']">{selectedModel.price}</div>
+                  <div className="text-4xl font-black text-transparent bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-['Epilogue']">{selectedModel.price}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   {selectedModel.specs.map((spec) => (
-                    <div key={spec.label} className="rounded-2xl bg-[#1c1b1b] p-4">
-                      <div className="mb-1 text-xs font-medium uppercase tracking-tighter text-[#b7b5b4]">
+                    <div key={spec.label} className="rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-lg shadow-blue-950/10">
+                      <div className="mb-1 text-xs font-medium uppercase tracking-tighter text-slate-400">
                         {spec.label}
                       </div>
                       <div className="text-lg font-bold text-white font-['Epilogue']">{spec.value}</div>
@@ -400,7 +346,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                 <button
                   type="button"
                   onClick={goToLoginPage}
-                  className="w-full rounded-full bg-blue-600 py-4 text-lg font-bold text-white shadow-xl shadow-blue-900/20 transition-transform active:scale-95 hover:bg-blue-700"
+                  className="w-full rounded-full bg-linear-to-r from-blue-600 to-cyan-600 py-4 text-lg font-bold text-white shadow-xl shadow-blue-900/20 transition-transform active:scale-95 hover:from-blue-700 hover:to-cyan-700"
                 >
                   Check More Items
                 </button>
@@ -415,7 +361,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   </h2>
                   <p className="text-[#b7b5b4]">Published directly from your inventory records.</p>
                 </div>
-                <div className="relative">
+                <div className="relative w-full sm:w-auto">
+                  <SearchRoundedIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -423,25 +370,23 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       setSearchQuery(e.target.value)
                       setCurrentPage(1)
                     }}
-                    placeholder="Search parts..."
-                    className="w-full sm:w-64 rounded-xl border-2 border-neutral-700 bg-neutral-900 px-4 py-3 text-sm text-white placeholder:text-neutral-500 outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/30"
+                    placeholder="Search spare parts..."
+                    className="w-full sm:w-72 rounded-xl border border-slate-600 bg-slate-800 px-10 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                   />
-                  <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-neutral-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
                 </div>
               </div>
 
-              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mb-8 rounded-3xl border border-slate-700/60 bg-slate-800/50 p-4 shadow-lg backdrop-blur-sm sm:p-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#b7b5b4]">Category</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Category</label>
                   <select
                     value={filterCategory}
                     onChange={(e) => {
                       setFilterCategory(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                   >
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>
@@ -451,14 +396,14 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#b7b5b4]">Model</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Model</label>
                   <select
                     value={filterModel}
                     onChange={(e) => {
                       setFilterModel(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                   >
                     {models.map((model) => (
                       <option key={model} value={model}>
@@ -468,14 +413,14 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-[#b7b5b4]">Variant</label>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Variant</label>
                   <select
                     value={filterVariant}
                     onChange={(e) => {
                       setFilterVariant(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-600 focus:ring-2 focus:ring-blue-600/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
                   >
                     {variants.map((variant) => (
                       <option key={variant} value={variant}>
@@ -485,13 +430,14 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   </select>
                 </div>
               </div>
+              </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:gap-8">
               {paginatedModels.length ? (
                 paginatedModels.map((model) => (
                     <article
                       key={model.id}
-                      className="group overflow-hidden rounded-3xl bg-[#1c1b1b] transition-colors duration-500 hover:bg-[#2a2a2a]"
+                      className="group overflow-hidden rounded-3xl border border-slate-600 bg-linear-to-br from-slate-700 to-slate-800 transition-all duration-300 hover:border-blue-400 hover:shadow-2xl hover:shadow-blue-500/20"
                     >
                       <div className="aspect-video overflow-hidden">
                         <img
@@ -504,7 +450,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div>
                             <h3 className="mb-1 text-xl font-bold text-white font-['Epilogue']">{model.label}</h3>
-                          <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-400">
+                          <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-300">
                               {model.accent}
                             </div>
                           </div>
@@ -513,7 +459,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         <button
                           type="button"
                           onClick={() => handleModelSelect(model.id)}
-                          className="w-full rounded-xl border border-neutral-700 py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all group-hover:border-blue-600 group-hover:text-blue-400"
+                          className="w-full rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-blue-700 hover:to-cyan-700"
                         >
                           View Item
                         </button>
@@ -521,7 +467,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                     </article>
                   ))
                 ) : (
-                  <div className="rounded-3xl border border-white/10 bg-[#1c1b1b] px-6 py-10 text-sm text-white/60 md:col-span-2 lg:col-span-3">
+                  <div className="rounded-3xl border border-white/10 bg-slate-900/80 px-6 py-10 text-sm text-white/60 md:col-span-2 lg:col-span-3">
                     {searchQuery ? 'No spare parts found matching your search.' : 'Add more spare parts and enable showroom visibility to display them here.'}
                   </div>
                 )}
@@ -533,7 +479,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-700 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Previous page"
                   >
                     <ChevronLeftRoundedIcon sx={{ fontSize: 20 }} />
@@ -547,7 +493,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold transition-all ${
                         currentPage === page
                           ? 'border-blue-600 bg-blue-600 text-white'
-                          : 'border-neutral-700 text-white hover:border-blue-600 hover:bg-blue-600/10'
+                          : 'border-slate-600 text-white hover:border-blue-600 hover:bg-blue-600/10'
                       }`}
                       aria-label={`Page ${page}`}
                       aria-current={currentPage === page ? 'page' : undefined}
@@ -560,7 +506,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-700 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Next page"
                   >
                     <ChevronRightRoundedIcon sx={{ fontSize: 20 }} />
@@ -570,17 +516,18 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
             </section>
           </>
         ) : (
-          <div className="rounded-3xl border border-white/10 bg-[#1a1a1a] px-6 py-16 text-center text-white/70">
+          <div className="rounded-3xl border border-white/10 bg-slate-900/80 px-6 py-16 text-center text-white/70">
             No spare parts are published yet. Add a spare part item in the admin panel and enable showroom visibility.
           </div>
         )}
+        </div>
       </main>
 
-      <footer className="w-full border-t border-neutral-800/30 bg-neutral-950">
+      <footer className="mt-24 w-full border-t border-slate-700/40 bg-slate-950">
         <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-10 px-6 py-14 md:grid-cols-4 lg:px-8 lg:py-16">
           <div className="space-y-4">
-            <div className="text-xl font-bold text-neutral-100">BYKELINK</div>
-            <p className="text-sm leading-relaxed tracking-wide text-neutral-500">
+            <div className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-xl font-black text-transparent">BYKELINK</div>
+            <p className="text-sm leading-relaxed tracking-wide text-slate-400">
               The premier destination for Yamaha excellence in the Philippines. Precision,
               performance, and passion since inception.
             </p>
@@ -588,7 +535,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
 
           <div className="space-y-4">
             <h4 className="text-sm font-bold uppercase tracking-widest text-white">Navigation</h4>
-            <ul className="space-y-2 text-sm tracking-wide text-neutral-500">
+            <ul className="space-y-2 text-sm tracking-wide text-slate-400">
               <li>
                 <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="hover:text-blue-600">
                   Showroom
@@ -614,7 +561,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
 
           <div className="space-y-4">
             <h4 className="text-sm font-bold uppercase tracking-widest text-white">Support</h4>
-            <ul className="space-y-2 text-sm tracking-wide text-neutral-500">
+            <ul className="space-y-2 text-sm tracking-wide text-slate-400">
               <li>Privacy Policy</li>
               <li>Terms of Service</li>
               <li>Dealer Careers</li>
@@ -627,14 +574,14 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
             <div className="flex gap-3">
               <a
                 href="tel:+63288889999"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-800 text-neutral-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
                 aria-label="Call us"
               >
                 <CallRoundedIcon sx={{ fontSize: 18 }} />
               </a>
               <a
                 href="mailto:sales@bykelink.com"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-800 text-neutral-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
                 aria-label="Email us"
               >
                 <MailRoundedIcon sx={{ fontSize: 18 }} />
@@ -642,7 +589,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
               <button
                 type="button"
                 onClick={() => onNavigateSection?.('contact', 'Contact')}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-800 text-neutral-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
                 aria-label="Visit location"
               >
                 <LocationOnRoundedIcon sx={{ fontSize: 18 }} />
@@ -651,8 +598,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
           </div>
         </div>
 
-        <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 border-t border-neutral-800/20 px-6 py-6 md:flex-row lg:px-8">
-          <div className="text-sm uppercase tracking-wide text-neutral-500">
+        <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-4 border-t border-slate-700/20 px-6 py-6 md:flex-row lg:px-8">
+          <div className="text-sm uppercase tracking-wide text-slate-400">
             © 2024 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </div>
           <div className="flex gap-6">

@@ -26,7 +26,7 @@ export default function AnalyticsSection({
                   <span>{count}</span>
                 </div>
                 <div className="h-2 rounded-full bg-white/5">
-                  <div className="h-full rounded-full bg-[#e10100]" style={{ width: `${width}%` }} />
+                  <div className="h-full rounded-full bg-[#2563eb]" style={{ width: `${width}%` }} />
                 </div>
               </div>
             )

@@ -18,6 +18,9 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
   useEffect(() => {
     if (!isVisible) return
 
+    document.documentElement.classList.add('kinetic-scroll-lock')
+    document.body.classList.add('kinetic-scroll-lock')
+
     let currentProgress = 0
     
     // Gradual progress increase for first 3 seconds
@@ -50,6 +53,8 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
     return () => {
       clearInterval(progressInterval)
       clearTimeout(completionTimer)
+      document.documentElement.classList.remove('kinetic-scroll-lock')
+      document.body.classList.remove('kinetic-scroll-lock')
     }
   }, [isVisible, onComplete])
 
@@ -72,9 +77,9 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
           <h1 className="kinetic-brand-title">
             <span className="kinetic-brand-highlight">BYKELINK</span>
             <span className="kinetic-brand-separator">|</span>
-            <span>MOTOR INC.</span>
+            <span>SHOWROOM</span>
           </h1>
-          <p className="kinetic-brand-tagline">Authorized Yamaha Dealer</p>
+          <p className="kinetic-brand-tagline">Premium Yamaha Experience</p>
         </header>
 
         {/* Central Loading Cluster */}
@@ -115,9 +120,9 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
           <div className="kinetic-glass-panel">
             <div className="kinetic-panel-header">
               <div className="kinetic-panel-title-section">
-                <p className="kinetic-status-label">System Status</p>
+                <p className="kinetic-status-label">Showroom Status</p>
                 <h2 className="kinetic-panel-title">
-                  {isCompleting ? 'SYSTEM READY' : 'SYNCING KINETIC SYSTEMS...'}
+                  {isCompleting ? 'SHOWROOM READY' : 'PREPARING YOUR SHOWROOM...'}
                 </h2>
               </div>
               <span className="kinetic-progress-number">
@@ -139,19 +144,19 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
             <div className="kinetic-metadata-grid">
               <div className="kinetic-metadata-item">
                 <div className="kinetic-metadata-dot" />
-                <p>Engine Diagnostics</p>
+                <p>Loading Inventory</p>
               </div>
               <div className="kinetic-metadata-item">
                 <div className="kinetic-metadata-dot" style={{ animationDelay: '0.3s' }} />
-                <p>Inventory Uplink</p>
+                <p>Applying Filters</p>
               </div>
               <div className="kinetic-metadata-item">
                 <div className="kinetic-metadata-dot" style={{ animationDelay: '0.6s' }} />
-                <p>Dashboard Ready</p>
+                <p>Syncing Recommendations</p>
               </div>
               <div className="kinetic-metadata-item">
                 <div className="kinetic-metadata-dot" style={{ animationDelay: '0.9s' }} />
-                <p>Session Verified</p>
+                <p>Securing Session</p>
               </div>
             </div>
           </div>
@@ -160,12 +165,12 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
         {/* Footer Tech Info */}
         <footer className="kinetic-footer">
           <div className="kinetic-footer-item">
-            <span className="kinetic-footer-label">Terminal ID</span>
-            <span className="kinetic-footer-value">YK-{Math.floor(Math.random() * 9000 + 1000)}-CONSOLE-X</span>
+            <span className="kinetic-footer-label">Session ID</span>
+            <span className="kinetic-footer-value">BK-{Math.floor(Math.random() * 9000 + 1000)}-SHOWROOM</span>
           </div>
           <div className="kinetic-footer-item">
-            <span className="kinetic-footer-label">Latency</span>
-            <span className="kinetic-footer-value">{Math.floor(Math.random() * 20 + 10)}ms / APEX-CORE</span>
+            <span className="kinetic-footer-label">Response Time</span>
+            <span className="kinetic-footer-value">{Math.floor(Math.random() * 20 + 10)}ms / CLOUD-SYNC</span>
           </div>
         </footer>
       </main>

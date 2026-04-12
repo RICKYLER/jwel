@@ -244,7 +244,7 @@ export default function MasterDataManagementSection({
               <div className={`mt-4 p-3 rounded-lg text-sm font-medium ${
                 message.type === 'error'
                   ? !isDarkMode ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-red-950/30 text-red-300 border border-red-900/30'
-                  : !isDarkMode ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-emerald-950/30 text-emerald-300 border border-emerald-900/30'
+                  : !isDarkMode ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-cyan-950/30 text-cyan-300 border border-cyan-900/30'
               }`}>
                 {message.text}
               </div>
@@ -287,8 +287,8 @@ export default function MasterDataManagementSection({
                       disabled={!canEditOperations || isLoading}
                       className={`inline-flex items-center justify-center h-8 w-8 rounded-full transition-colors shrink-0 ml-3 disabled:opacity-60 ${
                         !isDarkMode
-                          ? 'text-red-600 hover:bg-red-50'
-                          : 'text-red-400 hover:bg-red-950/30'
+                            ? 'text-red-600 hover:bg-red-50'
+                            : 'text-red-400 hover:bg-red-950/30'
                       }`}
                       title={`Delete ${item.name}`}
                     >

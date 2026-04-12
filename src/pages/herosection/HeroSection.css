@@ -1005,7 +1005,7 @@
 }
 
 .hero-password-input-wrapper:has(.password-input:focus) {
-  border-color: #e10100;
+  border-color: #2563eb;
   box-shadow: none;
 }
 
@@ -1031,7 +1031,7 @@
 }
 
 .hero-password-toggle:active {
-  color: #e10100;
+  color: #2563eb;
 }
 
 .site-footer {

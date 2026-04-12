@@ -3,7 +3,7 @@
 }
 
 .inventory-delete-archived-shell .inventory-control-title {
-  background: linear-gradient(135deg, #e10100 0%, #ff6a63 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #ff6a63 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

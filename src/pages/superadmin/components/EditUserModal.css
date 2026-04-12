@@ -206,7 +206,7 @@
 }
 
 .edit-user-switch input:checked + .edit-user-switch-ui {
-  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
 }
 
 .edit-user-switch input:checked + .edit-user-switch-ui::after {
@@ -232,7 +232,7 @@
 }
 
 .edit-user-submit {
-  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
   color: #fff;
   box-shadow: 0 16px 30px rgba(225, 1, 0, 0.24);
 }

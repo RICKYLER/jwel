@@ -36,7 +36,7 @@ export default function SuperAdminHeader({
           value={searchTerm}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={`Search ${sectionTitle.toLowerCase()}...`}
-          className="superadmin-search-input w-full rounded-full border-none bg-[#353534] py-1.5 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-[#e10100]"
+          className="superadmin-search-input w-full rounded-full border-none bg-[#353534] py-1.5 pl-10 pr-4 text-sm text-white focus:ring-1 focus:ring-[#2563eb]"
         />
       </div>
 
@@ -49,7 +49,7 @@ export default function SuperAdminHeader({
         >
           <NotificationsRoundedIcon sx={{ fontSize: 20 }} />
           {notificationCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e10100] px-1 text-[9px] font-black text-white">
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#2563eb] px-1 text-[9px] font-black text-white">
               {Math.min(notificationCount, 9)}
             </span>
           )}
@@ -73,7 +73,7 @@ export default function SuperAdminHeader({
             <p className="text-xs font-bold text-white">{adminName}</p>
             <p className="text-[10px] text-white/40">{consoleLabel}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#e10100]/20 bg-[#1f1f1f] text-[#ffb4a8]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#2563eb]/20 bg-[#1f1f1f] text-cyan-300">
             <PersonRoundedIcon sx={{ fontSize: 20 }} />
           </div>
         </button>

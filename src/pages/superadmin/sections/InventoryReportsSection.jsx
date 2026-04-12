@@ -295,7 +295,7 @@ export default function InventoryReportsSection({
                     setDateFrom('')
                     setDateTo('')
                   }}
-                  className="text-xs font-bold text-[#ff7070] hover:text-[#e10100] transition-colors"
+                  className="text-xs font-bold text-[#ff7070] hover:text-[#2563eb] transition-colors"
                 >
                   Clear Dates
                 </button>

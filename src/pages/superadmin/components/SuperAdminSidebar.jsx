@@ -76,7 +76,7 @@ export default function SuperAdminSidebar({
                   onClick={() => handleItemClick(item)}
                   className={`superadmin-nav-item flex w-full items-center rounded-xl px-4 py-3 text-left font-['Epilogue'] text-[13px] font-bold transition-all duration-300 ${
                     isActive || isSubitemActive
-                      ? 'is-active border-l-4 border-[#e10100] bg-linear-to-r from-[#e10100]/10 to-transparent'
+                      ? 'is-active border-l-4 border-[#2563eb] bg-linear-to-r from-[#2563eb]/10 to-transparent'
                       : 'hover:bg-white/5'
                   }`}
                 >
@@ -84,7 +84,7 @@ export default function SuperAdminSidebar({
                   {item.label}
                   <div className="ml-auto flex items-center gap-2">
                     {item.badge && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e10100] px-1.5 text-[11px] font-black text-white">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2563eb] px-1.5 text-[11px] font-black text-white">
                         {Math.min(item.badge, 9)}
                       </span>
                     )}
@@ -107,7 +107,7 @@ export default function SuperAdminSidebar({
                         }}
                         className={`superadmin-nav-subitem flex w-full items-center rounded-lg px-3 py-2.5 text-left font-['Epilogue'] text-xs font-bold transition-all duration-300 ${
                           activeSection === subitem.id
-                            ? 'is-active border-l-2 border-[#e10100] bg-[#e10100]/10 text-white'
+                            ? 'is-active border-l-2 border-[#2563eb] bg-[#2563eb]/10 text-white'
                             : 'text-white/60 hover:bg-white/5 hover:text-white'
                         }`}
                       >

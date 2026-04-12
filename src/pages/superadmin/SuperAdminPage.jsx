@@ -993,15 +993,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }, [markConversationNotificationsRead])
 
-  const filterOldNotifications = useCallback((notifications) => {
-    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
-    const now = Date.now()
-    return notifications.filter((notification) => {
-      const createdAt = notification.createdAt instanceof Date ? notification.createdAt.getTime() : new Date(notification.createdAt).getTime()
-      return now - createdAt < ONE_WEEK_MS
-    })
-  }, [])
-
   const handleDeleteNotification = useCallback((notificationId) => {
     setNotificationConfirmation({
       type: 'delete',
@@ -1507,7 +1498,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="font-['Epilogue'] text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">
-                  Velocity <span className="text-[#e10100]">Pulse</span>
+                  Velocity <span className="text-[#2563eb]">Pulse</span>
                 </h2>
                 <p className="mt-2 font-medium text-white/40">
                   Firebase live sync • {consoleLabel} access • Focus: {sectionTitle}
@@ -1521,7 +1512,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
                 </div>
                 <div className="superadmin-summary-card flex flex-col rounded-lg px-4 py-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Firebase Status</span>
-                  <span className="font-['Epilogue'] font-bold text-[#e10100]">
+                  <span className="font-['Epilogue'] font-bold text-[#2563eb]">
                     {loadingMessage ? 'Syncing...' : 'Live'}
                   </span>
                 </div>
@@ -1546,7 +1537,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
               {metricCards.map((card) => (
                 <article
                   key={card.title}
-                  className="superadmin-summary-card superadmin-metric-card group relative overflow-hidden rounded-lg p-6 transition-all hover:border-[#e10100]/30"
+                  className="superadmin-summary-card superadmin-metric-card group relative overflow-hidden rounded-lg p-6 transition-all hover:border-[#2563eb]/30"
                 >
                   <div className="absolute -bottom-4 -right-4 opacity-5 transition-opacity group-hover:opacity-10">
                     {card.title.includes('Availability') ? (
@@ -1561,12 +1552,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
                   {card.progress !== undefined ? (
                     <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                      <div className="h-full bg-[#e10100]" style={{ width: `${card.progress}%` }} />
+                      <div className="h-full bg-[#2563eb]" style={{ width: `${card.progress}%` }} />
                     </div>
                   ) : (
                     <div
                       className={`mt-4 flex items-center gap-1 text-xs font-bold ${
-                        card.tone === 'emerald' ? 'text-emerald-400' : 'text-[#e10100]'
+                        card.tone === 'emerald' ? 'text-emerald-400' : 'text-[#2563eb]'
                       }`}
                     >
                       {card.tone === 'emerald' ? (

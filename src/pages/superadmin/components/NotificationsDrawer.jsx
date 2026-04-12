@@ -29,7 +29,7 @@ export default function NotificationsDrawer({
         <div className="space-y-3 border-b border-white/10 px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-[#ffb4a8]">Alerts</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">Alerts</p>
               <h3 className="font-['Epilogue'] text-lg font-black uppercase text-white">Notifications</h3>
             </div>
             <button type="button" onClick={onClose} className="text-white/70 transition hover:text-white" aria-label="Close notifications drawer">
@@ -67,17 +67,17 @@ export default function NotificationsDrawer({
           {notifications.map((item) => (
             <div
               key={item.id}
-              className={`notification-card group flex items-start gap-3 rounded-2xl p-4 text-left transition ${item.read ? 'opacity-75' : 'ring-1 ring-[#e10100]/30'}`}
+              className={`notification-card group flex items-start gap-3 rounded-2xl p-4 text-left transition ${item.read ? 'opacity-75' : 'ring-1 ring-[#2563eb]/30'}`}
             >
               <button
                 type="button"
                 onClick={() => onNotificationClick?.(item)}
                 className="flex-1 cursor-pointer text-left"
               >
-                <div className="mb-2 flex items-center gap-2 text-[#ffb4a8]">
+                <div className="mb-2 flex items-center gap-2 text-cyan-300">
                   <NotificationsActiveRoundedIcon sx={{ fontSize: 16 }} />
                   <span className="text-[10px] font-black uppercase tracking-[0.22em]">{item.type}</span>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${item.read ? 'bg-white/10 text-white/60' : 'bg-[#e10100]/20 text-[#ffb4a8]'}`}>
+                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${item.read ? 'bg-white/10 text-white/60' : 'bg-[#2563eb]/20 text-cyan-300'}`}>
                     {item.read ? 'Read' : 'New'}
                   </span>
                 </div>

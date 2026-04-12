@@ -1,11 +1,18 @@
 /* Yamaha Kinetic Console Loading Screen */
 
 :root {
-  --primary-container: #e10100;
-  --surface: #131313;
-  --surface-container-highest: #353534;
-  --surface-container-low: #1c1b1b;
-  --on-surface: #e5e2e1;
+  --primary-container: #2563eb;
+  --primary-accent: #22d3ee;
+  --surface: #0f172a;
+  --surface-container-highest: #334155;
+  --surface-container-low: #1e293b;
+  --on-surface: #e2e8f0;
+}
+
+html.kinetic-scroll-lock,
+body.kinetic-scroll-lock {
+  overflow: hidden !important;
+  height: 100%;
 }
 
 /* Animations */
@@ -75,10 +82,9 @@
 /* Main Screen */
 .kinetic-loading-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
   z-index: 9999;
   overflow: hidden;
   animation: fade-in-up 0.6s ease-out;
@@ -103,7 +109,7 @@
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: linear-gradient(to bottom, rgba(19, 19, 19, 0.2), rgba(19, 19, 19, 1));
+  background: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 1));
 }
 
 .kinetic-glow-pulse {
@@ -112,7 +118,7 @@
   left: 50%;
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(225, 1, 0, 0.4) 0%, rgba(225, 1, 0, 0.1) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.34) 0%, rgba(34, 211, 238, 0.16) 40%, transparent 70%);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   animation: pulse-red 4s ease-in-out infinite;
@@ -122,7 +128,7 @@
 .kinetic-gradient-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(19, 19, 19, 0) 0%, rgba(19, 19, 19, 0.5) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.55) 100%);
 }
 
 /* Main Content */
@@ -131,11 +137,13 @@
   z-index: 10;
   height: 100%;
   width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow: hidden;
 }
 
 /* Header */
@@ -164,7 +172,7 @@
 
 .kinetic-brand-highlight {
   color: var(--primary-container);
-  text-shadow: 0 0 20px rgba(225, 1, 0, 0.5);
+  text-shadow: 0 0 20px rgba(37, 99, 235, 0.45);
 }
 
 .kinetic-brand-separator {
@@ -177,7 +185,7 @@
   font-size: 10px;
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  color: var(--primary-container);
+  color: var(--primary-accent);
   font-weight: 700;
   margin: 0;
 }
@@ -217,7 +225,7 @@
   border-top: 4px solid var(--primary-container);
   border-radius: 50%;
   animation: spin-slow 3s linear infinite;
-  box-shadow: 0 0 20px rgba(225, 1, 0, 0.4);
+  box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
 }
 
 .kinetic-speedometer-ticks {
@@ -234,12 +242,12 @@
   position: absolute;
   width: 4px;
   height: 96px;
-  background: linear-gradient(to top, transparent, rgba(225, 1, 0, 0.8), var(--primary-container));
+  background: linear-gradient(to top, transparent, rgba(34, 211, 238, 0.8), var(--primary-container));
   border-radius: 2px;
   transform-origin: bottom center;
   transform: translateY(-48px);
   animation: needle-sweep 3s ease-in-out infinite alternate;
-  filter: drop-shadow(0 0 8px rgba(225, 1, 0, 0.6));
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.5));
 }
 
 .kinetic-center-icon {
@@ -254,7 +262,7 @@
 .kinetic-motorcycle-icon {
   font-size: 64px;
   line-height: 1;
-  filter: drop-shadow(0 0 15px rgba(225, 1, 0, 0.5));
+  filter: drop-shadow(0 0 15px rgba(37, 99, 235, 0.45));
 }
 
 .kinetic-icon-glow {
@@ -307,11 +315,11 @@
   width: 100%;
   max-width: 480px;
   padding: 32px;
-  background: rgba(32, 31, 31, 0.6);
+  background: rgba(30, 41, 59, 0.62);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 12px;
-  border: 1px solid rgba(225, 1, 0, 0.2);
+  border: 1px solid rgba(34, 211, 238, 0.2);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
   display: flex;
   flex-direction: column;
@@ -375,15 +383,15 @@
   background: var(--surface-container-highest);
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid rgba(225, 1, 0, 0.2);
+  border: 1px solid rgba(34, 211, 238, 0.2);
 }
 
 .kinetic-progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-container), #ff6b6b, var(--primary-container));
+  background: linear-gradient(90deg, var(--primary-container), var(--primary-accent), var(--primary-container));
   border-radius: 4px;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 15px rgba(225, 1, 0, 0.6), inset 0 0 8px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.45), inset 0 0 8px rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
 }
@@ -404,7 +412,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   padding-top: 8px;
-  border-top: 1px solid rgba(225, 1, 0, 0.1);
+  border-top: 1px solid rgba(34, 211, 238, 0.12);
 }
 
 .kinetic-metadata-item {
@@ -419,7 +427,7 @@
   border-radius: 50%;
   background: var(--primary-container);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  box-shadow: 0 0 8px rgba(225, 1, 0, 0.4);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
 }
 
 .kinetic-metadata-item p {

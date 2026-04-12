@@ -114,7 +114,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
           <button type="button" onClick={onNavigateShowroom} className="text-neutral-400 transition-colors duration-300 hover:text-neutral-100">
             Models
           </button>
-          <span className="border-b-2 border-red-600 pb-1 text-red-600">Service</span>
+          <span className="border-b-2 border-blue-600 pb-1 text-blue-600">Service</span>
           <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="text-neutral-400 transition-colors duration-300 hover:text-neutral-100">
             Motorsport
           </button>
@@ -133,7 +133,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
           <button
             type="button"
             onClick={onOpenSignup}
-            className="rounded-full bg-[#e10100] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-all hover:shadow-[0_0_20px_rgba(225,1,0,0.3)] sm:px-6 sm:text-xs"
+            className="rounded-full bg-[#2563eb] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white transition-all hover:shadow-[0_0_20px_rgba(225,1,0,0.3)] sm:px-6 sm:text-xs"
           >
             Book Appointment
           </button>
@@ -143,7 +143,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
       <div className="flex pt-20">
         <aside className="fixed left-0 top-20 hidden h-[calc(100vh-5rem)] w-64 flex-col border-r border-neutral-800/20 bg-neutral-900 py-8 lg:flex">
           <div className="mb-12 px-8">
-            <h3 className="font-['Epilogue'] text-xl font-black uppercase italic leading-none text-red-600">
+            <h3 className="font-['Epilogue'] text-xl font-black uppercase italic leading-none text-blue-600">
               Booking Progress
             </h3>
             <p className="mt-2 text-xs uppercase tracking-widest text-neutral-500">
@@ -163,7 +163,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                   onClick={() => setActiveStep(step.id)}
                   className={`mr-4 flex items-center gap-4 px-6 py-3 text-left transition-all ${
                     isActive
-                      ? 'rounded-r-full bg-red-600 text-white'
+                      ? 'rounded-r-full bg-blue-600 text-white'
                       : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200'
                   }`}
                 >
@@ -191,7 +191,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                     type="button"
                     onClick={() => setActiveStep(step.id)}
                     className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] ${
-                      isActive ? 'bg-red-600 text-white' : 'bg-[#201f1f] text-neutral-400'
+                      isActive ? 'bg-blue-600 text-white' : 'bg-[#201f1f] text-neutral-400'
                     }`}
                   >
                     {step.label}
@@ -202,7 +202,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
 
             <header className="mb-12 lg:mb-16">
               <h1 className="mb-2 text-4xl font-black uppercase italic tracking-tighter text-white font-['Epilogue'] sm:text-5xl lg:text-6xl">
-                Configure <span className="text-[#e10100]">Service</span>
+                Configure <span className="text-[#2563eb]">Service</span>
               </h1>
               <p className="max-w-xl text-base text-neutral-500 sm:text-lg">
                 Select the precision engineering package tailored for your machine's peak performance.
@@ -210,7 +210,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
             </header>
 
             <section className="mb-16 lg:mb-20">
-              <h2 className="mb-8 border-l-4 border-red-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
+              <h2 className="mb-8 border-l-4 border-blue-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
                 01. Service Categories
               </h2>
 
@@ -229,14 +229,14 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                           setActiveStep('vehicle-info')
                         }}
                         className={`group relative overflow-hidden rounded-xl p-8 text-left transition-all duration-500 md:col-span-2 ${
-                          isSelected ? 'bg-[#2f2f2f] ring-1 ring-red-600/50' : 'bg-[#2a2a2a] hover:bg-[#353534]'
+                          isSelected ? 'bg-[#2f2f2f] ring-1 ring-blue-600/50' : 'bg-[#2a2a2a] hover:bg-[#353534]'
                         }`}
                       >
                         <div className="relative z-10">
-                          <Icon sx={{ fontSize: 40 }} className="mb-6 text-red-600" />
+                          <Icon sx={{ fontSize: 40 }} className="mb-6 text-blue-600" />
                           <h3 className="mb-4 text-2xl font-bold text-white font-['Epilogue']">{option.title}</h3>
                           <p className="mb-6 text-sm leading-relaxed text-neutral-400">{option.description}</p>
-                          <span className="text-xs font-black uppercase tracking-widest text-red-600">{option.kicker}</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-blue-600">{option.kicker}</span>
                         </div>
                         <div className="absolute -bottom-4 -right-4 opacity-10 transition-opacity group-hover:opacity-20">
                           <BuildCircleRoundedIcon sx={{ fontSize: 150 }} />
@@ -255,7 +255,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                           setActiveStep('confirm')
                         }}
                         className={`rounded-xl p-6 text-left md:col-span-2 ${
-                          isSelected ? 'bg-[#2f2f2f] ring-1 ring-red-600/50' : 'bg-[#1c1b1b]'
+                          isSelected ? 'bg-[#2f2f2f] ring-1 ring-blue-600/50' : 'bg-[#1c1b1b]'
                         }`}
                       >
                         <div className="flex items-center gap-5 sm:gap-8">
@@ -265,7 +265,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                           <div>
                             <h3 className="mb-1 text-lg font-bold text-white font-['Epilogue']">{option.title}</h3>
                             <p className="mb-3 text-xs text-neutral-500">{option.description}</p>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-red-600">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
                               Browse Catalog
                             </span>
                           </div>
@@ -285,8 +285,8 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                         }}
                         className={`group flex items-center justify-between rounded-xl border p-6 text-left transition-all duration-300 md:col-span-2 ${
                           isSelected
-                            ? 'border-red-600/50 bg-[#2a2a2a]'
-                            : 'border-[#5b403d]/20 bg-linear-to-br from-[#2a2a2a] to-[#0e0e0e] hover:border-red-600/40'
+                            ? 'border-blue-600/50 bg-[#2a2a2a]'
+                            : 'border-[#5b403d]/20 bg-linear-to-br from-[#2a2a2a] to-[#0e0e0e] hover:border-blue-600/40'
                         }`}
                       >
                         <div className="max-w-[65%]">
@@ -295,7 +295,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                           </h3>
                           <p className="text-sm text-neutral-400">{option.description}</p>
                         </div>
-                        <Icon sx={{ fontSize: 56 }} className="text-red-600/40 transition-colors group-hover:text-red-600" />
+                        <Icon sx={{ fontSize: 56 }} className="text-blue-600/40 transition-colors group-hover:text-blue-600" />
                       </button>
                     )
                   }
@@ -307,8 +307,8 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                       onClick={() => setSelectedService(option.id)}
                       className={`rounded-xl border p-6 text-left transition-all duration-300 ${
                         isSelected
-                          ? 'border-red-600/50 bg-[#2a2a2a]'
-                          : 'border-[#5b403d]/10 bg-[#1c1b1b] hover:border-red-600/30'
+                          ? 'border-blue-600/50 bg-[#2a2a2a]'
+                          : 'border-[#5b403d]/10 bg-[#1c1b1b] hover:border-blue-600/30'
                       }`}
                     >
                       <Icon sx={{ fontSize: 30 }} className="mb-5 text-neutral-300" />
@@ -322,7 +322,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
 
             <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
               <section>
-                <h2 className="mb-8 border-l-4 border-red-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
+                <h2 className="mb-8 border-l-4 border-blue-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
                   02. Vehicle Identification
                 </h2>
                 <div className="space-y-6 rounded-xl bg-[#1c1b1b] p-6 sm:p-8">
@@ -373,7 +373,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
               </section>
 
               <section>
-                <h2 className="mb-8 border-l-4 border-red-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
+                <h2 className="mb-8 border-l-4 border-blue-600 pl-4 text-xs font-bold uppercase tracking-[0.3em] text-neutral-500 font-['Epilogue']">
                   03. Schedule Session
                 </h2>
                 <div className="rounded-xl bg-[#1c1b1b] p-6 sm:p-8">
@@ -405,7 +405,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                         }}
                         className={`flex h-10 w-10 items-center justify-center rounded-lg text-xs transition ${
                           selectedDay === day
-                            ? 'bg-red-600 font-bold text-white'
+                            ? 'bg-blue-600 font-bold text-white'
                             : Number(day) < 15
                               ? 'text-neutral-600 hover:bg-neutral-800'
                               : 'text-white hover:bg-neutral-800'
@@ -424,8 +424,8 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
                         onClick={() => setSelectedTime(slot)}
                         className={`rounded-lg px-2 py-3 text-[10px] font-bold uppercase tracking-tighter transition-all ${
                           selectedTime === slot
-                            ? 'bg-red-600 text-white'
-                            : 'bg-[#353534] text-neutral-400 hover:bg-red-600 hover:text-white'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-[#353534] text-neutral-400 hover:bg-blue-600 hover:text-white'
                         }`}
                       >
                         {slot}
@@ -436,10 +436,10 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
               </section>
             </div>
 
-            <div className="mt-12 flex flex-col items-center justify-between gap-6 rounded-2xl border border-red-600/20 bg-neutral-950 p-6 sm:p-8 md:flex-row lg:mt-20 lg:p-10">
+            <div className="mt-12 flex flex-col items-center justify-between gap-6 rounded-2xl border border-blue-600/20 bg-neutral-950 p-6 sm:p-8 md:flex-row lg:mt-20 lg:p-10">
               <div>
                 <div className="mb-2 flex items-center gap-2">
-                  <BoltRoundedIcon sx={{ fontSize: 16 }} className="text-red-600" />
+                  <BoltRoundedIcon sx={{ fontSize: 16 }} className="text-blue-600" />
                   <span className="text-xs font-bold uppercase tracking-widest text-neutral-400 font-['Epilogue']">
                     Total Estimated Cost
                   </span>
@@ -452,7 +452,7 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="rounded-full bg-[#e10100] px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white transition-all hover:scale-105 hover:shadow-[0_10px_30px_rgba(225,1,0,0.4)] active:scale-95 sm:px-10 sm:py-5"
+                className="rounded-full bg-[#2563eb] px-8 py-4 text-sm font-black uppercase tracking-[0.2em] text-white transition-all hover:scale-105 hover:shadow-[0_10px_30px_rgba(225,1,0,0.4)] active:scale-95 sm:px-10 sm:py-5"
               >
                 Confirm Booking
               </button>
@@ -466,9 +466,9 @@ export default function ServicePage({ onNavigateHome, onNavigateShowroom, onNavi
           Yamaha Motor Corp.
         </div>
         <nav className="flex flex-wrap justify-center gap-6 text-xs uppercase tracking-widest text-neutral-600 sm:gap-8">
-          <a href="#" className="transition-colors hover:text-red-500">Privacy Policy</a>
-          <a href="#" className="transition-colors hover:text-red-500">Terms of Service</a>
-          <a href="#" className="transition-colors hover:text-red-500">Dealer Locator</a>
+          <a href="#" className="transition-colors hover:text-blue-500">Privacy Policy</a>
+          <a href="#" className="transition-colors hover:text-blue-500">Terms of Service</a>
+          <a href="#" className="transition-colors hover:text-blue-500">Dealer Locator</a>
         </nav>
         <p className="text-[10px] uppercase tracking-widest text-neutral-700">
           © 2024 Yamaha Motor Corp. Kinetic Gallery Edition.

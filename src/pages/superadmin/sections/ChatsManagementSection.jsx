@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { collection, getDocs, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, updateDoc, limit, where } from 'firebase/firestore'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
 import CircleRoundedIcon from '@mui/icons-material/CircleRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import CheckboxOutlinedIcon from '@mui/icons-material/CheckboxOutlined'
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
+import DeleteSweepRoundedIcon from '@mui/icons-material/DeleteSweepRounded'
 import { db } from '../../../firebase'
+import ConfirmationModal from '../components/ConfirmationModal'
 import './ChatsManagementSection.css'
 
 export default function ChatsManagementSection({
@@ -22,6 +27,9 @@ export default function ChatsManagementSection({
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('active')
   const [conversationLastMessages, setConversationLastMessages] = useState({})
+  const [selectedConversationIds, setSelectedConversationIds] = useState(new Set())
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null)
+  const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false)
   const unsubscribersRef = useRef(new Map())
 
   // Load all conversations
@@ -210,6 +218,8 @@ export default function ChatsManagementSection({
 
     setViewMode(targetConversation.status === 'archived' ? 'archived' : 'active')
     setSelectedConversation(targetConversation)
+    setSelectedConversationIds(new Set())
+    setIsBulkDeleteMode(false)
   }, [conversations, focusRequest])
 
   const handleConversationStatusChange = async (conversationId, status) => {
@@ -264,6 +274,76 @@ export default function ChatsManagementSection({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
   }
 
+  const toggleConversationSelection = useCallback((conversationId) => {
+    setSelectedConversationIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(conversationId)) {
+        newSet.delete(conversationId)
+      } else {
+        newSet.add(conversationId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedConversationIds.size === filteredConversations.length) {
+      setSelectedConversationIds(new Set())
+    } else {
+      setSelectedConversationIds(new Set(filteredConversations.map((conv) => conv.id)))
+    }
+  }, [filteredConversations, selectedConversationIds.size])
+
+  const switchViewMode = useCallback((mode) => {
+    setViewMode(mode)
+    setSelectedConversationIds(new Set())
+    setIsBulkDeleteMode(false)
+  }, [])
+
+  const handleDeleteChatClick = useCallback((conversationId, e) => {
+    e.stopPropagation()
+    setDeleteConfirmation({
+      type: 'single',
+      conversationId,
+      title: 'Delete Conversation',
+      message: 'Are you sure you want to delete this conversation? This action cannot be undone.',
+    })
+  }, [])
+
+  const handleBulkDeleteClick = useCallback(() => {
+    setDeleteConfirmation({
+      type: 'bulk',
+      conversationIds: Array.from(selectedConversationIds),
+      title: 'Delete Selected Conversations',
+      message: `Are you sure you want to delete ${selectedConversationIds.size} conversation${selectedConversationIds.size !== 1 ? 's' : ''}? This action cannot be undone.`,
+    })
+  }, [selectedConversationIds])
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirmation) return
+
+    try {
+      if (deleteConfirmation.type === 'single' && deleteConfirmation.conversationId) {
+        await handleConversationStatusChange(deleteConfirmation.conversationId, 'deleted')
+      } else if (deleteConfirmation.type === 'bulk' && deleteConfirmation.conversationIds?.length) {
+        for (const conversationId of deleteConfirmation.conversationIds) {
+          await updateDoc(doc(db, 'conversations', conversationId), {
+            status: 'deleted',
+            updatedAt: serverTimestamp(),
+          })
+        }
+        setSelectedConversationIds(new Set())
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error)
+    }
+
+    setDeleteConfirmation(null)
+    setIsBulkDeleteMode(false)
+  }, [deleteConfirmation])
+
+  const isDarkMode = true // Assuming dark mode is default based on component styling
+
   return (
     <div className="chats-management-container">
       {/* Conversations List */}
@@ -274,24 +354,82 @@ export default function ChatsManagementSection({
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              onClick={() => setViewMode('active')}
+              onClick={() => switchViewMode('active')}
               className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'active' ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
             >
               Active Chats ({activeConversationCount})
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('archived')}
-              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'archived' ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+              onClick={() => switchViewMode('archived')}
+              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'archived' ? 'bg-cyan-500 text-slate-900' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
             >
               Archived Messages ({archivedConversationCount})
             </button>
           </div>
+
+          {viewMode === 'active' && filteredConversations.length > 0 && isBulkDeleteMode && (
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleSelectAll}
+                className="text-white/60 transition hover:text-white"
+                title={selectedConversationIds.size === filteredConversations.length ? 'Deselect all' : 'Select all'}
+              >
+                {selectedConversationIds.size === filteredConversations.length ? (
+                  <CheckboxOutlinedIcon sx={{ fontSize: 20 }} />
+                ) : (
+                  <CheckBoxOutlineBlankIcon sx={{ fontSize: 20 }} />
+                )}
+              </button>
+              <span className="text-xs text-white/50">
+                {selectedConversationIds.size > 0 ? `${selectedConversationIds.size} selected` : 'Select all conversations'}
+              </span>
+            </div>
+          )}
+
+          {viewMode === 'active' && filteredConversations.length > 0 && selectedConversationIds.size > 0 && (
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleBulkDeleteClick}
+                className="flex items-center gap-2 rounded-lg bg-red-600/20 px-3 py-2 text-xs font-bold text-red-400 transition hover:bg-red-600/30"
+              >
+                <DeleteSweepRoundedIcon sx={{ fontSize: 16 }} />
+                Delete ({selectedConversationIds.size})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedConversationIds(new Set())
+                  setIsBulkDeleteMode(false)
+                }}
+                className="rounded-lg bg-white/5 px-3 py-2 text-xs font-bold text-white/70 transition hover:bg-white/10"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {viewMode === 'active' && filteredConversations.length > 0 && !isBulkDeleteMode && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkDeleteMode(true)
+                  setSelectedConversationIds(new Set())
+                }}
+                className="w-full rounded-lg bg-blue-600/20 px-3 py-2 text-xs font-bold text-blue-400 transition hover:bg-blue-600/30"
+              >
+                Select for Bulk Delete
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="conversations-list">
           {error ? (
-            <div className="pt-8 text-center text-red-400">
+            <div className="pt-8 text-center text-blue-400">
               <p className="text-sm font-semibold mb-2">Permission Error</p>
               <p className="text-xs text-neutral-400 px-4">{error}</p>
               <p className="text-xs text-neutral-500 mt-4 px-4">Please ensure Firestore rules are configured correctly for conversations collection.</p>
@@ -304,25 +442,51 @@ export default function ChatsManagementSection({
             filteredConversations.map((conv) => {
               const lastMessage = conversationLastMessages[conv.id] || { text: 'No messages yet' }
               const isSelected = selectedConversation?.id === conv.id
+              const isChecked = selectedConversationIds.has(conv.id)
 
               return (
-                <button
-                  key={conv.id}
-                  onClick={() => setSelectedConversation(conv)}
-                  className={`conversation-item ${isSelected ? 'active' : ''}`}
-                >
-                  <div className="conversation-header">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-white">{conv.userName}</h4>
-                      <CircleRoundedIcon
-                        sx={{ fontSize: 8 }}
-                        className={conv.status === 'archived' ? 'text-amber-400' : conv.status === 'open' ? 'text-emerald-500' : 'text-neutral-600'}
-                      />
+                <div key={conv.id} className="flex items-start gap-2 px-2 py-1">
+                  {isBulkDeleteMode && (
+                    <button
+                      type="button"
+                      onClick={() => toggleConversationSelection(conv.id)}
+                      className="mt-2.5 shrink-0 text-white/60 transition hover:text-white"
+                    >
+                      {isChecked ? (
+                        <CheckboxOutlinedIcon sx={{ fontSize: 20 }} />
+                      ) : (
+                        <CheckBoxOutlineBlankIcon sx={{ fontSize: 20 }} />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    key={conv.id}
+                    onClick={() => setSelectedConversation(conv)}
+                    className={`conversation-item flex-1 ${isSelected ? 'active' : ''}`}
+                  >
+                    <div className="conversation-header">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-white">{conv.userName}</h4>
+                        <CircleRoundedIcon
+                          sx={{ fontSize: 8 }}
+                          className={conv.status === 'archived' ? 'text-cyan-400' : conv.status === 'open' ? 'text-emerald-500' : 'text-neutral-600'}
+                        />
+                      </div>
+                      <span className="text-xs text-neutral-500">{formatDate(conv.updatedAt?.toDate?.(new Date()))}</span>
                     </div>
-                    <span className="text-xs text-neutral-500">{formatDate(conv.updatedAt?.toDate?.(new Date()))}</span>
-                  </div>
-                  <p className="text-sm text-neutral-400 truncate">{lastMessage?.text || 'No messages yet'}</p>
-                </button>
+                    <p className="text-sm text-neutral-400 truncate">{lastMessage?.text || 'No messages yet'}</p>
+                  </button>
+                  {!isBulkDeleteMode && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteChatClick(conv.id, e)}
+                      className="mt-2.5 shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-400 transition hover:bg-red-600/20"
+                      title="Delete conversation"
+                    >
+                      <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                    </button>
+                  )}
+                </div>
               )
             })
           ) : (
@@ -356,7 +520,7 @@ export default function ChatsManagementSection({
                   <button
                     type="button"
                     onClick={() => handleConversationStatusChange(selectedConversation.id, 'archived')}
-                    className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-black transition hover:bg-amber-400"
+                    className="rounded-lg bg-cyan-500 px-3 py-2 text-xs font-bold text-slate-900 transition hover:bg-cyan-400"
                   >
                     Archive
                   </button>
@@ -430,6 +594,18 @@ export default function ChatsManagementSection({
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={!!deleteConfirmation}
+        title={deleteConfirmation?.title || ''}
+        message={deleteConfirmation?.message || ''}
+        confirmText={deleteConfirmation?.type === 'bulk' ? 'Delete All' : 'Delete'}
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmation(null)}
+        isDangerous={true}
+        isDarkMode={isDarkMode}
+      />
     </div>
   )
 }

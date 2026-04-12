@@ -10,13 +10,13 @@ input[type='number'] {
 }
 
 .inventory-control-title span {
-  color: #e10100;
+  color: #2563eb;
 }
 
 .inventory-add-button,
 .inventory-submit-button {
   border: 0;
-  background: linear-gradient(90deg, #ff2a1f 0%, #e10100 100%);
+  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
   box-shadow: 0 16px 28px rgba(225, 1, 0, 0.28);
 }
 
@@ -105,7 +105,7 @@ input[type='number'] {
 }
 
 .inventory-stock-fill {
-  background: linear-gradient(90deg, #ff3b30 0%, #e10100 100%);
+  background: linear-gradient(90deg, #ff3b30 0%, #2563eb 100%);
 }
 
 .inventory-status-select {
@@ -279,7 +279,7 @@ input[type='number'] {
 }
 
 .dropdown-select option:checked {
-  background: linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(#e10100, #e10100);
+  background: linear-gradient(#1a1a1a, #1a1a1a), linear-gradient(#2563eb, #2563eb);
   background-color: rgba(225, 1, 0, 0.5) !important;
   color: #ffffff;
 }

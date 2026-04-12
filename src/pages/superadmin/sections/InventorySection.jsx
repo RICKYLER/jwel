@@ -782,7 +782,7 @@ export default function InventorySection({
         {summaryCards.map((card) => (
           <article 
             key={card.label} 
-            className={`inventory-summary-card rounded-2xl p-4 ${card.isCritical ? 'cursor-pointer hover:border-[#e10100]/50 transition-all' : ''}`}
+            className={`inventory-summary-card rounded-2xl p-4 ${card.isCritical ? 'cursor-pointer hover:border-[#2563eb]/50 transition-all' : ''}`}
             onClick={card.onClick}
           >
             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">{card.label}</p>
@@ -857,7 +857,7 @@ export default function InventorySection({
 
             return (
               <div key={item.id} className={`grid gap-3 px-3 py-4 md:grid-cols-[0.8fr_0.8fr_1fr_2fr_1.1fr_1.1fr_1fr_0.8fr] md:items-center relative ${
-                isCritical ? 'bg-red-950/20 border-l-4 border-[#e10100]' : ''
+                isCritical ? 'bg-blue-950/20 border-l-4 border-[#2563eb]' : ''
               }`}>
                 {stockValue === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded pointer-events-none">
@@ -1130,7 +1130,7 @@ export default function InventorySection({
                                 setSelectedColorForVariant(color)
                               }}
                               className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
-                                isSelected ? 'border-[#e10100] ring-2 ring-[#e10100]/20' : 'border-neutral-600 hover:border-neutral-500'
+                                isSelected ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20' : 'border-neutral-600 hover:border-neutral-500'
                               }`}
                               title={color.name}
                               aria-label={color.name}
@@ -1178,7 +1178,7 @@ export default function InventorySection({
                                   setSelectedColorForVariant(null)
                                 }
                               }}
-                              className="bg-[#e10100] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                              className="bg-[#2563eb] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
                             >
                               Add
                             </button>
@@ -1828,7 +1828,7 @@ export default function InventorySection({
                                 setEditSelectedColorForVariant(color)
                               }}
                               className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
-                                isSelected ? 'border-[#e10100] ring-2 ring-[#e10100]/20' : 'border-neutral-600 hover:border-neutral-500'
+                                isSelected ? 'border-[#2563eb] ring-2 ring-[#2563eb]/20' : 'border-neutral-600 hover:border-neutral-500'
                               }`}
                               title={color.name}
                               aria-label={color.name}
@@ -1877,7 +1877,7 @@ export default function InventorySection({
                                   setEditSelectedColorForVariant(null)
                                 }
                               }}
-                              className="bg-[#e10100] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                              className="bg-[#2563eb] hover:bg-[#cc0000] text-white font-bold py-2 px-4 rounded-lg transition-colors"
                             >
                               Add
                             </button>
@@ -2214,8 +2214,8 @@ export default function InventorySection({
                   onClick={handleNumberPadBackspace}
                   className={`py-3 rounded-lg font-bold text-lg transition-colors ${
                     !isDarkMode
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-red-950/30 text-red-400 hover:bg-red-950/50'
+                      ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      : 'bg-blue-950/30 text-blue-400 hover:bg-blue-950/50'
                   }`}
                 >
                   ← Back
