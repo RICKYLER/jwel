@@ -344,8 +344,8 @@ export default function HeroSection({
             <div className="absolute inset-0 bg-linear-to-t from-slate-950/90 via-transparent to-blue-500/10" />
           </div>
 
-          <div className="pointer-events-none absolute -left-20 top-14 h-56 w-56 rounded-full bg-blue-600/20 blur-3xl sm:h-72 sm:w-72" />
-          <div className="pointer-events-none absolute -right-16 bottom-16 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl sm:h-72 sm:w-72" />
+          <div className="pointer-events-none absolute -left-20 top-14 h-56 w-56 rounded-full bg-red-600/20 blur-3xl sm:h-72 sm:w-72" />
+          <div className="pointer-events-none absolute -right-16 bottom-16 h-56 w-56 rounded-full bg-red-500/10 blur-3xl sm:h-72 sm:w-72" />
 
           <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
             <div className="grid items-start gap-6 xl:gap-10">
@@ -366,7 +366,7 @@ export default function HeroSection({
                   <button
                     type="button"
                     onClick={onNavigateShowroom}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 hover:bg-blue-700 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white shadow-lg shadow-blue-600/30 transition duration-300 hover:scale-[1.02] active:scale-95 font-['Epilogue']"
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-700 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-[1.02] active:scale-95 font-['Epilogue']"
                   >
                     Explore Showroom
                     <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
@@ -388,7 +388,7 @@ export default function HeroSection({
                       onClick={() => onSelectSlide(index)}
                       aria-label={`Show hero ${index + 1}`}
                       className={`h-2 rounded-full transition-all ${
-                        activeSlide === index ? 'w-8 bg-blue-600' : 'w-2 bg-white/30'
+                        activeSlide === index ? 'w-8 bg-red-600' : 'w-2 bg-white/30'
                       }`}
                     />
                   ))}
@@ -398,19 +398,19 @@ export default function HeroSection({
             <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-3 lg:max-w-4xl">
               <div className="px-5 py-4 text-center">
                 <div className="text-3xl font-black text-white font-['Epilogue']">{unitsReady}+</div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white">
                   Units Ready
                 </div>
               </div>
               <div className="px-5 py-4 text-center">
                 <div className="text-3xl font-black text-white font-['Epilogue']">{happyRiders.toLocaleString()}+</div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white">
                   Happy Riders
                 </div>
               </div>
               <div className="px-5 py-4 text-center">
                 <div className="text-3xl font-black text-white font-['Epilogue']">{serviceRating.toFixed(1)}/5</div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-cyan-300">
+                <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white">
                   Service Rating
                 </div>
               </div>
@@ -422,7 +422,7 @@ export default function HeroSection({
         <section id="showroom" className="mx-auto max-w-screen-2xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24" data-reveal="up" data-reveal-delay="80">
           <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="120">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-white font-['Epilogue']">
                 Curated For Riders
               </p>
               <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
@@ -432,7 +432,7 @@ export default function HeroSection({
             <button
               type="button"
               onClick={onNavigateShowroom}
-              className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
+              className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
             >
               Browse Showroom <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
             </button>
@@ -483,12 +483,12 @@ export default function HeroSection({
                 <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
                   Featured Models
                 </h2>
-                <div className="mt-4 h-1 w-20 bg-blue-600" />
+                <div className="mt-4 h-1 w-20 bg-red-600" />
               </div>
               <button
                 type="button"
                 onClick={onNavigateShowroom}
-                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
+                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
               >
                 View All Models <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
               </button>
@@ -513,7 +513,7 @@ export default function HeroSection({
                     {liveModels.map((model) => (
                   <article
                     key={model.id || model.name}
-                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-blue-600 hover:shadow-2xl hover:shadow-blue-900/20"
+                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20"
                     onClick={() => onNavigateShowroom()}
                   >
                     <div className="relative h-80 overflow-hidden">
@@ -573,7 +573,7 @@ export default function HeroSection({
                         type="button"
                         onClick={() => setCarouselIndex(index)}
                         className={`h-2 rounded-full transition-all ${
-                          carouselIndex === index ? 'w-6 bg-blue-600' : 'w-2 bg-white/35'
+                          carouselIndex === index ? 'w-6 bg-red-600' : 'w-2 bg-white/35'
                         }`}
                         aria-label={`Go to model ${index + 1}`}
                       />
@@ -603,7 +603,7 @@ export default function HeroSection({
                   <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
                     Genuine Spare Parts
                   </h2>
-                  <div className="mt-4 h-1 w-20 bg-blue-600" />
+                  <div className="mt-4 h-1 w-20 bg-red-600" />
                 </div>
                 <button
                   type="button"
@@ -618,7 +618,7 @@ export default function HeroSection({
                 {liveSpareParts.map((part) => (
                   <div
                     key={part.id}
-                    className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-blue-600 hover:shadow-2xl hover:shadow-blue-900/20 cursor-pointer"
+                    className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer"
                     onClick={() => onNavigateSpareParts()}
                   >
                     <div className="relative h-48 overflow-hidden">
@@ -650,7 +650,7 @@ export default function HeroSection({
         <section id="service" className="py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
           <div className="mx-auto grid max-w-screen-2xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:gap-16 lg:px-8">
             <div className="relative" data-reveal="left">
-              <div className="absolute -left-6 -top-6 h-32 w-32 rounded-full bg-blue-600/20 blur-3xl" />
+              <div className="absolute -left-6 -top-6 h-32 w-32 rounded-full bg-red-600/20 blur-3xl" />
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa3ZvD7ILXRdhgV7PpGMefVAXZR4s-CLQgLElKYhGBkp1js5RJuBc0oUH7vdWNROe_OMuK6rtgXOXjA8YlKd3bq2h4FjDZgytxHU7bJyU_5YyHGjW4gGsK72grMkCIvccEoJCNn9NlQ1Y8LJCV4m4pQscsSr8e7EnYURTnS4KNBrIz8BKZuAUdgehAhfkq-qkPbU_3aLR9cm0GFMiuGiOUTyDAb6dRhqk0gvfIaERiiC0PbPZOVa5vxFvJ3Uv1mUmiDaMh-h65GG0"
                 alt="Motorcycle workshop"
@@ -673,7 +673,7 @@ export default function HeroSection({
 
             <div data-reveal="right">
               <h2 className="mb-5 text-4xl font-black uppercase leading-tight text-white font-['Epilogue'] sm:text-5xl">
-                Authorized <span className="text-[#2563eb]">Yamaha</span> Service
+                Authorized <span className="text-red-600">Yamaha</span> Service
               </h2>
               <p className="mb-8 text-base text-neutral-300 sm:text-lg">
                 Our master technicians use Yamaha-engineered diagnostics to keep your machine
@@ -684,7 +684,7 @@ export default function HeroSection({
               <ul className="mb-8 space-y-4">
                 {serviceChecks.map((item) => (
                   <li key={item} className="flex items-center gap-3 text-white">
-                    <CheckCircleRoundedIcon sx={{ fontSize: 20 }} className="text-[#2563eb]" />
+                    <CheckCircleRoundedIcon sx={{ fontSize: 20 }} className="text-red-600" />
                     <span className="font-medium">{item}</span>
                   </li>
                 ))}
@@ -693,7 +693,7 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateLogin}
-                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95 font-['Epilogue']"
+                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-red-600 to-white px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100 hover:shadow-lg hover:shadow-red-600/30 active:scale-95 font-['Epilogue']"
               >
                 Schedule Appointment
                 <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />
@@ -706,7 +706,7 @@ export default function HeroSection({
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
             <div className="overflow-hidden rounded-4xl border border-white/10 bg-slate-900 shadow-2xl md:flex" data-reveal="up" data-reveal-delay="180">
               <div className="p-8 sm:p-10 lg:w-1/2 lg:p-14">
-                <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-cyan-300 font-['Epilogue']">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-white font-['Epilogue']">
                   Dealer Experience Center
                 </p>
                 <h2 className="mb-5 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl">
@@ -718,7 +718,7 @@ export default function HeroSection({
                 </p>
 
                 <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-                  <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+                  <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-white font-['Epilogue']">
                     Flagship Location
                   </h4>
                   <p className="text-lg font-bold leading-snug text-white sm:text-xl">
@@ -728,20 +728,20 @@ export default function HeroSection({
 
                 <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                       Opening Hours
                     </h4>
                     <p className="text-sm text-neutral-200">Mon - Sat: 9AM - 6PM</p>
                     <p className="text-sm text-neutral-200">Sun: 10AM - 3PM</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                       Direct Contact
                     </h4>
-                    <a href="tel:+63288889999" className="block text-sm text-white transition hover:text-cyan-300">
+                    <a href="tel:+63288889999" className="block text-sm text-white transition hover:text-red-300">
                       +63 (2) 8888 9999
                     </a>
-                    <a href="mailto:sales@bykelink.com" className="block text-sm text-white transition hover:text-cyan-300">
+                    <a href="mailto:sales@bykelink.com" className="block text-sm text-white transition hover:text-red-300">
                       sales@bykelink.com
                     </a>
                   </div>
@@ -750,7 +750,7 @@ export default function HeroSection({
                 <div className="flex flex-wrap gap-3">
                   <a
                     href="tel:+63288889999"
-                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700"
+                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-red-600 to-white px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100"
                     aria-label="Call Bykelink"
                   >
                     <CallRoundedIcon sx={{ fontSize: 16 }} />
@@ -758,7 +758,7 @@ export default function HeroSection({
                   </a>
                   <a
                     href="mailto:sales@bykelink.com"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-blue-600 hover:text-blue-300"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-red-600 hover:text-red-300"
                     aria-label="Email Bykelink"
                   >
                     <MailRoundedIcon sx={{ fontSize: 16 }} />
@@ -770,7 +770,7 @@ export default function HeroSection({
                       event.preventDefault()
                       onNavigateSection('about', 'About')
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-blue-600 hover:text-blue-300"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-red-600 hover:text-red-300"
                     aria-label="About Bykelink"
                   >
                     <InfoRoundedIcon sx={{ fontSize: 16 }} />
@@ -785,20 +785,20 @@ export default function HeroSection({
                   alt="Showroom map"
                   className="h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-slate-950/55 via-transparent to-blue-500/10" />
+                <div className="absolute inset-0 bg-linear-to-t from-slate-950/55 via-transparent to-red-500/10" />
                 <div className="absolute left-6 top-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                     Main Branch
                   </p>
                   <p className="mt-1 text-sm font-semibold text-white">Tagum, Davao del Norte</p>
                 </div>
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-900/30">
+                  <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-900/30">
                     <LocationOnRoundedIcon sx={{ fontSize: 30 }} />
                   </div>
                 </div>
                 <div className="absolute bottom-6 right-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-right backdrop-blur-md">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                     Showroom Hours
                   </p>
                   <p className="mt-1 text-sm text-white">Mon-Sat 9AM-6PM</p>
@@ -813,7 +813,7 @@ export default function HeroSection({
             <div className="rounded-4xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl sm:p-8 lg:p-10" data-reveal="up" data-reveal-delay="200">
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
                 <div>
-                  <p className="mb-3 text-xs font-bold uppercase tracking-[0.32em] text-cyan-300 font-['Epilogue']">
+                  <p className="mb-3 text-xs font-bold uppercase tracking-[0.32em] text-white font-['Epilogue']">
                     Authorized Dealer
                   </p>
                   <h2 className="mb-4 text-3xl font-black uppercase text-white font-['Epilogue'] sm:text-4xl lg:text-5xl">
@@ -830,18 +830,18 @@ export default function HeroSection({
                       <span>Official Yamaha-backed service and genuine parts</span>
                     </div>
                     <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-blue-500" />
+                      <StorefrontRoundedIcon sx={{ fontSize: 18 }} className="text-red-600" />
                       <span>Showroom assistance for scooters, underbones, and big bikes</span>
                     </div>
                     <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                      <CallRoundedIcon sx={{ fontSize: 18 }} className="text-cyan-500" />
+                      <CallRoundedIcon sx={{ fontSize: 18 }} className="text-red-600" />
                       <span>Fast inquiry handling for test rides, promos, and availability</span>
                     </div>
                   </div>
                 </div>
 
                 <aside className="rounded-3xl border border-white/10 bg-linear-to-b from-slate-800 to-slate-900 p-5">
-                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.28em] text-cyan-300 font-['Epilogue']">
+                  <p className="mb-4 text-xs font-bold uppercase tracking-[0.28em] text-white font-['Epilogue']">
                     Brand Promise
                   </p>
                   <div className="space-y-4">
@@ -856,7 +856,7 @@ export default function HeroSection({
                     <button
                       type="button"
                       onClick={onNavigateLogin}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-cyan-600 px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-blue-700 hover:to-cyan-700"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-red-600 to-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100"
                     >
                       Book a Service
                       <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />
@@ -873,18 +873,18 @@ export default function HeroSection({
         <div className="mx-auto max-w-screen-2xl px-6 py-14 lg:px-8">
           <div className="mb-10 flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/40 p-5 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between" data-reveal="up" data-reveal-delay="160">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-300 font-['Epilogue']">Stay Connected</p>
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white font-['Epilogue']">Stay Connected</p>
               <p className="mt-2 text-sm text-slate-300">Get updates on new models, promos, and service advisories.</p>
             </div>
             <div className="flex w-full max-w-md gap-2">
               <input
                 type="email"
                 placeholder="Your Email"
-                className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-[#2563eb]"
+                className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-red-600"
               />
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-xl bg-[#2563eb] px-4 text-white transition hover:bg-blue-600"
+                className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 text-white transition hover:bg-red-700"
                 aria-label="Send newsletter email"
               >
                 <SendRoundedIcon sx={{ fontSize: 18 }} />
@@ -930,7 +930,7 @@ export default function HeroSection({
               Newsletter
             </h4>
             <p className="mb-4 text-sm text-slate-400">Stay tuned for the latest releases.</p>
-            <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">Yamaha Dealer Since 2026</p>
+            <p className="text-xs uppercase tracking-[0.22em] text-white">Yamaha Dealer Since 2026</p>
           </div>
           </div>
         </div>

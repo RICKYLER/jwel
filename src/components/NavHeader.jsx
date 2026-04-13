@@ -28,7 +28,7 @@ export default function NavHeader({
   }
 
   return (
-    <header className="fixed top-0 z-50 w-full border-b border-slate-700/40 bg-slate-950/95 backdrop-blur-xl shadow-2xl shadow-blue-900/10">
+    <header className="fixed top-0 z-50 w-full border-b border-slate-700/40 bg-slate-950/95 backdrop-blur-xl shadow-2xl shadow-red-900/10">
       <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <button
@@ -59,7 +59,7 @@ export default function NavHeader({
                 onClick={(event) => handleNavClick(event, link)}
                 className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
                   isActive
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-red-600 text-red-600'
                     : 'border-transparent text-neutral-400 hover:text-neutral-100'
                 }`}
               >
@@ -83,7 +83,7 @@ export default function NavHeader({
               <button
                 type="button"
                 onClick={onSignOut}
-                className="rounded-full border border-blue-400/40 bg-blue-600/20 px-4 py-2 text-sm font-bold text-blue-200 transition hover:bg-blue-600 hover:text-white"
+                className="rounded-full border border-red-400/40 bg-red-600/20 px-4 py-2 text-sm font-bold text-red-200 transition hover:bg-red-600 hover:text-white"
               >
                 Sign Out
               </button>
@@ -92,7 +92,7 @@ export default function NavHeader({
             <button
               type="button"
               onClick={onAuthClick}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/30 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-2.5 text-sm font-black uppercase tracking-tight text-white font-['Epilogue'] transition duration-300 hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/30 active:scale-95"
             >
               Get Started
               <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
@@ -134,7 +134,7 @@ export default function NavHeader({
                   handleMenuClose()
                   onSignOut()
                 }}
-                className="rounded-xl border border-blue-400/40 bg-blue-600/20 px-4 py-3 text-sm font-black uppercase tracking-tight text-blue-200 transition hover:bg-blue-600 hover:text-white"
+                className="rounded-xl border border-red-400/40 bg-red-600/20 px-4 py-3 text-sm font-black uppercase tracking-tight text-red-200 transition hover:bg-red-600 hover:text-white"
               >
                 Sign Out
               </button>
@@ -145,7 +145,7 @@ export default function NavHeader({
                   handleMenuClose()
                   onAuthClick()
                 }}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white transition duration-300 hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-black uppercase tracking-tight text-white transition duration-300 hover:bg-red-700"
               >
                 Get Started
                 <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />

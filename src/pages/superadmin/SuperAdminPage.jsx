@@ -1498,7 +1498,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="font-['Epilogue'] text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">
-                  Velocity <span className="text-[#2563eb]">Pulse</span>
+                  Velocity <span className="text-red-600">Pulse</span>
                 </h2>
                 <p className="mt-2 font-medium text-white/40">
                   Firebase live sync • {consoleLabel} access • Focus: {sectionTitle}
@@ -1512,7 +1512,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
                 </div>
                 <div className="superadmin-summary-card flex flex-col rounded-lg px-4 py-2">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Firebase Status</span>
-                  <span className="font-['Epilogue'] font-bold text-[#2563eb]">
+                  <span className="font-['Epilogue'] font-bold text-red-600">
                     {loadingMessage ? 'Syncing...' : 'Live'}
                   </span>
                 </div>
@@ -1537,7 +1537,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
               {metricCards.map((card) => (
                 <article
                   key={card.title}
-                  className="superadmin-summary-card superadmin-metric-card group relative overflow-hidden rounded-lg p-6 transition-all hover:border-[#2563eb]/30"
+                  className="superadmin-summary-card superadmin-metric-card group relative overflow-hidden rounded-lg p-6 transition-all hover:border-red-600/30"
                 >
                   <div className="absolute -bottom-4 -right-4 opacity-5 transition-opacity group-hover:opacity-10">
                     {card.title.includes('Availability') ? (
@@ -1552,12 +1552,12 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
                   {card.progress !== undefined ? (
                     <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                      <div className="h-full bg-[#2563eb]" style={{ width: `${card.progress}%` }} />
+                      <div className="h-full bg-red-600" style={{ width: `${card.progress}%` }} />
                     </div>
                   ) : (
                     <div
                       className={`mt-4 flex items-center gap-1 text-xs font-bold ${
-                        card.tone === 'emerald' ? 'text-emerald-400' : 'text-[#2563eb]'
+                        card.tone === 'emerald' ? 'text-emerald-400' : 'text-red-600'
                       }`}
                     >
                       {card.tone === 'emerald' ? (

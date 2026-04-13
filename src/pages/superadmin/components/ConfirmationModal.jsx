@@ -33,14 +33,14 @@ export default function ConfirmationModal({
                     ? 'bg-red-950/40'
                     : 'bg-red-100'
                   : isDarkMode
-                    ? 'bg-cyan-950/40'
-                    : 'bg-cyan-100'
+                    ? 'bg-white/10'
+                    : 'bg-white'
               }`}
             >
               <WarningRoundedIcon
                 sx={{
                   fontSize: 24,
-                  color: isDangerous ? '#ff7070' : '#22d3ee',
+                  color: isDangerous ? '#ff7070' : '#ffffff',
                 }}
               />
             </div>
@@ -93,7 +93,7 @@ export default function ConfirmationModal({
               className={`inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-bold transition-colors ${
                 isDangerous
                   ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-600 text-white hover:bg-gray-700'
               }`}
             >
               {confirmText}

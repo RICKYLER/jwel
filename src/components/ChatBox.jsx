@@ -193,7 +193,7 @@ export default function ChatBox({ currentUser }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 transition duration-300 hover:scale-110 hover:shadow-blue-600/50 md:bottom-8 md:right-8"
+        className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-110 hover:shadow-red-600/50 md:bottom-8 md:right-8"
         aria-label="Open chat"
       >
         {isOpen ? (
@@ -207,9 +207,9 @@ export default function ChatBox({ currentUser }) {
       {isOpen && (
         <div className="fixed bottom-20 right-4 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1c1b1b] shadow-2xl md:bottom-24 md:right-8 animate-in fade-in slide-in-from-bottom-2" style={{ height: '500px' }}>
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 bg-linear-to-r from-blue-600/10 to-blue-500/5 px-4 py-4">
+          <div className="flex items-center justify-between border-b border-white/10 bg-linear-to-r from-red-600/10 to-red-500/5 px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600">
                 <SmartToyRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
               </div>
               <div>
@@ -237,12 +237,12 @@ export default function ChatBox({ currentUser }) {
                 <div
                   className={`max-w-xs rounded-2xl px-4 py-2 text-sm ${
                     message.type === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-none shadow-lg shadow-blue-600/20'
+                      ? 'bg-red-600 text-white rounded-br-none shadow-lg shadow-red-600/20'
                       : 'bg-white/10 text-neutral-100 rounded-bl-none border border-white/20'
                   }`}
                 >
                   <p>{message.text}</p>
-                  <span className={`text-xs mt-1 block ${message.type === 'user' ? 'text-blue-200' : 'text-neutral-400'}`}>
+                  <span className={`text-xs mt-1 block ${message.type === 'user' ? 'text-red-200' : 'text-neutral-400'}`}>
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -252,9 +252,9 @@ export default function ChatBox({ currentUser }) {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="flex gap-2 rounded-2xl bg-white/10 px-4 py-3 text-neutral-100 border border-white/20 rounded-bl-none">
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0s' }} />
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                  <div className="h-2 w-2 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0s' }} />
+                  <div className="h-2 w-2 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <div className="h-2 w-2 rounded-full bg-red-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
                 </div>
               </div>
             )}
@@ -273,13 +273,13 @@ export default function ChatBox({ currentUser }) {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder={isInitializing ? 'Initializing chat...' : 'Type a message...'}
-                className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-neutral-500 outline-none transition focus:border-blue-600/50 focus:bg-white/10 backdrop-blur-sm"
+                className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-neutral-500 outline-none transition focus:border-red-600/50 focus:bg-white/10 backdrop-blur-sm"
                 disabled={isLoading || isInitializing}
               />
               <button
                 type="submit"
                 disabled={isLoading || !inputValue.trim() || isInitializing}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white transition duration-300 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white transition duration-300 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 aria-label="Send message"
               >
                 <SendRoundedIcon sx={{ fontSize: 18 }} />

@@ -3,10 +3,15 @@ import { signOut } from 'firebase/auth'
 import { collection, onSnapshot, query } from 'firebase/firestore'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
+import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
+import Brightness4RoundedIcon from '@mui/icons-material/Brightness4Rounded'
+import Brightness7RoundedIcon from '@mui/icons-material/Brightness7Rounded'
+import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
+import bykelinkLogo from '../../assets/bykelinklogo.png'
 import { auth, db } from '../../firebase'
 import ChatBox from '../../components/ChatBox'
 
@@ -19,11 +24,20 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function CustomerShowroomPage({ currentUser, onSignOut }) {
+export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(true)
+  const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState([
+    { id: 1, title: 'New Inventory', message: 'Yamaha YZF-R1M now in stock', timestamp: 'Just now', read: false },
+    { id: 2, title: 'Financing Available', message: '0% APR financing up to 24 months', timestamp: '2 hours ago', read: true },
+  ])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [sortBy, setSortBy] = useState('newest')
+  const [selectedType, setSelectedType] = useState('all')
+  const [selectedEngine, setSelectedEngine] = useState('all')
+  const [inStockOnly, setInStockOnly] = useState(false)
   const [inventory, setInventory] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [favorites, setFavorites] = useState(new Set())
@@ -57,10 +71,8 @@ export default function CustomerShowroomPage({ currentUser, onSignOut }) {
     return unsubscribe
   }, [])
 
-  const categories = useMemo(
-    () => ['all', ...new Set(inventory.map((item) => item.category || 'General'))],
-    [inventory],
-  )
+  const motorcycleTypes = ['all', 'Scooters', 'Sports', 'Underbikes', 'Off-Road']
+  const engineDisplacements = ['all', '100cc', '150cc', '250cc', '450cc', '600cc+']
 
   const filteredAndSorted = useMemo(() => {
     let results = inventory
@@ -70,26 +82,45 @@ export default function CustomerShowroomPage({ currentUser, onSignOut }) {
       results = results.filter((item) => item.category === selectedCategory)
     }
 
+    // Type filter (using category as proxy)
+    if (selectedType !== 'all') {
+      results = results.filter((item) => {
+        const itemType = item.itemType || item.type || item.category || ''
+        return itemType.toLowerCase().includes(selectedType.toLowerCase())
+      })
+    }
+
+    // Engine filter (search in model name/description)
+    if (selectedEngine !== 'all') {
+      results = results.filter((item) => {
+        const modelStr = `${item.name || ''} ${item.model || ''} ${item.description || ''}`.toLowerCase()
+        return modelStr.includes(selectedEngine.toLowerCase())
+      })
+    }
+
+    // In stock filter
+    if (inStockOnly) {
+      results = results.filter((item) => (item.stock || 0) > 0)
+    }
+
     // Search filter
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase()
       results = results.filter(
         (item) =>
-          item.name?.toLowerCase().includes(query) ||
-          item.category?.toLowerCase().includes(query) ||
-          item.description?.toLowerCase().includes(query),
+          item.name?.toLowerCase().includes(q) ||
+          item.category?.toLowerCase().includes(q) ||
+          item.description?.toLowerCase().includes(q),
       )
     }
 
-    // Sorting
+    // Sorting (default: newest)
     results.sort((a, b) => {
-      if (sortBy === 'price-low') return (a.price || 0) - (b.price || 0)
-      if (sortBy === 'price-high') return (b.price || 0) - (a.price || 0)
       return (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
     })
 
     return results
-  }, [inventory, selectedCategory, searchQuery, sortBy])
+  }, [inventory, selectedCategory, selectedType, selectedEngine, inStockOnly, searchQuery])
 
   const toggleFavorite = (itemId) => {
     setFavorites((prev) => {
@@ -105,245 +136,527 @@ export default function CustomerShowroomPage({ currentUser, onSignOut }) {
 
   const handleLogout = async () => {
     await signOut(auth)
+    setIsProfileDrawerOpen(false)
     onSignOut?.()
   }
 
+  const handleNotificationClick = (notifId) => {
+    setUnreadNotifications((prev) =>
+      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
+    )
+  }
+
+  const handleViewDetails = (item) => {
+    if (onNavigateToProduct) {
+      onNavigateToProduct(item.id)
+    }
+  }
+
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedCategory('all')
+    setSelectedType('all')
+    setSelectedEngine('all')
+    setInStockOnly(false)
+  }
+
+  const visibleInventory = useMemo(() => filteredAndSorted.slice(0, 9), [filteredAndSorted])
+
+  // Extract colors from item (assuming stored as array or comma-separated)
+  const getColors = (item) => {
+    let colorArray = []
+    if (Array.isArray(item.colors)) {
+      colorArray = item.colors.filter(c => c && typeof c === 'string').map(c => c.trim())
+    } else if (Array.isArray(item.colorVariants)) {
+      colorArray = item.colorVariants
+        .map(c => (typeof c === 'string' ? c : c?.name || c?.color || String(c)))
+        .filter(c => c && typeof c === 'string')
+        .map(c => c.trim())
+    } else if (typeof item.colors === 'string') {
+      colorArray = item.colors.split(',').filter(c => c).map(c => c.trim())
+    }
+    return colorArray.slice(0, 3)
+  }
+
+  // Map color names to hex values
+  const getColorHex = (colorName) => {
+    if (!colorName || typeof colorName !== 'string') return '#808080'
+    const lower = colorName.toLowerCase().trim()
+    
+    // Check for specific motorcycle color names first
+    if (lower.includes('velocity') || lower.includes('red')) return '#e10100'
+    if (lower.includes('sunset') || lower.includes('orange')) return '#ff6b35'
+    if (lower.includes('pearl') || lower.includes('white')) return '#f5f5f5'
+    if (lower.includes('signature') || lower.includes('black')) return '#1a1a1a'
+    if (lower.includes('blue')) return '#0066cc'
+    if (lower.includes('yellow') || lower.includes('gold')) return '#ffd700'
+    if (lower.includes('silver') || lower.includes('grey') || lower.includes('gray')) return '#a0a0a0'
+    if (lower.includes('cyan') || lower.includes('aqua')) return '#00d4ff'
+    if (lower.includes('purple') || lower.includes('violet')) return '#8b00ff'
+    if (lower.includes('green')) return '#00b74a'
+    if (lower.includes('brown') || lower.includes('bronze')) return '#8b4513'
+    
+    // Default to gray if no match
+    return '#808080'
+  }
+
   return (
-    <div className="bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 font-body text-white overflow-x-hidden min-h-screen">
-      {/* Header */}
-      <header className="fixed top-0 w-full z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-700/50 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-black tracking-tighter bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                BYKELINK
-              </div>
-              <p className="hidden sm:block text-xs font-bold text-slate-400 tracking-widest">
-                YAMAHA DEALER
-              </p>
-            </div>
-
-            {/* Nav Links - Desktop */}
-            <nav className="hidden lg:flex items-center gap-8">
-              <a className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors">Showroom</a>
-              <a className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">My Bookings</a>
-              <a className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Service</a>
-              <a className="text-sm font-semibold text-slate-300 hover:text-white transition-colors">Support</a>
-            </nav>
-
-            {/* User Menu */}
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex flex-col items-end">
-                <p className="text-sm font-semibold text-white">
-                  {currentUser?.displayName || currentUser?.email?.split('@')[0]}
-                </p>
-                <p className="text-xs text-slate-400">{currentUser?.email}</p>
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-xs font-bold uppercase tracking-widest bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 transition-all rounded-lg"
-              >
-                Logout
-              </button>
-
-              {/* Mobile Menu Toggle */}
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              >
-                {isMenuOpen ? <CloseRoundedIcon /> : <MenuRoundedIcon />}
-              </button>
+    <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1]' : 'bg-white text-slate-900'} font-['Manrope']`}>
+      {/* Enhanced Header */}
+      <header className={`sticky top-0 z-50 border-b ${isDarkMode ? 'border-slate-800/60 bg-slate-950/95' : 'border-slate-200 bg-white/95'} backdrop-blur-md shadow-lg`}>
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          {/* Logo Section */}
+          <div className="flex items-center gap-3">
+            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-red-600 p-1.5" />
+            <div>
+              <p className="text-sm font-black uppercase tracking-tight text-red-600">BYKELINK</p>
+              <p className="hidden sm:block text-[9px] font-bold text-slate-500 tracking-widest">Yamaha Dealer</p>
             </div>
           </div>
 
-          {/* Mobile Menu */}
-          {isMenuOpen && (
-            <nav className="lg:hidden mt-4 pt-4 border-t border-slate-700 space-y-3 pb-4">
-              <a className="block text-sm font-semibold text-blue-400 hover:text-blue-300">Showroom</a>
-              <a className="block text-sm font-semibold text-slate-300 hover:text-white">My Bookings</a>
-              <a className="block text-sm font-semibold text-slate-300 hover:text-white">Service</a>
-              <a className="block text-sm font-semibold text-slate-300 hover:text-white">Support</a>
-            </nav>
-          )}
+          {/* Desktop Navigation */}
+          <nav className={`hidden items-center gap-8 lg:flex`}>
+            <a className="border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-red-600 text-red-600 transition-colors">Showroom</a>
+            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Financing</a>
+            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Bookings</a>
+            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Service</a>
+            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Support</a>
+          </nav>
+
+          {/* Desktop Right Section */}
+          <div className="hidden items-center gap-4 lg:flex">
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationDrawerOpen(!isNotificationDrawerOpen)}
+                className={`relative p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
+              >
+                <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
+                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></span>
+              </button>
+
+              {/* Notification Drawer */}
+              {isNotificationDrawerOpen && (
+                <div className={`absolute right-0 mt-2 w-80 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                    <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto space-y-0">
+                    {unreadNotifications.length > 0 ? (
+                      unreadNotifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => handleNotificationClick(notif.id)}
+                          className={`p-4 border-b ${isDarkMode ? 'border-slate-800 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-50'} transition cursor-pointer`}
+                        >
+                          <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{notif.title}</p>
+                          <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{notif.message}</p>
+                          <p className={`text-[10px] mt-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{notif.time}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 text-sm">No notifications</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Dark/Light Mode Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+            >
+              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 22 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 22 }} />}
+            </button>
+
+            {/* Profile Avatar */}
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileDrawerOpen(!isProfileDrawerOpen)}
+                className={`p-1 rounded-full transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
+              >
+                <AccountCircleRoundedIcon sx={{ fontSize: 28 }} />
+              </button>
+
+              {/* Profile Drawer */}
+              {isProfileDrawerOpen && (
+                <div className={`absolute right-0 mt-2 w-72 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                    <div className="flex items-center gap-3">
+                      <AccountCircleRoundedIcon sx={{ fontSize: 40 }} className={isDarkMode ? 'text-red-600' : 'text-red-600'} />
+                      <div>
+                        <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentUser?.displayName || 'Customer'}</p>
+                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{currentUser?.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
+                      My Profile
+                    </button>
+                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
+                      My Orders
+                    </button>
+                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
+                      Favorites
+                    </button>
+                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
+                      Settings
+                    </button>
+                    <div className={`border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} pt-2 mt-2`}>
+                      <button
+                        onClick={handleLogout}
+                        className={`w-full px-3 py-2 rounded-lg font-semibold transition text-sm bg-red-600 text-white hover:bg-red-700`}
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => {
+              setIsMenuOpen(!isMenuOpen)
+              setIsNotificationDrawerOpen(false)
+              setIsProfileDrawerOpen(false)
+            }}
+            className={`rounded-lg border p-2 transition lg:hidden ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400'}`}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <CloseRoundedIcon sx={{ fontSize: 18 }} /> : <MenuRoundedIcon sx={{ fontSize: 18 }} />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-red-600 pb-2 border-b-2 border-red-600">Showroom</a>
+            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Financing</a>
+            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Bookings</a>
+            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Service</a>
+            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Support</a>
+            
+            {/* Mobile Notification */}
+            <div className={`border-t pt-3 mt-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+              <button
+                onClick={() => setIsNotificationDrawerOpen(!isNotificationDrawerOpen)}
+                className={`flex items-center gap-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}
+              >
+                <NotificationsRoundedIcon sx={{ fontSize: 20 }} />
+                Notifications
+              </button>
+            </div>
+
+            {/* Mobile Theme Toggle */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`flex items-center gap-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}
+            >
+              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 20 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 20 }} />}
+              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            </button>
+
+            {/* Mobile Profile/Logout */}
+            <button
+              onClick={handleLogout}
+              className="mt-2 w-full inline-flex rounded-lg bg-red-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-red-700"
+            >
+              Logout
+            </button>
+          </nav>
+        )}
       </header>
 
-      <main className="mt-24">
-        {/* Hero Section */}
-        <section className="relative h-96 overflow-hidden bg-linear-to-r from-blue-600 via-cyan-600 to-slate-800 flex items-center">
-          <div className="absolute inset-0 opacity-20">
+      <main>
+        <section className="relative">
+          <div className="h-80 sm:h-96 bg-[#111316]">
             <img
               alt="Yamaha Motorcycle"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2nZv-uRF6byfs4XjVo7NESuTqy2cCFaiht29N89gfu6EJgVCrhsD11KPhgc77XdLQScxGEmc8X0AtBPqSmH_9g5CRP9AWLnJ4JT3_FHvcUYx4SrVa2GLx1Jq6z61ki9sr-DU_bayakKhs7Q7MAWZu6CvSTSCy_A0x2Js7ZTije5_FEec2GdmYrV1NhoUI7PTUX5F2qrklhkQqfMzgF_9GtIppyvREWjbLv6hwhj_SxzDHUiyF-aT_52-fl6jp_xAd9eLb9tF0DIg"
+              className="h-full w-full object-cover opacity-40"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOYh1VE8GHnBGKvUvSZok4TgFf2UfOuQCaQZ1zDAYQLB-CkhLmw1mQ4zqEPTDQEUeQuoTFexJfBfonEo4ur4Hg8cBLp_o5Q5kCBDopOu9q1bSc3ZFFcwmdiqVz11uDgBIGg0xGPC2u-cL_cF9Md1LCiEpRfDeP6G4GS1k4R2zG6wcOb9rVXOVdNuu5KLvwh3YXr0SERtwaLZyAxXX3SMLIzgCWI_yCfGdz056mrFGBy7kXZmqVlY3XxcybIssMFPmGCwon5xXy0J8"
             />
           </div>
+          <div className="absolute inset-0 bg-linear-to-r from-black/80 via-black/50 to-black/10" />
 
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <div className="max-w-2xl">
-              <p className="text-sm font-bold text-blue-200 uppercase tracking-widest mb-2">Welcome Back</p>
-              <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-4">
-                Explore Your Perfect <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-200 to-cyan-200">Ride</span>
+          <div className="absolute inset-0 mx-auto flex w-full max-w-7xl items-end px-4 pb-8 sm:px-6 lg:px-8 lg:pb-12">
+            <div className="max-w-2xl text-white">
+              <p className="mb-3 inline-flex bg-red-600 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white rounded-sm">
+                Featured Collection
+              </p>
+              <h1 className="text-4xl font-black uppercase leading-[0.95] tracking-tight sm:text-6xl">
+                Find Your
+                <br />
+                Perfect Ride
               </h1>
-              <p className="text-lg text-slate-200 max-w-xl">
-                Premium Yamaha motorcycles tailored for your journey. Browse our complete inventory and find your next adventure.
+              <p className="mt-4 max-w-md text-sm text-slate-300 sm:text-base">
+                Explore premium Yamaha motorcycles engineered for performance and precision.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Filters & Search */}
-        <section className="bg-slate-800/50 border-b border-slate-700 py-6 sticky top-24 z-30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-              {/* Search Bar */}
-              <div className="relative w-full sm:flex-1 max-w-md">
-                <SearchRoundedIcon className="absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search motorcycles..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-                />
-              </div>
+        <section className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* Filter Sidebar */}
+            <aside className="lg:col-span-3 space-y-6">
+              <div className="space-y-4 border border-slate-800 bg-slate-900/60 p-5 backdrop-blur-sm rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TuneRoundedIcon sx={{ fontSize: 18 }} className="text-red-600" />
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.24em] text-red-600">Filters</h3>
+                </div>
 
-              {/* Category Filter */}
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm font-semibold focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
-                  </option>
-                ))}
-              </select>
+                {/* Search */}
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Search</p>
+                  <div className="relative">
+                    <SearchRoundedIcon className="pointer-events-none absolute left-3 top-2.5 text-slate-500" sx={{ fontSize: 18 }} />
+                    <input
+                      type="text"
+                      placeholder="Model or category"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full border border-slate-700 bg-slate-800/50 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder-slate-500 outline-none transition focus:border-red-600/50 rounded-sm"
+                    />
+                  </div>
+                </div>
 
-              {/* Sort */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm font-semibold focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-              >
-                <option value="newest">Newest</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-            </div>
-          </div>
-        </section>
+                {/* Motorcycle Type */}
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Motorcycle Type</p>
+                  <div className="space-y-1.5">
+                    {motorcycleTypes.map((type) => (
+                      <label key={type} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedType === 'all' 
+                              ? type === 'all' 
+                              : type === selectedType
+                          }
+                          onChange={() => setSelectedType(type === selectedType && type !== 'all' ? 'all' : type)}
+                          className="h-4 w-4 accent-red-600 border-slate-600 bg-slate-700 rounded cursor-pointer"
+                        />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300">
+                          {type === 'all' ? 'All Types' : type}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
 
-        {/* Products Grid */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-slate-600 border-t-blue-400 rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-slate-300 font-semibold">Loading inventory...</p>
-              </div>
-            </div>
-          ) : hasPermissionError ? (
-            <div className="text-center py-16 bg-slate-800/50 rounded-lg border border-slate-700 p-8">
-              <p className="text-xl text-slate-300 font-semibold mb-3">📚 Inventory Temporarily Unavailable</p>
-              <p className="text-slate-400 mb-4">We're having trouble loading our current inventory from our database.</p>
-              <p className="text-sm text-slate-500">Our team has been notified. Please try refreshing the page or contact support.</p>
-            </div>
-          ) : filteredAndSorted.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-xl text-slate-300 font-semibold mb-2">No motorcycles found</p>
-              <p className="text-slate-400">Try adjusting your filters or search</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-12">
-                <div>
-                  <h2 className="text-4xl font-black mb-2">Our Inventory</h2>
-                  <p className="text-slate-400 text-sm">
-                    Showing {filteredAndSorted.length} motorcycle{filteredAndSorted.length !== 1 ? 's' : ''}
-                  </p>
+                {/* Engine Displacement */}
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Engine Displacement</p>
+                  <div className="space-y-1.5">
+                    {engineDisplacements.map((engine) => (
+                      <label key={engine} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedEngine === 'all'
+                              ? engine === 'all'
+                              : engine === selectedEngine
+                          }
+                          onChange={() => setSelectedEngine(engine === selectedEngine && engine !== 'all' ? 'all' : engine)}
+                          className="h-4 w-4 accent-red-600 border-slate-600 bg-slate-700 rounded cursor-pointer"
+                        />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300">
+                          {engine === 'all' ? 'All Engines' : engine}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Availability */}
+                <div className="space-y-2 border-t border-slate-800 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Availability</p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={inStockOnly}
+                      onChange={(e) => setInStockOnly(e.target.checked)}
+                      className="h-4 w-4 accent-red-600 border-slate-600 bg-slate-700 rounded cursor-pointer"
+                    />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300">In Stock Only</span>
+                    <span className="ml-auto w-5 h-5 bg-red-600 text-white text-[8px] font-black flex items-center justify-center rounded-sm">
+                      {filteredAndSorted.filter(i => (i.stock || 0) > 0).length}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Reset Button */}
+                <button
+                  onClick={handleResetFilters}
+                  className="w-full border border-slate-700 bg-slate-800/40 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 transition hover:bg-slate-800 hover:text-white rounded-sm"
+                >
+                  Reset All Filters
+                </button>
+
+                {/* Find Your Match CTA */}
+                <div className="border border-red-600/50 bg-red-600/10 p-6 rounded-lg backdrop-blur-sm">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Need Help?</p>
+                    <h3 className="text-2xl font-black uppercase text-white leading-tight">Find Your Match</h3>
+                    <p className="text-sm text-slate-300">Our experts are ready to help you choose the right ride.</p>
+                    <button className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 text-[11px] font-black uppercase tracking-[0.18em] transition rounded-sm">
+                      Chat With Us
+                    </button>
+                  </div>
                 </div>
               </div>
+            </aside>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredAndSorted.map((item) => (
-                  <div
-                    key={item.id}
-                    className="group relative bg-linear-to-br from-slate-700 to-slate-800 rounded-xl overflow-hidden border border-slate-600 hover:border-blue-400 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20"
-                  >
-                    {/* Image Container */}
-                    <div className="relative h-64 bg-slate-800 overflow-hidden">
-                      <img
-                        src={Array.isArray(item.gallery) && item.gallery[0] ? item.gallery[0] : item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
-                      <div className="absolute top-4 right-4 z-10">
+            {/* Main Content */}
+            <div className="lg:col-span-9 space-y-6">
+              <div className="flex flex-col gap-2 border-b border-slate-800 pb-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-600">Featured Models</p>
+                  <h2 className="text-3xl font-black uppercase tracking-tight text-white">Showroom Lineup</h2>
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  {filteredAndSorted.length} model{filteredAndSorted.length !== 1 ? 's' : ''} available
+                </p>
+              </div>
+
+              {isLoading ? (
+                <div className="grid min-h-72 place-items-center border border-slate-800 bg-slate-900/40 rounded-lg">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Loading inventory...</p>
+                </div>
+              ) : hasPermissionError ? (
+                <div className="border border-slate-800 bg-slate-900/40 p-8 text-center rounded-lg">
+                  <p className="text-base font-bold uppercase tracking-[0.14em] text-slate-300">Inventory temporarily unavailable</p>
+                  <p className="mt-2 text-sm text-slate-400">Please refresh the page or contact support.</p>
+                </div>
+              ) : visibleInventory.length === 0 ? (
+                <div className="border border-slate-800 bg-slate-900/40 p-8 text-center rounded-lg">
+                  <p className="text-base font-bold uppercase tracking-[0.14em] text-slate-300">No motorcycles found</p>
+                  <p className="mt-2 text-sm text-slate-400">Try adjusting your filters or search terms.</p>
+                </div>
+              ) : (
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleInventory.map((item) => (
+                    <article
+                      key={item.id}
+                      className="group border border-slate-800 bg-slate-900/50 backdrop-blur-sm rounded-lg overflow-hidden transition hover:border-slate-700 hover:shadow-xl hover:shadow-black/50"
+                    >
+                      {/* Image */}
+                      <div className="relative h-48 overflow-hidden bg-slate-800">
+                        <img
+                          src={Array.isArray(item.gallery) && item.gallery[0] ? item.gallery[0] : item.imageUrl}
+                          alt={item.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                        <span className="absolute left-3 top-3 bg-red-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white rounded-sm">
+                          {item.stock ? `${item.stock} in stock` : 'Limited'}
+                        </span>
                         <button
                           onClick={() => toggleFavorite(item.id)}
-                          className="p-2 bg-slate-900/80 backdrop-blur rounded-full hover:bg-blue-600 transition-colors"
+                          className="absolute right-3 top-3 bg-slate-900/80 backdrop-blur p-2 text-slate-300 transition hover:text-red-600 rounded-sm"
+                          aria-label={`Toggle favorite for ${item.name || 'item'}`}
                         >
                           {favorites.has(item.id) ? (
-                            <FavoriteRoundedIcon className="text-red-400" />
+                            <FavoriteRoundedIcon sx={{ fontSize: 18 }} className="text-red-600" />
                           ) : (
-                            <FavoriteBorderRoundedIcon className="text-slate-300" />
+                            <FavoriteBorderRoundedIcon sx={{ fontSize: 18 }} />
                           )}
                         </button>
                       </div>
 
-                      {/* Stock Badge */}
-                      <div className="absolute top-4 left-4 z-10 bg-linear-to-r from-blue-600 to-cyan-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
-                        {item.stock ? `${item.stock} in stock` : 'Limited'}
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6">
-                      <p className="text-xs font-bold text-blue-300 uppercase tracking-widest mb-2">
-                        {item.category || 'Motorcycle'}
-                      </p>
-                      <h3 className="text-xl font-black mb-2 line-clamp-2">{item.name}</h3>
-                      <p className="text-sm text-slate-300 mb-4 line-clamp-2 min-h-9">
-                        {item.description ||
-                          'Premium Yamaha motorcycle designed for performance and reliability.'}
-                      </p>
-
-                      {/* Price */}
-                      <div className="mb-6 pb-6 border-b border-slate-600">
-                        <p className="text-xs text-slate-400 mb-1">Starting at</p>
-                        <p className="text-3xl font-black text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-cyan-400">
-                          {formatPrice(item.price || 0)}
+                      {/* Content */}
+                      <div className="space-y-3 p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                          {item.category || 'Motorcycle Units'}
                         </p>
-                      </div>
+                        <h3 className="min-h-10 text-base font-black uppercase leading-tight text-white">
+                          {item.name || 'Yamaha Motorcycle'}
+                        </h3>
+                        <p className="line-clamp-2 min-h-9 text-xs text-slate-400">
+                          {item.description || 'Purpose-built performance and road-ready reliability.'}
+                        </p>
 
-                      {/* Specs */}
-                      {item.specs && (
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                          {item.specs.slice(0, 2).map((spec, idx) => (
-                            <div key={idx}>
-                              <p className="text-xs text-slate-400 uppercase font-bold">{spec.label}</p>
-                              <p className="text-sm font-semibold text-white">{spec.value}</p>
+                        {/* Color Variants with Stock */}
+                        {Array.isArray(item.colorVariants) && item.colorVariants.length > 0 && (
+                          <div className="space-y-3 border-t border-slate-800 pt-3">
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Available Colors & Stock</p>
+                            <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                              {item.colorVariants.slice(0, 4).map((variant, idx) => (
+                                <div key={idx} className="flex flex-col items-center text-center">
+                                  <div
+                                    className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 border-slate-700 shadow-lg"
+                                    style={{
+                                      backgroundColor: getColorHex(
+                                        typeof variant === 'string'
+                                          ? variant
+                                          : typeof variant === 'object'
+                                          ? variant?.color?.name || variant?.name || variant?.color || ''
+                                          : ''
+                                      )
+                                    }}
+                                  />
+                                  <p className="text-[8px] font-semibold text-slate-300 mt-2 line-clamp-1">
+                                    {typeof variant === 'string'
+                                      ? variant
+                                      : typeof variant === 'object'
+                                      ? variant?.color?.name || variant?.name || 'Color'
+                                      : 'Color'}
+                                  </p>
+                                  <p className="text-[8px] font-bold text-slate-400 mt-1">
+                                    {(typeof variant === 'object' ? variant?.stock : 0) || '-'} in stock
+                                  </p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                        {/* Colors */}  
+                        {getColors(item).length > 0 && !Array.isArray(item.colorVariants) && (
+                          <div className="space-y-1 border-t border-slate-800 pt-3">
+                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Available Colors</p>
+                            <div className="flex gap-2 flex-wrap">
+                              {getColors(item).map((color, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-1.5"
+                                >
+                                  <div
+                                    className="h-4 w-4 rounded-sm border border-slate-600 shadow-sm"
+                                    style={{
+                                      backgroundColor: getColorHex(color)
+                                    }}
+                                    title={color}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
-                      {/* Actions */}
-                      <div className="flex gap-3">
-                        <button className="flex-1 flex items-center justify-center gap-2 bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 font-bold py-3 rounded-lg transition-all transform hover:scale-105 active:scale-95">
-                          <ShoppingCartRoundedIcon sx={{ fontSize: 18 }} />
+                        {/* Price */}
+                        <div className="border-t border-slate-800 pt-3">
+                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">Starting Price</p>
+                          <p className="mt-1 text-lg font-black text-white">{formatPrice(item.price || 0)}</p>
+                        </div>
+
+                        {/* View Details Button */}
+                        <button
+                          onClick={() => handleViewDetails(item)}
+                          className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 text-[10px] font-black uppercase tracking-[0.18em] transition rounded-sm"
+                        >
                           View Details
                         </button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </section>
       </main>
 
@@ -351,67 +664,28 @@ export default function CustomerShowroomPage({ currentUser, onSignOut }) {
       <ChatBox currentUser={currentUser} />
 
       {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-700 mt-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <h3 className="text-lg font-black bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mb-4">
-                BYKELINK
-              </h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
-                Premium Yamaha motorcycles tailored for Filipino riders. Experience excellence with precision engineering.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">Quick Links</h4>
-              <ul className="space-y-2 text-sm text-slate-400">
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Showroom
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    My Bookings
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Service Centers
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition-colors">
-                    Contact Us
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">Contact</h4>
-              <p className="text-sm text-slate-400 mb-2">📍 123 Velocity Avenue, Hub City</p>
-              <p className="text-sm text-slate-400 mb-2">📞 +63 2 8888 1234</p>
-              <p className="text-sm text-slate-400">✉️ support@bykelink.com</p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-700 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-slate-500 uppercase tracking-widest">
-              © 2024 BYKELINK YAMAHA. ALL RIGHTS RESERVED.
+      <footer className="border-t border-slate-800 mt-16 bg-slate-950/60 backdrop-blur-sm py-10">
+        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 sm:px-6 md:grid-cols-3 lg:px-8">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-red-600">BYKELINK</p>
+            <p className="mt-3 max-w-xs text-sm text-slate-400 leading-relaxed">
+              Premium Yamaha motorcycles for Filipino riders with dedicated service support and financing options.
             </p>
-            <div className="flex gap-6">
-              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors uppercase">
-                Privacy
-              </a>
-              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors uppercase">
-                Terms
-              </a>
-              <a href="#" className="text-xs text-slate-400 hover:text-blue-400 transition-colors uppercase">
-                FAQ
-              </a>
-            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Information</p>
+            <ul className="mt-3 space-y-2 text-sm text-slate-400">
+              <li><a className="hover:text-red-600 transition">Showroom</a></li>
+              <li><a className="hover:text-red-600 transition">Financing</a></li>
+              <li><a className="hover:text-red-600 transition">Service</a></li>
+              <li><a className="hover:text-red-600 transition">Support</a></li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Contact</p>
+            <p className="mt-3 text-sm text-slate-400">{currentUser?.displayName || currentUser?.email?.split('@')[0]}</p>
+            <p className="text-sm text-slate-400">{currentUser?.email}</p>
+            <p className="mt-3 text-sm text-slate-400">+63 2 8888 1234</p>
           </div>
         </div>
       </footer>

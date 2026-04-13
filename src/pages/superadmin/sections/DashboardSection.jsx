@@ -34,8 +34,8 @@ export default function DashboardSection({
             {chartBars.map((bar, index) => (
               <div
                 key={`${bar}-${index}`}
-                className={`flex-1 rounded-t transition-all duration-300 hover:bg-[#2563eb]/40 ${
-                  index === chartBars.length - 1 ? 'bg-[#2563eb]' : 'bg-white/8'
+                className={`flex-1 rounded-t transition-all duration-300 hover:bg-red-600/40 ${
+                  index === chartBars.length - 1 ? 'bg-red-600' : 'bg-white/8'
                 }`}
                 style={{ height: `${bar}%` }}
               />
@@ -62,11 +62,11 @@ export default function DashboardSection({
           <div className="space-y-6">
             {technicians.slice(0, 4).map((member) => (
               <div key={member.id} className="flex items-center gap-4">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-cyan-300">
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-red-300">
                   <EngineeringRoundedIcon sx={{ fontSize: 22 }} />
                   <span
                     className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#1c1b1b] ${
-                      String(member.status || '').toLowerCase() === 'online' ? 'bg-emerald-500' : 'bg-cyan-500'
+                      String(member.status || '').toLowerCase() === 'online' ? 'bg-emerald-500' : 'bg-gray-500'
                     }`}
                   />
                 </div>
@@ -77,7 +77,7 @@ export default function DashboardSection({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-[#2563eb]">
+                  <p className="text-xs font-bold text-red-600">
                     {member.activeJobs ?? 0} / {member.capacity ?? 4}
                   </p>
                   <p className="text-[10px] text-white/40">Load</p>
@@ -96,7 +96,7 @@ export default function DashboardSection({
           <button
             type="button"
             onClick={() => setActiveSection('service-requests')}
-            className="text-xs font-bold text-[#2563eb] hover:underline"
+            className="text-xs font-bold text-red-600 hover:underline"
           >
             View All Operations
           </button>

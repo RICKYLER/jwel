@@ -43,14 +43,14 @@ export default function LoginPage({
 
         {/* Branding Overlay */}
         <div className="relative z-20">
-          <div className="text-2xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+          <div className="text-2xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-red-400 to-white bg-clip-text text-transparent">
             Bykelink
           </div>
         </div>
 
         <div className="relative z-20 space-y-4">
           <h1 className="text-7xl font-bold tracking-tighter font-['Epilogue'] uppercase leading-none text-white">
-            Ignite <br /> The <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-300 to-cyan-300">Pulse</span>
+            Ignite <br /> The <span className="text-transparent bg-clip-text bg-linear-to-r from-red-300 to-white">Pulse</span>
           </h1>
           <p className="text-slate-300 font-['Manrope'] uppercase tracking-widest text-sm max-w-sm">
             Experience the raw precision of engineering and the thrill of the open road.
@@ -58,7 +58,7 @@ export default function LoginPage({
         </div>
 
         {/* Red Ambient Glow */}
-        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-cyan-500/20 to-transparent z-10 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-red-500/20 to-transparent z-10 pointer-events-none" />
       </section>
 
       {/* Right Section: Login/Signup Form */}
@@ -68,7 +68,7 @@ export default function LoginPage({
           <button
             type="button"
             onClick={onNavigateBack}
-            className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-400 hover:text-blue-300 transition-colors md:top-8 md:left-8"
+            className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-400 hover:text-red-300 transition-colors md:top-8 md:left-8"
             aria-label="Go back to home"
           >
             ← Back
@@ -77,7 +77,7 @@ export default function LoginPage({
 
         {/* Mobile Logo */}
         <div className="md:hidden mb-12">
-          <div className="text-3xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+          <div className="text-3xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-red-400 to-white bg-clip-text text-transparent">
             Bykelink
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function LoginPage({
                   Password
                 </label>
                 {!isSignup && (
-                  <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300 hover:text-cyan-200 transition-colors">
+                  <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300 hover:text-red-200 transition-colors">
                     Forgot Password?
                   </a>
                 )}
@@ -196,7 +196,7 @@ export default function LoginPage({
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-300 transition-colors"
                   tabIndex="-1"
                 >
                   {showPassword ? (
@@ -229,7 +229,7 @@ export default function LoginPage({
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-300 transition-colors"
                     tabIndex="-1"
                   >
                     {showConfirmPassword ? (
@@ -245,7 +245,7 @@ export default function LoginPage({
             {/* Password Security Checklist (Signup only) */}
             {isSignup && (
               <div className="rounded-xl border border-slate-700/70 bg-slate-900/80 p-4 text-sm text-slate-300 space-y-2">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
+                <p className="text-xs font-bold uppercase tracking-[0.24em] text-red-300">
                   Password security checklist
                 </p>
                 <div className="grid gap-2 grid-cols-2 text-xs">
@@ -305,7 +305,7 @@ export default function LoginPage({
               <button
                 type="submit"
                 disabled={authLoading || googleLoading}
-                className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:opacity-70 text-white py-5 rounded-full font-['Epilogue'] font-bold uppercase tracking-widest text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full bg-linear-to-r from-red-600 to-white hover:from-red-700 hover:to-slate-100 disabled:opacity-70 text-white py-5 rounded-full font-['Epilogue'] font-bold uppercase tracking-widest text-sm shadow-lg shadow-red-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
                 {isSignup && <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />}
                 {authLoading ? 'Please wait...' : (isSignup ? 'Create Secure Account' : 'Login')}
@@ -346,7 +346,7 @@ export default function LoginPage({
                   <button
                     type="button"
                     onClick={() => onToggleAuthMode('login')}
-                    className="text-white font-bold hover:text-cyan-300 transition-colors"
+                    className="text-white font-bold hover:text-red-300 transition-colors"
                   >
                     Sign In
                   </button>
@@ -357,7 +357,7 @@ export default function LoginPage({
                   <button
                     type="button"
                     onClick={() => onToggleAuthMode('signup')}
-                    className="text-white font-bold hover:text-cyan-300 transition-colors"
+                    className="text-white font-bold hover:text-red-300 transition-colors"
                   >
                     Sign Up
                   </button>

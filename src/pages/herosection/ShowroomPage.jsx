@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, limit, onSnapshot, query } from 'firebase/firestore'
+import { collection, onSnapshot, query } from 'firebase/firestore'
 import CallRoundedIcon from '@mui/icons-material/CallRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
@@ -47,7 +47,7 @@ const parseColorOptions = (value) => {
           swatch: item.swatch || 'bg-neutral-700',
         }))
       }
-    } catch (e) {
+    } catch {
       // Not JSON, try comma-separated
       return value
         .split(',')
@@ -95,7 +95,7 @@ const mapInventoryToShowroomModel = (item) => {
   }
 }
 
-export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateSpareParts, onOpenSignup, currentUser }) {
+export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateSpareParts, currentUser }) {
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
   const [selectedModelId, setSelectedModelId] = useState('')
@@ -230,15 +230,6 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleFinancingChange = (event) => {
-    const { name, value } = event.target
-
-    setFinancingForm((current) => ({
-      ...current,
-      [name]: value,
-    }))
-  }
-
   const goToLoginPage = () => {
     window.location.href = '/login'
   }
@@ -264,7 +255,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
       />
 
       <main className="pt-24">
-        <section className="relative flex min-h-96 items-center overflow-hidden bg-linear-to-r from-blue-600 via-cyan-600 to-slate-800">
+        <section className="relative flex min-h-96 items-center overflow-hidden bg-linear-to-r from-red-600 via-white to-slate-800">
           <div className="absolute inset-0 opacity-20">
             <img
               alt={selectedModel?.label || 'Showroom highlight'}
@@ -276,7 +267,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
             <div className="max-w-3xl">
               <p className="mb-2 text-sm font-bold uppercase tracking-widest text-blue-100">Live Showroom</p>
               <h1 className="mb-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-                Explore Your Next <span className="bg-linear-to-r from-blue-100 to-cyan-100 bg-clip-text text-transparent">Yamaha Ride</span>
+                Explore Your Next <span className="bg-linear-to-r from-red-100 to-white bg-clip-text text-transparent">Yamaha Ride</span>
               </h1>
               <p className="max-w-2xl text-base text-slate-100 sm:text-lg">
                 Browse real inventory, compare available variants, and review showroom-ready units with the same premium buying experience as our customer portal.
@@ -287,11 +278,11 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
 
         <div className="mx-auto max-w-screen-2xl px-4 pb-12 pt-8 md:px-8">
           <nav className="mb-8 flex items-center gap-2 text-sm text-slate-400">
-            <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-cyan-300">
+            <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-red-300">
               Home
             </button>
             <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
-            <span className="text-cyan-300">Showroom</span>
+            <span className="text-red-300">Showroom</span>
             <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
             <span className="text-white">{selectedModel?.label || 'Live Inventory'}</span>
           </nav>
@@ -314,7 +305,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                     <button
                       type="button"
                       onClick={() => setIsImageExpandOpen(true)}
-                      className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-blue-600"
+                      className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-red-600"
                       aria-label="Expand image"
                     >
                       <OpenInFullRoundedIcon sx={{ fontSize: 20 }} />
@@ -342,7 +333,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
 
               <div className="space-y-8 lg:col-span-5">
                 <header className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-blue-950/10 sm:p-8">
-                  <div className="mb-4 inline-block rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-cyan-300">
+                  <div className="mb-4 inline-block rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-red-300">
                     {selectedModel.badge}
                   </div>
                   <h1 className="text-4xl font-black leading-tight tracking-tighter text-white font-['Epilogue'] sm:text-5xl md:text-6xl">
@@ -355,7 +346,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                   <div className="mb-3 text-sm font-bold uppercase tracking-[0.24em] text-slate-400">
                     Starting Price
                   </div>
-                  <div className="text-4xl font-black text-transparent bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-['Epilogue']">{selectedModel.price}</div>
+                  <div className="text-4xl font-black text-transparent bg-linear-to-r from-red-400 to-white bg-clip-text font-['Epilogue']">{selectedModel.price}</div>
                 </div>
 
                 <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-blue-950/10 sm:p-8">
@@ -377,7 +368,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                           >
                             <div className={`h-10 w-10 rounded-full border-4 transition-all ${
                               activeColor === index
-                                ? 'border-blue-600 ring-2 ring-blue-600/50'
+                                ? 'border-red-600 ring-2 ring-red-600/50'
                                 : 'border-slate-600'
                             } ${variant.color?.swatch || 'bg-neutral-700'}`} />
                             <div className="text-center">
@@ -407,7 +398,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                 <button
                   type="button"
                   onClick={goToLoginPage}
-                  className="w-full rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-blue-600/30 transition-transform hover:from-blue-700 hover:to-cyan-700 active:scale-95"
+                  className="w-full rounded-xl bg-linear-to-r from-red-600 to-white py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-red-600/30 transition-transform hover:from-red-700 hover:to-slate-100 active:scale-95"
                 >
                   Apply for Financing
                 </button>
@@ -511,7 +502,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div>
                             <h3 className="mb-1 text-xl font-bold text-white font-['Epilogue']">{model.label}</h3>
-                            <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-300">
+                            <div className="text-xs font-black uppercase tracking-[0.24em] text-red-300">
                               {model.accent}
                             </div>
                           </div>
@@ -520,7 +511,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                         <button
                           type="button"
                           onClick={() => handleModelSelect(model.id)}
-                            className="w-full rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-blue-700 hover:to-cyan-700"
+                            className="w-full rounded-xl bg-linear-to-r from-red-600 to-white py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-red-700 hover:to-slate-100"
                         >
                           View Item
                         </button>
@@ -540,7 +531,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-red-600 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Previous page"
                   >
                     <ChevronLeftRoundedIcon sx={{ fontSize: 20 }} />
@@ -553,8 +544,8 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                       onClick={() => handlePageChange(page)}
                       className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold transition-all ${
                         currentPage === page
-                          ? 'border-blue-600 bg-blue-600 text-white'
-                          : 'border-slate-600 text-white hover:border-blue-600 hover:bg-blue-600/10'
+                          ? 'border-red-600 bg-red-600 text-white'
+                          : 'border-slate-600 text-white hover:border-red-600 hover:bg-red-600/10'
                       }`}
                       aria-label={`Page ${page}`}
                       aria-current={currentPage === page ? 'page' : undefined}
@@ -567,7 +558,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-red-600 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Next page"
                   >
                     <ChevronRightRoundedIcon sx={{ fontSize: 20 }} />
@@ -587,7 +578,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
       <footer className="mt-24 w-full border-t border-slate-700/40 bg-slate-950">
         <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-10 px-6 py-14 md:grid-cols-4 lg:px-8 lg:py-16">
           <div className="space-y-4">
-            <div className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-xl font-black text-transparent">BYKELINK</div>
+            <div className="bg-linear-to-r from-red-400 to-white bg-clip-text text-xl font-black text-transparent">BYKELINK</div>
             <p className="text-sm leading-relaxed tracking-wide text-slate-400">
               The premier destination for Yamaha excellence in the Philippines. Precision,
               performance, and passion since inception.
@@ -598,12 +589,12 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
             <h4 className="text-sm font-bold uppercase tracking-widest text-white">Navigation</h4>
             <ul className="space-y-2 text-sm tracking-wide text-slate-400">
               <li>
-                <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="hover:text-blue-600">
+                <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="hover:text-red-600">
                   Showroom
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onNavigateHome} className="hover:text-blue-600">
+                <button type="button" onClick={onNavigateHome} className="hover:text-red-600">
                   Promos
                 </button>
               </li>
@@ -635,13 +626,13 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
             <div className="flex gap-3">
               <a
                 href="tel:+63288889999"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-red-600 hover:text-red-600"
               >
                 <CallRoundedIcon sx={{ fontSize: 18 }} />
               </a>
               <a
                 href="mailto:sales@bykelink.com"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-red-600 hover:text-red-600"
                 aria-label="Email us"
               >
                 <MailRoundedIcon sx={{ fontSize: 18 }} />
@@ -649,7 +640,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
               <button
                 type="button"
                 onClick={() => onNavigateSection?.('contact', 'Contact')}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-blue-600 hover:text-blue-600"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 text-slate-400 transition-all hover:border-red-600 hover:text-red-600"
                 aria-label="Visit location"
               >
                 <LocationOnRoundedIcon sx={{ fontSize: 18 }} />
@@ -679,7 +670,7 @@ export default function ShowroomPage({ onNavigateHome, onNavigateSection, onNavi
             <button
               type="button"
               onClick={() => setIsImageExpandOpen(false)}
-              className="absolute top-4 right-4 rounded-full bg-blue-600 p-2 text-white transition-colors hover:bg-blue-700"
+              className="absolute top-4 right-4 rounded-full bg-red-600 p-2 text-white transition-colors hover:bg-red-700"
               aria-label="Close image"
             >
               <CloseRoundedIcon sx={{ fontSize: 24 }} />

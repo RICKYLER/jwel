@@ -244,7 +244,7 @@ export default function MasterDataManagementSection({
               <div className={`mt-4 p-3 rounded-lg text-sm font-medium ${
                 message.type === 'error'
                   ? !isDarkMode ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-red-950/30 text-red-300 border border-red-900/30'
-                  : !isDarkMode ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-cyan-950/30 text-cyan-300 border border-cyan-900/30'
+                  : !isDarkMode ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-emerald-950/30 text-emerald-300 border border-emerald-900/30'
               }`}>
                 {message.text}
               </div>

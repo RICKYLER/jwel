@@ -109,7 +109,7 @@ export default function ProfileSection({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-full bg-[#2563eb] px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70"
+            className="rounded-full bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70"
           >
             {isSubmitting ? 'Saving Profile...' : 'Save Profile'}
           </button>

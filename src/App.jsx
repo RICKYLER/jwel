@@ -19,6 +19,7 @@ import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
+import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
@@ -1144,11 +1145,32 @@ function App() {
   }
 
   if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
+    const handleNavigateToProduct = (productId) => {
+      setCurrentPath(`/customer/product/${productId}`)
+    }
     return withSecurityModal(
       <CustomerShowroomPage
         currentUser={currentUser}
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onSignOut={handleSignOut}
+        onNavigateToProduct={handleNavigateToProduct}
+      />,
+    )
+  }
+
+  // Product Details Page Route
+  const productDetailMatch = currentPath.match(/^\/customer\/product\/(.+)$/)
+  if (productDetailMatch && currentUser && accessProfile.role === 'customer') {
+    const productId = productDetailMatch[1]
+    const handleNavigateBack = () => {
+      setCurrentPath('/customer')
+    }
+    return withSecurityModal(
+      <ProductDetailsPage
+        productId={productId}
+        currentUser={currentUser}
+        onSignOut={handleSignOut}
+        onNavigateBack={handleNavigateBack}
       />,
     )
   }

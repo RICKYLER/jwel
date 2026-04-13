@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, limit, onSnapshot, query, where } from 'firebase/firestore'
+import { collection, onSnapshot, query } from 'firebase/firestore'
 import CallRoundedIcon from '@mui/icons-material/CallRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
@@ -48,7 +48,7 @@ const parseColorOptions = (value) => {
 
   return [
     { name: 'Standard', swatch: 'bg-neutral-900' },
-    { name: 'OEM Specification', swatch: 'bg-blue-700' },
+    { name: 'OEM Specification', swatch: 'bg-red-700' },
   ]
 }
 
@@ -84,7 +84,7 @@ const mapInventoryToSparePartModel = (item) => {
   }
 }
 
-export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateShowroom, onOpenSignup, currentUser }) {
+export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNavigateService, onNavigateShowroom, currentUser }) {
   const [inventoryModels, setInventoryModels] = useState([])
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
   const [selectedModelId, setSelectedModelId] = useState('')
@@ -121,11 +121,6 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
   const selectedModel = useMemo(
     () => inventoryModels.find((item) => item.id === selectedModelId) ?? inventoryModels[0] ?? null,
     [inventoryModels, selectedModelId],
-  )
-
-  const similarModels = useMemo(
-    () => inventoryModels.filter((item) => item.id !== selectedModel?.id).slice(0, 3),
-    [inventoryModels, selectedModel?.id],
   )
 
   const handleNavLinkClick = (link) => {
@@ -239,7 +234,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
       />
 
       <main className="pt-24">
-        <section className="relative flex min-h-88 items-center overflow-hidden bg-linear-to-r from-blue-600 via-cyan-600 to-slate-800">
+        <section className="relative flex min-h-88 items-center overflow-hidden bg-linear-to-r from-red-600 via-white to-slate-800">
           <div className="absolute inset-0 opacity-20">
             <img
               alt={selectedModel?.label || 'Spare parts highlight'}
@@ -249,9 +244,9 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
           </div>
           <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-blue-100">Genuine Spare Parts</p>
+              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-red-100">Genuine Spare Parts</p>
               <h1 className="mb-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-                Keep Every Ride <span className="bg-linear-to-r from-blue-100 to-cyan-100 bg-clip-text text-transparent">Factory Ready</span>
+                Keep Every Ride <span className="bg-linear-to-r from-red-100 to-white bg-clip-text text-transparent">Factory Ready</span>
               </h1>
               <p className="max-w-2xl text-base text-slate-100 sm:text-lg">
                 Find current parts inventory, compare compatible items, and review stock information through the same polished catalog experience as our customer showroom.
@@ -262,11 +257,11 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
 
         <div className="mx-auto max-w-screen-2xl px-4 pb-12 pt-8 md:px-8">
           <nav className="mb-8 flex items-center gap-2 text-sm text-slate-400">
-            <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-blue-400">
+            <button type="button" onClick={onNavigateHome} className="transition-colors hover:text-red-400">
               Home
             </button>
             <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
-            <span className="text-blue-400">Spare Parts</span>
+            <span className="text-red-400">Spare Parts</span>
             <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
             <span className="text-white">{selectedModel?.label || 'Live Inventory'}</span>
           </nav>
@@ -288,7 +283,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   <div className="absolute bottom-5 right-5 flex gap-2">
                     <button
                       type="button"
-                      className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-blue-600"
+                      className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-red-600"
                       aria-label="Expand image"
                     >
                       <OpenInFullRoundedIcon sx={{ fontSize: 20 }} />
@@ -304,7 +299,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       onClick={() => setActiveImage(index)}
                       className={`aspect-square overflow-hidden rounded-xl border-2 transition-all ${
                         activeImage === index
-                          ? 'border-blue-500'
+                          ? 'border-red-500'
                           : 'border-transparent bg-slate-800 opacity-80 hover:opacity-100'
                       }`}
                     >
@@ -316,7 +311,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
 
               <div className="space-y-8 lg:col-span-5">
                 <header className="rounded-3xl border border-white/10 bg-slate-900/80 p-6 shadow-xl shadow-blue-950/10 sm:p-8">
-                  <div className="mb-4 inline-block rounded-full border border-blue-600/20 bg-blue-600/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-blue-300">
+                  <div className="mb-4 inline-block rounded-full border border-red-600/20 bg-red-600/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.24em] text-red-300">
                     {selectedModel.badge}
                   </div>
                   <h1 className="text-4xl font-black leading-tight tracking-tighter text-white font-['Epilogue'] sm:text-5xl md:text-6xl">
@@ -329,7 +324,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   <div className="mb-3 text-sm font-bold uppercase tracking-[0.24em] text-slate-400">
                     Price
                   </div>
-                  <div className="text-4xl font-black text-transparent bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text font-['Epilogue']">{selectedModel.price}</div>
+                  <div className="text-4xl font-black text-transparent bg-linear-to-r from-red-400 to-white bg-clip-text font-['Epilogue']">{selectedModel.price}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -346,7 +341,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                 <button
                   type="button"
                   onClick={goToLoginPage}
-                  className="w-full rounded-full bg-linear-to-r from-blue-600 to-cyan-600 py-4 text-lg font-bold text-white shadow-xl shadow-blue-900/20 transition-transform active:scale-95 hover:from-blue-700 hover:to-cyan-700"
+                  className="w-full rounded-full bg-linear-to-r from-red-600 to-white py-4 text-lg font-bold text-white shadow-xl shadow-red-900/20 transition-transform active:scale-95 hover:from-red-700 hover:to-slate-100"
                 >
                   Check More Items
                 </button>
@@ -371,7 +366,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       setCurrentPage(1)
                     }}
                     placeholder="Search spare parts..."
-                    className="w-full sm:w-72 rounded-xl border border-slate-600 bg-slate-800 px-10 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
+                    className="w-full sm:w-72 rounded-xl border border-slate-600 bg-slate-800 px-10 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition-all focus:border-red-400 focus:ring-2 focus:ring-red-400/30"
                   />
                 </div>
               </div>
@@ -386,7 +381,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       setFilterCategory(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-red-400 focus:ring-2 focus:ring-red-400/30"
                   >
                     {categories.map((cat) => (
                       <option key={cat} value={cat}>
@@ -403,7 +398,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       setFilterModel(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-red-400 focus:ring-2 focus:ring-red-400/30"
                   >
                     {models.map((model) => (
                       <option key={model} value={model}>
@@ -420,7 +415,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       setFilterVariant(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400/30"
+                    className="w-full rounded-lg border border-slate-600 bg-slate-700 px-3 py-2 text-sm text-white outline-none transition-all focus:border-red-400 focus:ring-2 focus:ring-red-400/30"
                   >
                     {variants.map((variant) => (
                       <option key={variant} value={variant}>
@@ -437,7 +432,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                 paginatedModels.map((model) => (
                     <article
                       key={model.id}
-                      className="group overflow-hidden rounded-3xl border border-slate-600 bg-linear-to-br from-slate-700 to-slate-800 transition-all duration-300 hover:border-blue-400 hover:shadow-2xl hover:shadow-blue-500/20"
+                      className="group overflow-hidden rounded-3xl border border-slate-600 bg-linear-to-br from-slate-700 to-slate-800 transition-all duration-300 hover:border-red-400 hover:shadow-2xl hover:shadow-red-500/20"
                     >
                       <div className="aspect-video overflow-hidden">
                         <img
@@ -450,7 +445,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         <div className="mb-4 flex items-start justify-between gap-3">
                           <div>
                             <h3 className="mb-1 text-xl font-bold text-white font-['Epilogue']">{model.label}</h3>
-                          <div className="text-xs font-black uppercase tracking-[0.24em] text-blue-300">
+                          <div className="text-xs font-black uppercase tracking-[0.24em] text-red-300">
                               {model.accent}
                             </div>
                           </div>
@@ -459,7 +454,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         <button
                           type="button"
                           onClick={() => handleModelSelect(model.id)}
-                          className="w-full rounded-xl bg-linear-to-r from-blue-600 to-cyan-600 py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-blue-700 hover:to-cyan-700"
+                          className="w-full rounded-xl bg-linear-to-r from-red-600 to-white py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-red-700 hover:to-slate-100"
                         >
                           View Item
                         </button>
@@ -479,7 +474,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-red-600 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Previous page"
                   >
                     <ChevronLeftRoundedIcon sx={{ fontSize: 20 }} />
@@ -492,8 +487,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                       onClick={() => handlePageChange(page)}
                       className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold transition-all ${
                         currentPage === page
-                          ? 'border-blue-600 bg-blue-600 text-white'
-                          : 'border-slate-600 text-white hover:border-blue-600 hover:bg-blue-600/10'
+                          ? 'border-red-600 bg-red-600 text-white'
+                          : 'border-slate-600 text-white hover:border-red-600 hover:bg-red-600/10'
                       }`}
                       aria-label={`Page ${page}`}
                       aria-current={currentPage === page ? 'page' : undefined}
@@ -506,7 +501,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-blue-600 hover:bg-blue-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-600 text-white transition-all hover:border-red-600 hover:bg-red-600/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Next page"
                   >
                     <ChevronRightRoundedIcon sx={{ fontSize: 20 }} />
@@ -526,7 +521,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
       <footer className="mt-24 w-full border-t border-slate-700/40 bg-slate-950">
         <div className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-10 px-6 py-14 md:grid-cols-4 lg:px-8 lg:py-16">
           <div className="space-y-4">
-            <div className="bg-linear-to-r from-blue-400 to-cyan-400 bg-clip-text text-xl font-black text-transparent">BYKELINK</div>
+            <div className="bg-linear-to-r from-red-400 to-white bg-clip-text text-xl font-black text-transparent">BYKELINK</div>
             <p className="text-sm leading-relaxed tracking-wide text-slate-400">
               The premier destination for Yamaha excellence in the Philippines. Precision,
               performance, and passion since inception.
@@ -537,22 +532,22 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
             <h4 className="text-sm font-bold uppercase tracking-widest text-white">Navigation</h4>
             <ul className="space-y-2 text-sm tracking-wide text-slate-400">
               <li>
-                <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="hover:text-blue-600">
+                <button type="button" onClick={() => onNavigateSection?.('showroom', 'Showroom')} className="hover:text-red-600">
                   Showroom
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onNavigateHome} className="hover:text-blue-600">
+                <button type="button" onClick={onNavigateHome} className="hover:text-red-600">
                   Promos
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onNavigateService} className="hover:text-blue-600">
+                <button type="button" onClick={onNavigateService} className="hover:text-red-600">
                   Service Center
                 </button>
               </li>
               <li>
-                <button type="button" onClick={onNavigateService} className="hover:text-blue-600">
+                <button type="button" onClick={onNavigateService} className="hover:text-red-600">
                   Spare Parts
                 </button>
               </li>
