@@ -28,11 +28,13 @@ import InventoryReportsSection from './sections/InventoryReportsSection'
 import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSection'
 import MasterDataManagementSection from './sections/MasterDataManagementSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
+import FinancingApplicationsSection from './sections/FinancingApplicationsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
 import {
   buildChartBars,
   fallbackTechnicians,
+  financingStatusOptions,
   formatCurrency,
   formatDate,
   getStatusClasses,
@@ -69,6 +71,7 @@ const baseSidebarItems = [
   },
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { id: 'service-logs', label: 'Service Logs', icon: BuildRoundedIcon },
+  { id: 'financing-applications', label: 'Financing Applications', icon: AnalyticsRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
@@ -95,6 +98,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])
   const [serviceRequests, setServiceRequests] = useState([])
+  const [financingApplications, setFinancingApplications] = useState([])
   const [inventory, setInventory] = useState([])
   const [technicians, setTechnicians] = useState([])
   const [authorizedAdmins, setAuthorizedAdmins] = useState([])
@@ -114,6 +118,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
+    financingApplications: true,
     inventory: true,
     technicians: true,
     authorizedAdmins: true,
@@ -299,6 +304,11 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         collectionName: 'serviceBookings',
         stateKey: 'serviceRequests',
         setter: setServiceRequests,
+      }),
+      subscribeToCollection({
+        collectionName: 'financingApplications',
+        stateKey: 'financingApplications',
+        setter: setFinancingApplications,
       }),
       subscribeToCollection({
         collectionName: 'inventory',
@@ -620,6 +630,20 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return haystack.toLowerCase().includes(normalizedSearchTerm)
     })
   }, [normalizedSearchTerm, serviceRequests])
+
+  const filteredFinancingApplications = useMemo(() => {
+    return financingApplications.filter((application) => {
+      const haystack = [
+        application.referenceId,
+        application.status,
+        application.applicant?.fullName,
+        application.submittedBy?.email,
+        application.motorcycle?.name,
+      ].join(' ')
+
+      return haystack.toLowerCase().includes(normalizedSearchTerm)
+    })
+  }, [financingApplications, normalizedSearchTerm])
 
   const filteredInventory = useMemo(() => {
     return inventory.filter((item) => {
@@ -1272,6 +1296,19 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             requests={filteredServiceRequests}
             canEditOperations={canEditOperations}
             serviceStatusOptions={serviceStatusOptions}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'financing-applications':
+        return (
+          <FinancingApplicationsSection
+            applications={filteredFinancingApplications}
+            canEditOperations={canEditOperations}
+            financingStatusOptions={financingStatusOptions}
             handleCollectionUpdate={handleCollectionUpdate}
             formatCurrency={formatCurrency}
             formatDate={formatDate}

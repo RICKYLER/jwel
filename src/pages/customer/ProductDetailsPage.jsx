@@ -18,7 +18,7 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function ProductDetailsPage({ productId, currentUser, onSignOut, onNavigateBack }) {
+export default function ProductDetailsPage({ productId, currentUser, onSignOut, onNavigateBack, onNavigateToFinancing }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [product, setProduct] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -150,7 +150,7 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
         {isMenuOpen && (
           <nav className="space-y-2 border-t border-slate-800 px-4 py-3 sm:px-6 lg:hidden">
             <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-red-600">Details</a>
-            <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Financing</a>
+            <button onClick={() => onNavigateToFinancing?.(productId)} className="block text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 w-full text-left">Financing</button>
             <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Service</a>
             <button
               onClick={handleLogout}
@@ -189,7 +189,7 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
                 {product.description || 'Premium Yamaha motorcycle designed for performance and reliability.'}
               </p>
               <div className="flex flex-wrap gap-4">
-                <button className="bg-[#e10100] text-white px-8 py-4 font-bold uppercase tracking-widest text-sm hover:bg-[#b20100] transition-all transform active:scale-90">
+                <button onClick={() => onNavigateToFinancing?.(productId)} className="bg-[#e10100] text-white px-8 py-4 font-bold uppercase tracking-widest text-sm hover:bg-[#b20100] transition-all transform active:scale-90">
                   Apply for Financing
                 </button>
               </div>
@@ -343,7 +343,7 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
                   <div className="bg-slate-900 p-6 rounded-md">
                     <h3 className="font-black uppercase text-sm mb-2 text-white">Financing Options</h3>
                     <p className="text-xs text-slate-300 mb-4">Flexible payment plans available for qualified buyers.</p>
-                    <button className="w-full bg-[#e10100] hover:bg-[#b20100] text-white py-3 font-bold uppercase text-xs tracking-widest transition-all">
+                    <button onClick={() => onNavigateToFinancing?.(productId)} className="w-full bg-[#e10100] hover:bg-[#b20100] text-white py-3 font-bold uppercase text-xs tracking-widest transition-all">
                       Learn More
                     </button>
                   </div>
@@ -402,7 +402,7 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Quick Links</p>
               <ul className="mt-3 space-y-2 text-sm text-slate-400">
                 <li><a href="#" className="hover:text-red-600 transition">Showroom</a></li>
-                <li><a href="#" className="hover:text-red-600 transition">Financing</a></li>
+                <li><button onClick={() => onNavigateToFinancing?.(productId)} className="hover:text-red-600 transition">Financing</button></li>
                 <li><a href="#" className="hover:text-red-600 transition">Service</a></li>
               </ul>
             </div>

@@ -8,6 +8,7 @@ export const roleOptions = [
   'superadmin',
 ]
 export const serviceStatusOptions = ['Pending', 'In Progress', 'Completed', 'Cancelled']
+export const financingStatusOptions = ['Submitted', 'Reviewing', 'Approved', 'Rejected']
 export const technicianStatusOptions = ['Online', 'Busy', 'Offline']
 export const inventoryStatusOptions = ['In Stock', 'Low Stock', 'Out of Stock']
 
@@ -69,9 +70,9 @@ export const formatDate = (value) => {
 export const getStatusTone = (status = '') => {
   const normalizedStatus = normalizeText(status)
 
-  if (['completed', 'online', 'active', 'in stock'].includes(normalizedStatus)) return 'emerald'
-  if (['pending', 'busy', 'low stock'].includes(normalizedStatus)) return 'amber'
-  if (['in progress', 'out of stock'].includes(normalizedStatus)) return 'red'
+  if (['completed', 'online', 'active', 'in stock', 'approved'].includes(normalizedStatus)) return 'emerald'
+  if (['pending', 'busy', 'low stock', 'submitted', 'reviewing'].includes(normalizedStatus)) return 'amber'
+  if (['in progress', 'out of stock', 'rejected'].includes(normalizedStatus)) return 'red'
 
   return 'slate'
 }

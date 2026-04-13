@@ -24,11 +24,12 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct }) {
+export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToFinancing, onNavigateToFinancingStatus }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState([
     { id: 1, title: 'New Inventory', message: 'Yamaha YZF-R1M now in stock', timestamp: 'Just now', read: false },
     { id: 2, title: 'Financing Available', message: '0% APR financing up to 24 months', timestamp: '2 hours ago', read: true },
@@ -217,10 +218,11 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
           {/* Desktop Navigation */}
           <nav className={`hidden items-center gap-8 lg:flex`}>
             <a className="border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-red-600 text-red-600 transition-colors">Showroom</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Financing</a>
+            <button onClick={onNavigateToFinancing} className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Financing</button>
+            <button onClick={onNavigateToFinancingStatus} className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Track Status</button>
             <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Bookings</a>
             <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Service</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Support</a>
+            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Chat Support</a>
           </nav>
 
           {/* Desktop Right Section */}
@@ -336,7 +338,8 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
         {isMenuOpen && (
           <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-red-600 pb-2 border-b-2 border-red-600">Showroom</a>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Financing</a>
+            <button onClick={onNavigateToFinancing} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>Financing</button>
+            <button onClick={onNavigateToFinancingStatus} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>Track Status</button>
             <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Bookings</a>
             <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Service</a>
             <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Support</a>
@@ -504,7 +507,7 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Need Help?</p>
                     <h3 className="text-2xl font-black uppercase text-white leading-tight">Find Your Match</h3>
                     <p className="text-sm text-slate-300">Our experts are ready to help you choose the right ride.</p>
-                    <button className="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 text-[11px] font-black uppercase tracking-[0.18em] transition rounded-sm">
+                    <button onClick={() => setIsChatOpen(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 text-[11px] font-black uppercase tracking-[0.18em] transition rounded-sm">
                       Chat With Us
                     </button>
                   </div>
@@ -625,7 +628,7 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                                   className="flex items-center gap-1.5"
                                 >
                                   <div
-                                    className="h-4 w-4 rounded-sm border border-slate-600 shadow-sm"
+                                    className="h-3 w-3 rounded-sm border border-slate-600 shadow-sm"
                                     style={{
                                       backgroundColor: getColorHex(color)
                                     }}
@@ -661,7 +664,7 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
       </main>
 
       {/* Chat Box */}
-      <ChatBox currentUser={currentUser} />
+      {isChatOpen && <ChatBox currentUser={currentUser} onClose={() => setIsChatOpen(false)} />}
 
       {/* Footer */}
       <footer className="border-t border-slate-800 mt-16 bg-slate-950/60 backdrop-blur-sm py-10">
@@ -676,7 +679,8 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Information</p>
             <ul className="mt-3 space-y-2 text-sm text-slate-400">
               <li><a className="hover:text-red-600 transition">Showroom</a></li>
-              <li><a className="hover:text-red-600 transition">Financing</a></li>
+              <li><button onClick={onNavigateToFinancing} className="hover:text-red-600 transition">Financing</button></li>
+              <li><button onClick={onNavigateToFinancingStatus} className="hover:text-red-600 transition">Track Status</button></li>
               <li><a className="hover:text-red-600 transition">Service</a></li>
               <li><a className="hover:text-red-600 transition">Support</a></li>
             </ul>

@@ -963,3 +963,141 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
     firestoreSyncCompleted,
   }
 })
+
+exports.submitFinancingApplication = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to submit a financing application.')
+  }
+
+  const motorcycle = request.data?.motorcycle || {}
+  const applicant = request.data?.applicant || {}
+  const terms = request.data?.terms || {}
+
+  const motorcycleId = String(motorcycle.id || '').trim()
+  const motorcycleName = String(motorcycle.name || '').trim()
+  const fullName = String(applicant.fullName || '').trim()
+  const contactNumber = String(applicant.contactNumber || '').trim()
+  const address = String(applicant.address || '').trim()
+  const incomeRange = String(terms.incomeRange || '').trim()
+
+  if (!motorcycleId || !motorcycleName) {
+    throw new HttpsError('invalid-argument', 'Motorcycle details are required.')
+  }
+
+  if (!fullName || !contactNumber || !address) {
+    throw new HttpsError('invalid-argument', 'Full name, contact number, and address are required.')
+  }
+
+  const currentYear = new Date().getFullYear()
+  const randomSuffix = String(Math.floor(1000 + Math.random() * 9000))
+  const referenceId = `REF-YAM-${currentYear}-${randomSuffix}`
+
+  const applicationRef = admin.firestore().collection('financingApplications').doc()
+
+  const payload = {
+    referenceId,
+    status: 'submitted',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    submittedBy: {
+      uid: request.auth.uid,
+      email: String(request.auth.token.email || applicant.email || '').trim().toLowerCase(),
+    },
+    applicant: {
+      fullName,
+      contactNumber,
+      address,
+      identityFileName: String(applicant.identityFileName || '').trim(),
+    },
+    motorcycle: {
+      id: motorcycleId,
+      name: motorcycleName,
+      price: Number(motorcycle.price || 0),
+      imageUrl: String(motorcycle.imageUrl || '').trim(),
+    },
+    terms: {
+      downPaymentPercent: Number(terms.downPaymentPercent || 0),
+      paymentTerm: Number(terms.paymentTerm || 0),
+      incomeRange,
+      downPaymentAmount: Number(terms.downPaymentAmount || 0),
+      remainingBalance: Number(terms.remainingBalance || 0),
+      monthlyAmortization: Number(terms.monthlyAmortization || 0),
+    },
+  }
+
+  await applicationRef.set(payload)
+
+  logger.info('Financing application submitted.', {
+    applicationId: applicationRef.id,
+    referenceId,
+    uid: request.auth.uid,
+    motorcycleId,
+    structuredData: true,
+  })
+
+  return {
+    ok: true,
+    applicationId: applicationRef.id,
+    referenceId,
+  }
+})
+
+exports.getFinancingApplicationStatus = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to view financing status.')
+  }
+
+  const referenceId = String(request.data?.referenceId || '').trim()
+
+  if (!referenceId) {
+    throw new HttpsError('invalid-argument', 'Reference ID is required.')
+  }
+
+  const snapshot = await admin
+    .firestore()
+    .collection('financingApplications')
+    .where('referenceId', '==', referenceId)
+    .limit(1)
+    .get()
+
+  if (snapshot.empty) {
+    throw new HttpsError('not-found', 'Application not found for the provided reference ID.')
+  }
+
+  const applicationDoc = snapshot.docs[0]
+  const data = applicationDoc.data() || {}
+  const ownerUid = String(data.submittedBy?.uid || '')
+
+  if (!ownerUid || ownerUid !== request.auth.uid) {
+    throw new HttpsError('permission-denied', 'You can only view your own financing applications.')
+  }
+
+  const submittedAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null
+  const formattedSubmittedAt = submittedAtDate
+    ? submittedAtDate.toLocaleString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Pending timestamp'
+
+  const monthlyAmortization = Number(data.terms?.monthlyAmortization || 0)
+
+  return {
+    ok: true,
+    referenceId,
+    status: String(data.status || 'submitted').toLowerCase(),
+    applicantName: String(data.applicant?.fullName || ''),
+    motorcycleName: String(data.motorcycle?.name || ''),
+    monthlyAmortization: `PHP ${monthlyAmortization.toLocaleString('en-PH')}`,
+    submittedAt: formattedSubmittedAt,
+    message:
+      data.status === 'approved'
+        ? 'Your application is approved. Please check your email for final instructions.'
+        : data.status === 'rejected'
+          ? 'Your application was not approved at this time. You may re-apply after updating requirements.'
+          : 'Your application is currently under review by our financing specialists.',
+  }
+})

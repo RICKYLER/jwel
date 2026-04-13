@@ -20,6 +20,9 @@ import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
+import FinancingPage from './pages/customer/FinancingPage'
+import FinancingSubmittedPage from './pages/customer/FinancingSubmittedPage'
+import FinancingStatusPage from './pages/customer/FinancingStatusPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
@@ -150,11 +153,13 @@ const formatAuthError = (error) => {
 }
 
 const normalizePath = (path) => {
+  if (path?.startsWith('/financing/')) return path
   if (path?.startsWith('/login')) return '/login'
   if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
   if (path?.startsWith('/service')) return '/service'
+  if (path?.startsWith('/financing')) return '/financing'
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
   if (path?.startsWith('/staff')) return '/staff'
@@ -167,6 +172,7 @@ const getNavLabelForPath = (path, hash = '') => {
   if (path === '/showroom') return 'Showroom'
   if (path === '/spare-parts') return 'Spare Parts'
   if (path === '/service') return 'Service'
+  if (path === '/financing' || path?.startsWith('/financing/')) return 'Financing'
   if (dashboardRequirements[path]) return 'Dashboard'
 
   return matchedLink?.label || 'Home'
@@ -1144,6 +1150,48 @@ function App() {
     )
   }
 
+  if (currentPath.startsWith('/financing/submitted')) {
+    const submittedMatch = currentPath.match(/^\/financing\/submitted\/(.+)$/)
+    const referenceId = submittedMatch ? decodeURIComponent(submittedMatch[1]) : ''
+
+    return withSecurityModal(
+      <FinancingSubmittedPage
+        referenceId={referenceId}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onTrackApplication={() => navigateTo(`/financing/status/${encodeURIComponent(referenceId)}`)}
+      />,
+    )
+  }
+
+  if (currentPath.startsWith('/financing/status')) {
+    const statusMatch = currentPath.match(/^\/financing\/status(?:\/(.+))?$/)
+    const referenceId = statusMatch?.[1] ? decodeURIComponent(statusMatch[1]) : ''
+
+    return withSecurityModal(
+      <FinancingStatusPage
+        referenceId={referenceId}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+      />,
+    )
+  }
+
+  if (currentPath.startsWith('/financing')) {
+    const financingProductMatch = currentPath.match(/^\/financing\/(.+)$/)
+    const financingProductId = financingProductMatch ? decodeURIComponent(financingProductMatch[1]) : null
+
+    return withSecurityModal(
+      <FinancingPage
+        currentUser={currentUser}
+        onNavigateBack={() => navigateTo('/customer')}
+        onSignOut={currentUser ? handleSignOut : null}
+        productId={financingProductId}
+        onApplicationSubmitted={(referenceId) =>
+          navigateTo(`/financing/submitted/${encodeURIComponent(referenceId)}`)
+        }
+      />,
+    )
+  }
+
   if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
     const handleNavigateToProduct = (productId) => {
       setCurrentPath(`/customer/product/${productId}`)
@@ -1154,6 +1202,8 @@ function App() {
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onSignOut={handleSignOut}
         onNavigateToProduct={handleNavigateToProduct}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
       />,
     )
   }
@@ -1171,6 +1221,7 @@ function App() {
         currentUser={currentUser}
         onSignOut={handleSignOut}
         onNavigateBack={handleNavigateBack}
+        onNavigateToFinancing={(pId) => navigateTo(`/financing/${encodeURIComponent(pId)}`)}
       />,
     )
   }

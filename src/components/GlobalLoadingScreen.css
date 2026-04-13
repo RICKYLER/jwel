@@ -141,20 +141,22 @@ body.kinetic-scroll-lock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: 24px;
   overflow: hidden;
+  padding-top: 64px;
 }
 
 /* Header */
 .kinetic-header {
-  position: absolute;
-  top: 48px;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   animation: fade-in-up 0.8s ease-out;
+  margin-bottom: 48px;
+  flex-shrink: 0;
 }
 
 .kinetic-brand-title {
@@ -199,6 +201,8 @@ body.kinetic-scroll-lock {
   align-items: center;
   gap: 64px;
   animation: fade-in-up 1s ease-out 0.2s both;
+  flex: 1;
+  justify-content: center;
 }
 
 /* Spinner Container */
@@ -442,15 +446,16 @@ body.kinetic-scroll-lock {
 
 /* Footer */
 .kinetic-footer {
-  position: absolute;
-  bottom: 48px;
+  position: relative;
   width: 100%;
-  padding: 0 48px;
+  padding: 24px 48px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   opacity: 0.4;
   animation: fade-in-up 1.4s ease-out 0.6s both;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .kinetic-footer-item {
@@ -510,12 +515,12 @@ body.kinetic-scroll-lock {
   }
 
   .kinetic-footer {
-    padding: 0 24px;
+    padding: 24px;
     font-size: 12px;
   }
 
-  .kinetic-header {
-    top: 40px;
+  .kinetic-main-content {
+    padding-top: 48px;
   }
 }
 

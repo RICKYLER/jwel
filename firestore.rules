@@ -178,6 +178,15 @@ service cloud.firestore {
       allow delete: if isAdminOrHigher();
     }
 
+    match /financingApplications/{docId} {
+      allow read: if isAdminOrHigher()
+        || (isSignedIn() && request.auth.uid == resource.data.submittedBy.uid)
+        || emailMatches(resource.data.submittedBy.email);
+      allow create: if isSignedIn();
+      allow update: if isAdminOrHigher();
+      allow delete: if isSuperadmin();
+    }
+
     match /conversations/{docId} {
       allow read: if isAdminOrHigher() || resource.data.isGuest == true || emailMatches(resource.data.userEmail) || request.auth.uid == resource.data.userId;
       allow create: if true;
