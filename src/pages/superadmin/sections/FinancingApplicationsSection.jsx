@@ -13,8 +13,9 @@ export default function FinancingApplicationsSection({
   const [confirmModal, setConfirmModal] = useState(null)
   const normalizeStatus = (status = '') => {
     const normalized = String(status || '').trim().toLowerCase()
-    if (normalized === 'reviewing') return 'under-review'
+    if (normalized === 'reviewing' || normalized === 'under review') return 'under-review'
     if (normalized === 'approved') return 'qualified'
+    if (normalized === 'completed') return 'completed'
     if (normalized === 'rejected') return 'not-qualified'
     return 'pending-review'
   }
@@ -23,7 +24,7 @@ export default function FinancingApplicationsSection({
     return applications.reduce(
       (acc, application) => {
         const key = normalizeStatus(application.status)
-        acc[key] += 1
+        acc[key] = (acc[key] || 0) + 1
         return acc
       },
       {
@@ -31,6 +32,7 @@ export default function FinancingApplicationsSection({
         'under-review': 0,
         qualified: 0,
         'not-qualified': 0,
+        completed: 0,
       },
     )
   }, [applications])
@@ -47,6 +49,7 @@ export default function FinancingApplicationsSection({
     const key = normalizeStatus(status)
     if (key === 'qualified') return 'chip-qualified'
     if (key === 'under-review') return 'chip-under-review'
+    if (key === 'completed') return 'chip-qualified'
     if (key === 'not-qualified') return 'chip-not-qualified'
     return 'chip-pending-review'
   }
@@ -55,6 +58,7 @@ export default function FinancingApplicationsSection({
     const key = normalizeStatus(status)
     if (key === 'qualified') return 'Qualified'
     if (key === 'under-review') return 'Under Review'
+    if (key === 'completed') return 'Completed'
     if (key === 'not-qualified') return 'Not Qualified'
     return 'Pending Review'
   }
