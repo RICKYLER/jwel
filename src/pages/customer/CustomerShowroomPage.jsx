@@ -1,18 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { signOut } from 'firebase/auth'
-import { collection, onSnapshot, query } from 'firebase/firestore'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import { collection, onSnapshot, query, doc, getDoc } from 'firebase/firestore'
 import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import FavoriteRoundedIcon from '@mui/icons-material/FavoriteRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import Brightness4RoundedIcon from '@mui/icons-material/Brightness4Rounded'
-import Brightness7RoundedIcon from '@mui/icons-material/Brightness7Rounded'
-import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
-import bykelinkLogo from '../../assets/bykelinklogo.png'
-import { auth, db } from '../../firebase'
+import { db } from '../../firebase'
+import NavHeaderCustomer from './components/NavHeaderCustomer'
 import ChatBox from '../../components/ChatBox'
 
 const formatPrice = (value) => {
@@ -24,13 +17,10 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToFinancing, onNavigateToFinancingStatus }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onNavigateBack }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
-  const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
-  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
-  const [unreadNotifications, setUnreadNotifications] = useState([
+  const [unreadNotifications] = useState([
     { id: 1, title: 'New Inventory', message: 'Yamaha YZF-R1M now in stock', timestamp: 'Just now', read: false },
     { id: 2, title: 'Financing Available', message: '0% APR financing up to 24 months', timestamp: '2 hours ago', read: true },
   ])
@@ -43,6 +33,25 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
   const [isLoading, setIsLoading] = useState(true)
   const [favorites, setFavorites] = useState(new Set())
   const [hasPermissionError, setHasPermissionError] = useState(false)
+  const [userAvatar, setUserAvatar] = useState(null)
+
+  // Fetch user avatar from Firestore
+  useEffect(() => {
+    if (!currentUser?.uid) return
+
+    const fetchUserAvatar = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+        if (userDoc.exists() && userDoc.data()?.avatar) {
+          setUserAvatar(userDoc.data().avatar)
+        }
+      } catch (error) {
+        console.error('Error fetching user avatar:', error)
+      }
+    }
+
+    fetchUserAvatar()
+  }, [currentUser?.uid])
 
   // Fetch inventory from Firestore
   useEffect(() => {
@@ -135,18 +144,6 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
     })
   }
 
-  const handleLogout = async () => {
-    await signOut(auth)
-    setIsProfileDrawerOpen(false)
-    onSignOut?.()
-  }
-
-  const handleNotificationClick = (notifId) => {
-    setUnreadNotifications((prev) =>
-      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
-    )
-  }
-
   const handleViewDetails = (item) => {
     if (onNavigateToProduct) {
       onNavigateToProduct(item.id)
@@ -203,177 +200,19 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
 
   return (
     <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1]' : 'bg-white text-slate-900'} font-['Manrope']`}>
-      {/* Enhanced Header */}
-      <header className={`sticky top-0 z-50 border-b ${isDarkMode ? 'border-slate-800/60 bg-slate-950/95' : 'border-slate-200 bg-white/95'} backdrop-blur-md shadow-lg`}>
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          {/* Logo Section */}
-          <div className="flex items-center gap-3">
-            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-red-600 p-1.5" />
-            <div>
-              <p className="text-sm font-black uppercase tracking-tight text-red-600">BYKELINK</p>
-              <p className="hidden sm:block text-[9px] font-bold text-slate-500 tracking-widest">Yamaha Dealer</p>
-            </div>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className={`hidden items-center gap-8 lg:flex`}>
-            <a className="border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-red-600 text-red-600 transition-colors">Showroom</a>
-            <button onClick={onNavigateToFinancing} className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Financing</button>
-            <button onClick={onNavigateToFinancingStatus} className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Track Status</button>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Bookings</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Service</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Chat Support</a>
-          </nav>
-
-          {/* Desktop Right Section */}
-          <div className="hidden items-center gap-4 lg:flex">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setIsNotificationDrawerOpen(!isNotificationDrawerOpen)}
-                className={`relative p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
-              >
-                <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></span>
-              </button>
-
-              {/* Notification Drawer */}
-              {isNotificationDrawerOpen && (
-                <div className={`absolute right-0 mt-2 w-80 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                    <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto space-y-0">
-                    {unreadNotifications.length > 0 ? (
-                      unreadNotifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          onClick={() => handleNotificationClick(notif.id)}
-                          className={`p-4 border-b ${isDarkMode ? 'border-slate-800 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-50'} transition cursor-pointer`}
-                        >
-                          <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{notif.title}</p>
-                          <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{notif.message}</p>
-                          <p className={`text-[10px] mt-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{notif.time}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-slate-500 text-sm">No notifications</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Dark/Light Mode Toggle */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-            >
-              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 22 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 22 }} />}
-            </button>
-
-            {/* Profile Avatar */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileDrawerOpen(!isProfileDrawerOpen)}
-                className={`p-1 rounded-full transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
-              >
-                <AccountCircleRoundedIcon sx={{ fontSize: 28 }} />
-              </button>
-
-              {/* Profile Drawer */}
-              {isProfileDrawerOpen && (
-                <div className={`absolute right-0 mt-2 w-72 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                    <div className="flex items-center gap-3">
-                      <AccountCircleRoundedIcon sx={{ fontSize: 40 }} className={isDarkMode ? 'text-red-600' : 'text-red-600'} />
-                      <div>
-                        <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentUser?.displayName || 'Customer'}</p>
-                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{currentUser?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
-                      My Profile
-                    </button>
-                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
-                      My Orders
-                    </button>
-                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
-                      Favorites
-                    </button>
-                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
-                      Settings
-                    </button>
-                    <div className={`border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} pt-2 mt-2`}>
-                      <button
-                        onClick={handleLogout}
-                        className={`w-full px-3 py-2 rounded-lg font-semibold transition text-sm bg-red-600 text-white hover:bg-red-700`}
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => {
-              setIsMenuOpen(!isMenuOpen)
-              setIsNotificationDrawerOpen(false)
-              setIsProfileDrawerOpen(false)
-            }}
-            className={`rounded-lg border p-2 transition lg:hidden ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400'}`}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <CloseRoundedIcon sx={{ fontSize: 18 }} /> : <MenuRoundedIcon sx={{ fontSize: 18 }} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-red-600 pb-2 border-b-2 border-red-600">Showroom</a>
-            <button onClick={onNavigateToFinancing} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>Financing</button>
-            <button onClick={onNavigateToFinancingStatus} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>Track Status</button>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Bookings</a>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Service</a>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Support</a>
-            
-            {/* Mobile Notification */}
-            <div className={`border-t pt-3 mt-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-              <button
-                onClick={() => setIsNotificationDrawerOpen(!isNotificationDrawerOpen)}
-                className={`flex items-center gap-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}
-              >
-                <NotificationsRoundedIcon sx={{ fontSize: 20 }} />
-                Notifications
-              </button>
-            </div>
-
-            {/* Mobile Theme Toggle */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`flex items-center gap-2 text-sm font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}
-            >
-              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 20 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 20 }} />}
-              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-            </button>
-
-            {/* Mobile Profile/Logout */}
-            <button
-              onClick={handleLogout}
-              className="mt-2 w-full inline-flex rounded-lg bg-red-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-red-700"
-            >
-              Logout
-            </button>
-          </nav>
-        )}
-      </header>
+      <NavHeaderCustomer
+        currentUser={currentUser}
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+        activePage="showroom"
+        unreadNotifications={unreadNotifications}
+        onNavigateToShowroom={onNavigateBack}
+        onNavigateToFinancing={onNavigateToFinancing}
+        onNavigateToFinancingStatus={onNavigateToFinancingStatus}
+        onNavigateToProfile={onNavigateToProfile}
+        onSignOut={onSignOut}
+        userAvatar={userAvatar}
+      />
 
       <main>
         <section className="relative">

@@ -29,6 +29,8 @@ import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSe
 import MasterDataManagementSection from './sections/MasterDataManagementSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
 import FinancingApplicationsSection from './sections/FinancingApplicationsSection'
+import FinancingApplicationDetailSection from './sections/FinancingApplicationDetailSection'
+import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
 import {
@@ -72,6 +74,7 @@ const baseSidebarItems = [
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { id: 'service-logs', label: 'Service Logs', icon: BuildRoundedIcon },
   { id: 'financing-applications', label: 'Financing Applications', icon: AnalyticsRoundedIcon },
+  { id: 'approved-applications', label: 'Approved Applications', icon: TrendingUpRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
@@ -93,12 +96,13 @@ const defaultEditUserForm = {
   status: 'active',
 }
 
-export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile }) {
-  const [activeSection, setActiveSection] = useState('dashboard')
+export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', initialFinancingApplicationId = '', onNavigateDashboardPath }) {
+  const [activeSection, setActiveSection] = useState(initialFinancingApplicationId ? 'financing-application-detail' : initialSection)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])
   const [serviceRequests, setServiceRequests] = useState([])
   const [financingApplications, setFinancingApplications] = useState([])
+  const [selectedFinancingApplication, setSelectedFinancingApplication] = useState(null)
   const [inventory, setInventory] = useState([])
   const [technicians, setTechnicians] = useState([])
   const [authorizedAdmins, setAuthorizedAdmins] = useState([])
@@ -180,8 +184,34 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   })
 
   const sectionTitle = useMemo(() => {
+    if (activeSection === 'financing-application-detail') return 'Financing Application Detail'
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
+
+  useEffect(() => {
+    if (initialFinancingApplicationId) {
+      setActiveSection('financing-application-detail')
+      return
+    }
+
+    setActiveSection(initialSection)
+  }, [initialFinancingApplicationId, initialSection])
+
+  useEffect(() => {
+    if (!initialFinancingApplicationId) {
+      if (!currentPath.includes('/financing-applications/')) {
+        setSelectedFinancingApplication(null)
+      }
+      return
+    }
+
+    const matchedApplication = financingApplications.find((item) => item.id === initialFinancingApplicationId)
+
+    if (matchedApplication) {
+      setSelectedFinancingApplication(matchedApplication)
+      setActiveSection('financing-application-detail')
+    }
+  }, [currentPath, financingApplications, initialFinancingApplicationId])
 
   const adminName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Administrator'
   const adminEmail = currentUser?.email || 'No email'
@@ -984,9 +1014,28 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId)
 
+    if (sectionId === 'financing-applications') {
+      onNavigateDashboardPath?.(`${dashboardPath}/financing-applications`)
+    } else if (sectionId !== 'financing-application-detail') {
+      onNavigateDashboardPath?.(dashboardPath)
+    }
+
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setIsSidebarOpen(false)
     }
+  }
+
+  const handleOpenFinancingApplication = (application) => {
+    setSelectedFinancingApplication(application || null)
+    handleSectionChange('financing-application-detail')
+    if (application?.id) {
+      onNavigateDashboardPath?.(`${dashboardPath}/financing-applications/${encodeURIComponent(application.id)}`)
+    }
+  }
+
+  const handleBackToFinancingApplications = () => {
+    setSelectedFinancingApplication(null)
+    handleSectionChange('financing-applications')
   }
 
   const markConversationNotificationsRead = useCallback((conversationId) => {
@@ -1312,7 +1361,31 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             handleCollectionUpdate={handleCollectionUpdate}
             formatCurrency={formatCurrency}
             formatDate={formatDate}
-            getStatusClasses={getStatusClasses}
+            onOpenApplication={handleOpenFinancingApplication}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'financing-application-detail':
+        return (
+          <FinancingApplicationDetailSection
+            application={selectedFinancingApplication}
+            canEditOperations={canEditOperations}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            onBack={handleBackToFinancingApplications}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'approved-applications':
+        return (
+          <ApprovedApplicationsSection
+            applications={filteredFinancingApplications}
+            canEditOperations={canEditOperations}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            onOpenApplication={handleOpenFinancingApplication}
             isDarkMode={isDarkMode}
           />
         )

@@ -1,26 +1,16 @@
 import { useState, useEffect, useRef } from 'react'
 import { signOut } from 'firebase/auth'
 import { collection, doc, getDoc, onSnapshot, query } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat'
-import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import Brightness4RoundedIcon from '@mui/icons-material/Brightness4Rounded'
-import Brightness7RoundedIcon from '@mui/icons-material/Brightness7Rounded'
-import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
-import bykelinkLogo from '../../assets/bykelinklogo.png'
-import { auth, db, functions } from '../../firebase'
+import { auth, db } from '../../firebase'
+import NavHeaderCustomer from './components/NavHeaderCustomer'
 
-export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, productId, onApplicationSubmitted }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, productId, onNavigateToProfile, onNavigateToConfirmApplication }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
-  const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
-  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
-  const [unreadNotifications, setUnreadNotifications] = useState([
+  const [userProfileComplete, setUserProfileComplete] = useState(true)
+  const [unreadNotifications] = useState([
     { id: 1, title: 'Financing Available', message: '0% APR financing up to 24 months', timestamp: 'Just now', read: false },
   ])
   const [motorcycles, setMotorcycles] = useState([])
@@ -34,11 +24,30 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
   const [formData, setFormData] = useState({
     fullName: '',
     contactNumber: '',
-    address: '',
+    purok: '',
+    barangay: '',
+    city: '',
+    province: '',
     identityFile: null,
   })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [identityFilePreview, setIdentityFilePreview] = useState(null)
   const [submitError, setSubmitError] = useState('')
+  const [userAvatar, setUserAvatar] = useState(null)
+
+  // Helper functions to parse and build addresses
+  const parseAddress = (address) => {
+    const parts = address.split('|')
+    return {
+      purok: parts[0]?.trim() || '',
+      barangay: parts[1]?.trim() || '',
+      city: parts[2]?.trim() || '',
+      province: parts[3]?.trim() || '',
+    }
+  }
+
+  const buildAddress = () => {
+    return `${formData.purok}|${formData.barangay}|${formData.city}|${formData.province}`
+  }
 
   // Fetch pre-selected product if productId is provided
   useEffect(() => {
@@ -98,6 +107,61 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
     return unsubscribe
   }, [])
 
+  // Fetch user profile data and pre-fill form
+  useEffect(() => {
+    if (!currentUser?.uid) return
+
+    const fetchUserProfile = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid))
+        if (userDoc.exists()) {
+          const data = userDoc.data()
+          
+          // Pre-fill fullName from user data
+          if (data?.fullName) {
+            setFormData((prev) => ({ ...prev, fullName: data.fullName }))
+          }
+          
+          // Pre-fill contactNumber if available
+          if (data?.phone) {
+            setFormData((prev) => ({ ...prev, contactNumber: data.phone }))
+          }
+          
+          // Pre-fill address components if available
+          if (data?.address) {
+            const addressParts = parseAddress(data.address)
+            setFormData((prev) => ({
+              ...prev,
+              purok: addressParts.purok,
+              barangay: addressParts.barangay,
+              city: addressParts.city,
+              province: addressParts.province,
+            }))
+          }
+          
+          // Fetch user avatar
+          if (data?.avatar) {
+            setUserAvatar(data.avatar)
+          }
+          
+          // Check if profile is complete
+          const isComplete = data?.fullName && data?.phone && data?.address
+          setUserProfileComplete(isComplete)
+        } else {
+          // Use display name from auth if available
+          if (currentUser?.displayName) {
+            setFormData((prev) => ({ ...prev, fullName: currentUser.displayName }))
+          }
+          setUserProfileComplete(false)
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error)
+      }
+    }
+
+    fetchUserProfile()
+  }, [currentUser?.uid, currentUser?.displayName])
+
   const selectedMotoData = preSelectedProduct || motorcycles.find((m) => m.id === productId) || motorcycles.find((m) => m.name === selectedMotorcycle) || motorcycles[0] || { name: 'Loading...', price: 0 }
   const selectedMotoPrice = selectedMotoData?.price || 1099000
   const selectedMotoImage = selectedMotoData?.imageUrl || selectedMotoData?.gallery?.[0]
@@ -118,7 +182,26 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
   const handleFileUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setSubmitError('File size must be less than 5MB')
+        return
+      }
+      
+      // Show preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          setIdentityFilePreview(event.target.result)
+        }
+        reader.readAsDataURL(file)
+      } else {
+        // For PDFs, show file name without preview
+        setIdentityFilePreview(null)
+      }
+      
       setFormData((prev) => ({ ...prev, identityFile: file }))
+      setSubmitError('')
     }
   }
 
@@ -131,51 +214,58 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
       return
     }
 
-    if (!formData.fullName.trim() || !formData.contactNumber.trim() || !formData.address.trim()) {
-      setSubmitError('Please complete Full Name, Contact Number, and Address before submitting.')
+    // Validate full name
+    if (!formData.fullName.trim()) {
+      setSubmitError('Please complete Full Name before submitting.')
       return
     }
 
-    try {
-      setIsSubmitting(true)
-
-      const submitFinancingApplication = httpsCallable(functions, 'submitFinancingApplication')
-      const result = await submitFinancingApplication({
-        motorcycle: {
-          id: selectedMotoData.id,
-          name: selectedMotoData.name || selectedMotorcycle || '',
-          price: Number(selectedMotoData.price || 0),
-          imageUrl: selectedMotoImage || '',
-        },
-        applicant: {
-          fullName: formData.fullName.trim(),
-          contactNumber: formData.contactNumber.trim(),
-          address: formData.address.trim(),
-          email: currentUser?.email || '',
-          uid: currentUser?.uid || '',
-          identityFileName: formData.identityFile?.name || '',
-        },
-        terms: {
-          downPaymentPercent,
-          paymentTerm,
-          incomeRange,
-          downPaymentAmount,
-          remainingBalance,
-          monthlyAmortization,
-        },
-      })
-
-      const referenceId = result?.data?.referenceId || 'REF-PENDING'
-      if (onApplicationSubmitted) {
-        onApplicationSubmitted(referenceId)
-      }
-    } catch (error) {
-      const message = error?.message || 'Unable to submit application right now. Please try again.'
-      setSubmitError(message)
-      console.error('Financing submission error:', error)
-    } finally {
-      setIsSubmitting(false)
+    // Validate contact number
+    if (!formData.contactNumber.trim()) {
+      setSubmitError('Please complete Contact Number before submitting.')
+      return
     }
+
+    // Validate all address components
+    if (!formData.purok.trim() || !formData.barangay.trim() || !formData.city.trim() || !formData.province.trim()) {
+      setSubmitError('Please complete all address fields (Purok, Barangay, City, Province) before submitting.')
+      return
+    }
+
+    // Validate identity file
+    if (!formData.identityFile) {
+      setSubmitError('Please upload a valid ID (JPG, PNG, or PDF) before submitting.')
+      return
+    }
+
+    // Navigate to ConfirmApplication page with application data
+    const applicationData = {
+      motorcycle: {
+        id: selectedMotoData.id,
+        name: selectedMotoData.name || selectedMotorcycle || '',
+        price: Number(selectedMotoData.price || 0),
+        imageUrl: selectedMotoImage || '',
+      },
+      applicant: {
+        fullName: formData.fullName.trim(),
+        contactNumber: formData.contactNumber.trim(),
+        address: buildAddress(),
+        email: currentUser?.email || '',
+        uid: currentUser?.uid || '',
+        identityFile: formData.identityFile,
+        identityFileName: formData.identityFile?.name || '',
+      },
+      terms: {
+        downPaymentPercent,
+        paymentTerm,
+        incomeRange,
+        downPaymentAmount,
+        remainingBalance,
+        monthlyAmortization,
+      },
+    }
+
+    onNavigateToConfirmApplication?.(applicationData)
   }
 
   const handleLogout = async () => {
@@ -187,153 +277,21 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
     }
   }
 
-  const handleNotificationClick = (notifId) => {
-    setUnreadNotifications((prev) =>
-      prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
-    )
-  }
-
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-white font-['Manrope']">
-      {/* Header */}
-      <header className={`sticky top-0 z-40 border-b ${isDarkMode ? 'border-slate-800/60 bg-slate-950/95' : 'border-slate-200 bg-white/95'} backdrop-blur-md shadow-lg`}>
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          {/* Logo Section */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onNavigateBack}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition mr-2"
-              aria-label="Go back"
-            >
-              <ArrowBackRoundedIcon sx={{ fontSize: 24 }} />
-            </button>
-            <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-red-600 p-1.5" />
-            <div>
-              <p className="text-sm font-black uppercase tracking-tight text-red-600">BYKELINK</p>
-              <p className="hidden sm:block text-[9px] font-bold text-slate-500 tracking-widest">Yamaha Dealer</p>
-            </div>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className={`hidden items-center gap-8 lg:flex`}>
-            <a className="border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-red-600 text-red-600 transition-colors">Financing</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Bookings</a>
-            <a className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}>Service</a>
-          </nav>
-
-          {/* Desktop Right Section */}
-          <div className="hidden items-center gap-4 lg:flex">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setIsNotificationDrawerOpen(!isNotificationDrawerOpen)}
-                className={`relative p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
-              >
-                <NotificationsRoundedIcon sx={{ fontSize: 22 }} />
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></span>
-              </button>
-
-              {/* Notification Drawer */}
-              {isNotificationDrawerOpen && (
-                <div className={`absolute right-0 mt-2 w-80 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                    <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto space-y-0">
-                    {unreadNotifications.length > 0 ? (
-                      unreadNotifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          onClick={() => handleNotificationClick(notif.id)}
-                          className={`p-4 border-b ${isDarkMode ? 'border-slate-800 hover:bg-slate-800' : 'border-slate-200 hover:bg-slate-50'} transition cursor-pointer`}
-                        >
-                          <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{notif.title}</p>
-                          <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{notif.message}</p>
-                          <p className={`text-[10px] mt-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>{notif.timestamp}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-slate-500 text-sm">No notifications</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Dark/Light Mode Toggle */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-            >
-              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 22 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 22 }} />}
-            </button>
-
-            {/* Profile Avatar */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileDrawerOpen(!isProfileDrawerOpen)}
-                className={`p-1 rounded-full transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
-              >
-                <AccountCircleRoundedIcon sx={{ fontSize: 28 }} />
-              </button>
-
-              {/* Profile Drawer */}
-              {isProfileDrawerOpen && (
-                <div className={`absolute right-0 mt-2 w-72 rounded-lg shadow-2xl z-50 border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className={`p-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                    <div className="flex items-center gap-3">
-                      <AccountCircleRoundedIcon sx={{ fontSize: 40 }} className="text-red-600" />
-                      <div>
-                        <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentUser?.displayName || 'Customer'}</p>
-                        <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{currentUser?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <button className={`w-full text-left px-3 py-2 rounded-lg transition ${isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'} text-sm`}>
-                      My Profile
-                    </button>
-                    <div className={`border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'} pt-2 mt-2`}>
-                      <button
-                        onClick={handleLogout}
-                        className="w-full px-3 py-2 rounded-lg font-semibold transition text-sm bg-red-600 text-white hover:bg-red-700"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={`rounded-lg border p-2 transition lg:hidden ${isDarkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:border-slate-500' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400'}`}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? <CloseRoundedIcon sx={{ fontSize: 18 }} /> : <MenuRoundedIcon sx={{ fontSize: 18 }} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <a className="block text-[11px] font-bold uppercase tracking-[0.2em] text-red-600 pb-2 border-b-2 border-red-600">Financing</a>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Bookings</a>
-            <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Service</a>
-            {currentUser && (
-              <button
-                onClick={handleLogout}
-                className="mt-3 w-full inline-flex rounded-lg bg-red-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-red-700"
-              >
-                Logout
-              </button>
-            )}
-          </nav>
-        )}
-      </header>
+      <NavHeaderCustomer
+        currentUser={currentUser}
+        isDarkMode={isDarkMode}
+        setIsDarkMode={setIsDarkMode}
+        activePage="financing"
+        unreadNotifications={unreadNotifications}
+        onNavigateToShowroom={onNavigateBack}
+        onNavigateToFinancing={() => {}}
+        onNavigateToFinancingStatus={() => {}}
+        onNavigateToProfile={onNavigateToProfile}
+        onSignOut={currentUser ? handleLogout : null}
+        userAvatar={userAvatar}
+      />
 
       {/* Hero Section */}
       <section className="relative h-80 sm:h-96 overflow-hidden bg-slate-900">
@@ -490,6 +448,25 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
               <span className="text-3xl sm:text-4xl font-black text-slate-700 opacity-30">02</span>
               <h2 className="text-2xl sm:text-3xl font-black italic tracking-tight uppercase">Application Form</h2>
             </div>
+
+            {/* Profile Completion Warning */}
+            {!userProfileComplete && (
+              <div className="mb-6 p-4 sm:p-5 bg-amber-950/50 border border-amber-700/50 rounded-lg flex items-start gap-4">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-300 mb-2">Complete Your Profile</p>
+                  <p className="text-xs text-amber-200 mb-4">Please update your personal information (Full Name, Contact Number, and Address) to proceed with financing.</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToProfile?.()}
+                    className="text-xs font-black uppercase tracking-widest text-amber-400 hover:text-amber-300 transition underline"
+                  >
+                    Update Profile Now →
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Selected Motorcycle Display */}
               <div className="bg-slate-900/50 p-4 sm:p-6 rounded-lg border border-slate-800 space-y-3">
@@ -541,16 +518,53 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Address</label>
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full bg-slate-900 border border-slate-700 text-slate-100 p-3 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all placeholder-slate-600"
-                  placeholder="Street, Barangay, City, Province"
-                  rows="2"
-                ></textarea>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Purok/Street *</label>
+                  <input
+                    name="purok"
+                    value={formData.purok}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-900 border border-slate-700 text-slate-100 p-3 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all placeholder-slate-600"
+                    placeholder="Purok/Street Name"
+                    type="text"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Barangay *</label>
+                  <input
+                    name="barangay"
+                    value={formData.barangay}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-900 border border-slate-700 text-slate-100 p-3 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all placeholder-slate-600"
+                    placeholder="Barangay"
+                    type="text"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">City/Municipality *</label>
+                  <input
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-900 border border-slate-700 text-slate-100 p-3 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all placeholder-slate-600"
+                    placeholder="City/Municipality"
+                    type="text"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Province *</label>
+                  <input
+                    name="province"
+                    value={formData.province}
+                    onChange={handleInputChange}
+                    className="w-full bg-slate-900 border border-slate-700 text-slate-100 p-3 sm:p-4 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-red-600 focus:border-transparent transition-all placeholder-slate-600"
+                    placeholder="Province"
+                    type="text"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
@@ -573,7 +587,7 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
                 </div>
               </div>
               <div className="space-y-4">
-                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Verify Identity (Valid ID)</label>
+                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Verify Identity (Valid ID) *</label>
                 <div className="border-2 border-dashed border-slate-700 bg-slate-900 p-6 sm:p-8 text-center cursor-pointer hover:bg-slate-900/80 hover:border-red-600/50 transition-all relative group">
                   <input
                     type="file"
@@ -583,9 +597,17 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
                   />
                   <CloudUploadIcon className="text-3xl sm:text-4xl text-slate-600 mb-2 group-hover:text-red-600" />
                   <p className="text-xs font-bold text-slate-400 uppercase">Drag & Drop or Click to Upload</p>
-                  {formData.identityFile && <p className="text-[10px] text-green-500 italic mt-2">{formData.identityFile.name}</p>}
+                  {formData.identityFile && <p className="text-[10px] text-green-500 italic mt-2">✓ {formData.identityFile.name}</p>}
                   {!formData.identityFile && <p className="text-[10px] text-slate-500 italic mt-1">JPG, PNG, PDF up to 5MB</p>}
                 </div>
+                
+                {/* Preview Section */}
+                {identityFilePreview && (
+                  <div className="border border-slate-700 bg-slate-900/50 p-4 rounded">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Identity Preview</p>
+                    <img src={identityFilePreview} alt="Identity Preview" className="max-w-full max-h-64 mx-auto rounded" />
+                  </div>
+                )}
               </div>
               <div className="pt-4 sm:pt-6">
                 {submitError && (
@@ -595,10 +617,9 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
                 )}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 sm:py-5 bg-red-600 text-white font-black italic tracking-widest uppercase hover:bg-red-700 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-4 text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full py-4 sm:py-5 bg-blue-600 text-white font-black italic tracking-widest uppercase hover:bg-blue-700 transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-4 text-xs sm:text-sm"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                  Submit Application
                   <TrendingFlatIcon sx={{ fontSize: 18 }} />
                 </button>
                 <p className="text-[10px] text-center text-slate-500 mt-3 sm:mt-4 px-4 sm:px-8">
@@ -609,6 +630,8 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal - Removed, now navigates to ConfirmApplication page */}
 
       {/* Footer */}
       <footer className="bg-slate-950 border-t border-slate-800">

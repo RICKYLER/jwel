@@ -1,7 +1,3 @@
-.inventory-delete-archived-shell {
-  /* Container styling */
-}
-
 .inventory-delete-archived-shell .inventory-control-title {
   background: linear-gradient(135deg, #2563eb 0%, #ff6a63 100%);
   background-clip: text;

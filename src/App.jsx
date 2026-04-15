@@ -21,11 +21,16 @@ import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
+import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
+import CustomerProfilePage from './pages/customer/CustomerProfilePage'
 import FinancingSubmittedPage from './pages/customer/FinancingSubmittedPage'
+import ApprovedApplicationPage from './pages/customer/ApprovedApplicationPage'
 import FinancingStatusPage from './pages/customer/FinancingStatusPage'
 import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordChangeRequiredModal'
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
+import ToastNotification from './components/ToastNotification'
+import { ToastProvider } from './context/ToastContext'
 import { auth, db, functions, googleProvider } from './firebase'
 
 const navLinks = [
@@ -154,6 +159,10 @@ const formatAuthError = (error) => {
 
 const normalizePath = (path) => {
   if (path?.startsWith('/financing/')) return path
+  if (path?.startsWith('/superadmin/')) return path
+  if (path?.startsWith('/admin/')) return path
+  if (path?.startsWith('/staff/')) return path
+  if (path?.startsWith('/customer/')) return path
   if (path?.startsWith('/login')) return '/login'
   if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/showroom')) return '/showroom'
@@ -173,9 +182,17 @@ const getNavLabelForPath = (path, hash = '') => {
   if (path === '/spare-parts') return 'Spare Parts'
   if (path === '/service') return 'Service'
   if (path === '/financing' || path?.startsWith('/financing/')) return 'Financing'
+  if (path?.startsWith('/superadmin') || path?.startsWith('/admin') || path?.startsWith('/staff')) return 'Dashboard'
   if (dashboardRequirements[path]) return 'Dashboard'
 
   return matchedLink?.label || 'Home'
+}
+
+const getDashboardBasePath = (path = '') => {
+  if (path?.startsWith('/superadmin')) return '/superadmin'
+  if (path?.startsWith('/admin')) return '/admin'
+  if (path?.startsWith('/staff')) return '/staff'
+  return path
 }
 
 const canAccessRole = (currentRole, requiredRole) => {
@@ -354,6 +371,7 @@ function App() {
     confirmPassword: '',
   })
   const [currentUser, setCurrentUser] = useState(null)
+  const [pendingApplicationData, setPendingApplicationData] = useState(null)
   const [accessProfile, setAccessProfile] = useState(defaultAccessProfile)
   const [requiresPasswordChange, setRequiresPasswordChange] = useState(false)
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
@@ -1064,7 +1082,8 @@ function App() {
     }
   }
 
-  const requiredDashboardRole = dashboardRequirements[currentPath]
+  const currentDashboardBasePath = getDashboardBasePath(currentPath)
+  const requiredDashboardRole = dashboardRequirements[currentDashboardBasePath]
   const canViewCurrentDashboard = requiredDashboardRole
     ? canAccessRole(accessProfile.role, requiredDashboardRole)
     : false
@@ -1150,6 +1169,20 @@ function App() {
     )
   }
 
+  if (currentPath.startsWith('/financing/approved')) {
+    const approvedMatch = currentPath.match(/^\/financing\/approved\/(.+)$/)
+    const referenceId = approvedMatch ? decodeURIComponent(approvedMatch[1]) : ''
+
+    return withSecurityModal(
+      <ApprovedApplicationPage
+        referenceId={referenceId}
+        motorcycleName={currentUser?.motorcycleName || 'Your Yamaha'}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onTrackApplication={() => navigateTo(`/financing/status/${encodeURIComponent(referenceId)}`)}
+      />,
+    )
+  }
+
   if (currentPath.startsWith('/financing/submitted')) {
     const submittedMatch = currentPath.match(/^\/financing\/submitted\/(.+)$/)
     const referenceId = submittedMatch ? decodeURIComponent(submittedMatch[1]) : ''
@@ -1170,7 +1203,34 @@ function App() {
     return withSecurityModal(
       <FinancingStatusPage
         referenceId={referenceId}
+        currentUser={currentUser}
         onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onSignOut={currentUser ? handleSignOut : null}
+      />,
+    )
+  }
+
+  if (currentPath === '/financing/confirm' && currentUser && accessProfile.role === 'customer' && pendingApplicationData) {
+    return withSecurityModal(
+      <ConfirmApplicationPage
+        currentUser={currentUser}
+        applicationData={pendingApplicationData}
+        onNavigateBack={() => {
+          setPendingApplicationData(null)
+          navigateTo('/financing')
+        }}
+        onNavigateToFinancingStatus={(referenceId) => {
+          setPendingApplicationData(null)
+          navigateTo(`/financing/status/${encodeURIComponent(referenceId)}`)
+        }}
+        onApplicationSubmitted={(referenceId) => {
+          setPendingApplicationData(null)
+          navigateTo(`/financing/submitted/${encodeURIComponent(referenceId)}`)
+        }}
+        onSignOut={currentUser ? handleSignOut : null}
       />,
     )
   }
@@ -1185,6 +1245,11 @@ function App() {
         onNavigateBack={() => navigateTo('/customer')}
         onSignOut={currentUser ? handleSignOut : null}
         productId={financingProductId}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToConfirmApplication={(applicationData) => {
+          setPendingApplicationData(applicationData)
+          navigateTo('/financing/confirm')
+        }}
         onApplicationSubmitted={(referenceId) =>
           navigateTo(`/financing/submitted/${encodeURIComponent(referenceId)}`)
         }
@@ -1204,6 +1269,8 @@ function App() {
         onNavigateToProduct={handleNavigateToProduct}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateBack={() => goToHomeSection('home', 'Home')}
       />,
     )
   }
@@ -1225,6 +1292,22 @@ function App() {
       />,
     )
   }
+
+  // Customer Profile Page Route
+  if (currentPath === '/customer/profile' && currentUser && accessProfile.role === 'customer') {
+    return withSecurityModal(
+      <CustomerProfilePage
+        currentUser={currentUser}
+        onNavigateBack={() => navigateTo('/customer')}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onSignOut={handleSignOut}
+      />,
+    )
+  }
+
   if (shouldShowAccessLoader && (isPageLoading && !isLoadingScreenComplete)) {
     return (
       <GlobalLoadingScreen
@@ -1235,13 +1318,21 @@ function App() {
     )
   }
 
-  if (dashboardRequirements[currentPath] && currentUser && canViewCurrentDashboard && !isAccessResolving) {
+  if (dashboardRequirements[currentDashboardBasePath] && currentUser && canViewCurrentDashboard && !isAccessResolving) {
+    const financingDetailMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications\/(.+)$/)
+    const financingListMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications$/)
+
     return withSecurityModal(
       <SuperAdminPage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onSignOut={handleSignOut}
         currentUser={currentUser}
         accessProfile={accessProfile}
+        dashboardPath={currentDashboardBasePath}
+        currentPath={currentPath}
+        initialSection={financingDetailMatch || financingListMatch ? 'financing-applications' : 'dashboard'}
+        initialFinancingApplicationId={financingDetailMatch?.[2] ? decodeURIComponent(financingDetailMatch[2]) : ''}
+        onNavigateDashboardPath={(nextPath) => navigateTo(nextPath)}
       />,
     )
   }
@@ -1264,4 +1355,13 @@ function App() {
   )
 }
 
-export default App
+function AppWithToast() {
+  return (
+    <ToastProvider>
+      <App />
+      <ToastNotification />
+    </ToastProvider>
+  )
+}
+
+export default AppWithToast

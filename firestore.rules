@@ -180,11 +180,24 @@ service cloud.firestore {
 
     match /financingApplications/{docId} {
       allow read: if isAdminOrHigher()
+        || (isSignedIn() && request.auth.uid == resource.data.applicant.uid)
         || (isSignedIn() && request.auth.uid == resource.data.submittedBy.uid)
+        || emailMatches(resource.data.applicant.email)
         || emailMatches(resource.data.submittedBy.email);
       allow create: if isSignedIn();
       allow update: if isAdminOrHigher();
       allow delete: if isSuperadmin();
+
+      match /messages/{messageId} {
+        allow read: if isAdminOrHigher()
+          || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/financingApplications/$(docId)).data.applicant.uid)
+          || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/financingApplications/$(docId)).data.submittedBy.uid);
+        allow create: if isSignedIn()
+          && (request.auth.uid == get(/databases/$(database)/documents/financingApplications/$(docId)).data.applicant.uid
+            || request.auth.uid == get(/databases/$(database)/documents/financingApplications/$(docId)).data.submittedBy.uid
+            || isAdminOrHigher());
+        allow update: if isAdminOrHigher();
+      }
     }
 
     match /conversations/{docId} {

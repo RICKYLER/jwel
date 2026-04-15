@@ -1084,6 +1084,11 @@ exports.getFinancingApplicationStatus = onCall({ cors: true }, async (request) =
     : 'Pending timestamp'
 
   const monthlyAmortization = Number(data.terms?.monthlyAmortization || 0)
+  const motorcyclePrice = Number(data.motorcycle?.price || 0)
+  const downPaymentAmount = Number(data.terms?.downPaymentAmount || 0)
+  const downPaymentPercent = Number(data.terms?.downPaymentPercent || 0)
+  const interestRate = Number(data.terms?.interestRate || 0)
+  const apr = Number(data.terms?.apr || 0)
 
   return {
     ok: true,
@@ -1091,13 +1096,288 @@ exports.getFinancingApplicationStatus = onCall({ cors: true }, async (request) =
     status: String(data.status || 'submitted').toLowerCase(),
     applicantName: String(data.applicant?.fullName || ''),
     motorcycleName: String(data.motorcycle?.name || ''),
-    monthlyAmortization: `PHP ${monthlyAmortization.toLocaleString('en-PH')}`,
+    motorcycleImageUrl: String(data.motorcycle?.imageUrl || ''),
+    motorcyclePrice: motorcyclePrice,
+    paymentTerm: Number(data.terms?.paymentTerm || 0),
+    monthlyAmortization: monthlyAmortization,
+    downPaymentAmount: downPaymentAmount,
+    downPaymentPercent: downPaymentPercent,
+    interestRate: interestRate,
+    apr: apr,
     submittedAt: formattedSubmittedAt,
+    stage: Number(data.stage || 1),
     message:
       data.status === 'approved'
         ? 'Your application is approved. Please check your email for final instructions.'
         : data.status === 'rejected'
           ? 'Your application was not approved at this time. You may re-apply after updating requirements.'
           : 'Your application is currently under review by our financing specialists.',
+  }
+})
+
+exports.updateUserProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to update your profile.')
+  }
+
+  const uid = request.auth.uid
+  const email = String(request.auth.token.email || '').trim().toLowerCase()
+  const phone = String(request.data?.phone || '').trim()
+  const address = String(request.data?.address || '').trim()
+  const avatar = request.data?.avatar || null
+
+  logger.info('updateUserProfile called', {
+    uid,
+    email,
+    phone,
+    address: address ? address.substring(0, 50) + '...' : 'empty',
+    avatarProvided: !!avatar,
+    structuredData: true,
+  })
+
+  if (!uid) {
+    throw new HttpsError('invalid-argument', 'User ID is invalid.')
+  }
+
+  if (!email) {
+    throw new HttpsError('invalid-argument', 'Email is required.')
+  }
+
+  if (!phone) {
+    throw new HttpsError('invalid-argument', 'Contact number is required.')
+  }
+
+  if (!address) {
+    throw new HttpsError('invalid-argument', 'Address is required.')
+  }
+
+  // Validate phone format
+  if (!/^09\d{9}$/.test(phone)) {
+    throw new HttpsError('invalid-argument', 'Phone must be 11 digits starting with 09.')
+  }
+
+  // Validate address has all parts
+  const addressParts = address.split('|')
+  if (addressParts.length !== 4 || !addressParts.every(part => part.trim())) {
+    throw new HttpsError('invalid-argument', 'Address must have all required parts: purok, barangay, city, province.')
+  }
+
+  try {
+    logger.info('Starting profile update', {
+      uid,
+      email,
+      hasPhone: !!phone,
+      hasAddress: !!address,
+      hasAvatar: !!avatar,
+      structuredData: true,
+    })
+
+    const db = admin.firestore()
+    const userRef = db.collection('users').doc(uid)
+
+    const updateData = {
+      email,
+      phone,
+      address,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }
+
+    // Only update avatar if provided and is a valid URL
+    if (avatar && avatar.startsWith('http')) {
+      updateData.avatar = avatar
+      logger.info('Avatar included in update', {
+        uid,
+        avatarUrlLength: avatar.length,
+        structuredData: true,
+      })
+    }
+
+    logger.info('Attempting Firestore write', {
+      uid,
+      updateDataKeys: Object.keys(updateData),
+      phone,
+      addressLength: address.length,
+      structuredData: true,
+    })
+
+    await userRef.set(updateData, { merge: true })
+
+    logger.info('Firestore write completed successfully', {
+      uid,
+      email,
+      structuredData: true,
+    })
+
+    return {
+      ok: true,
+      message: 'Profile updated successfully.',
+    }
+  } catch (error) {
+    logger.error('Error updating user profile', {
+      uid,
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+      errorName: error.name,
+      stack: error.stack?.substring(0, 200),
+      structuredData: true,
+    })
+
+    // Return specific error if it's an HttpsError, otherwise wrap it
+    if (error instanceof HttpsError) {
+      throw error
+    }
+
+    throw new HttpsError('internal', `Failed to update profile: ${error.message}`)
+  }
+})
+
+exports.updateUserPassword = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to update your password.')
+  }
+
+  const uid = request.auth.uid
+  const email = String(request.auth.token.email || '').trim().toLowerCase()
+  const currentPassword = String(request.data?.currentPassword || '').trim()
+  const newPassword = String(request.data?.newPassword || '').trim()
+  const provider = request.auth.token.firebase?.sign_in_provider || 'password'
+
+  logger.info('updateUserPassword called', {
+    uid,
+    email,
+    provider,
+    hasCurrentPassword: !!currentPassword,
+    passwordLength: newPassword.length,
+    structuredData: true,
+  })
+
+  if (!newPassword) {
+    throw new HttpsError('invalid-argument', 'New password is required.')
+  }
+
+  if (newPassword.length < 8) {
+    throw new HttpsError('invalid-argument', 'Password must be at least 8 characters long.')
+  }
+
+  // Check password requirements
+  const passwordRequirements = [
+    /.{8,}/,
+    /[A-Z]/,
+    /[a-z]/,
+    /[0-9]/,
+    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
+  ]
+
+  const meetsRequirements = passwordRequirements.every((regex) => regex.test(newPassword))
+
+  if (!meetsRequirements) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Password must contain uppercase, lowercase, number, and special character.',
+    )
+  }
+
+  try {
+    // If user previously signed in with Google, verify current password is not required
+    if (provider === 'google.com' || !currentPassword) {
+      logger.info('Setting password for first time (Google provider or no current password)', {
+        uid,
+        provider,
+        structuredData: true,
+      })
+      // User is setting password for the first time (Google sign-in)
+      await admin.auth().updateUser(uid, {
+        password: newPassword,
+      })
+    } else {
+      // User already has a password - verify current password
+      const apiKey = getWebApiKey()
+
+      if (!apiKey) {
+        throw new Error('Firebase Web API Key is not configured.')
+      }
+
+      logger.info('Verifying current password', {
+        uid,
+        structuredData: true,
+      })
+
+      const verifyResponse = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password: currentPassword,
+            returnSecureToken: true,
+          }),
+        },
+      )
+
+      const verifyData = await verifyResponse.json().catch(() => ({}))
+
+      if (!verifyResponse.ok) {
+        logger.warn('Current password verification failed', {
+          uid,
+          statusCode: verifyResponse.status,
+          errorMessage: verifyData?.error?.message,
+          structuredData: true,
+        })
+        throw new HttpsError('unauthenticated', 'Current password is incorrect.')
+      }
+
+      logger.info('Current password verified successfully', {
+        uid,
+        structuredData: true,
+      })
+
+      // Password verified, now update to new password
+      await admin.auth().updateUser(uid, {
+        password: newPassword,
+      })
+    }
+
+    // Update Firestore to mark that user has a password
+    logger.info('Updating Firestore hasPassword flag', {
+      uid,
+      structuredData: true,
+    })
+
+    await admin.firestore().collection('users').doc(uid).set(
+      {
+        hasPassword: true,
+        passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    )
+
+    logger.info('User password updated successfully.', {
+      uid,
+      email,
+      structuredData: true,
+    })
+
+    return {
+      ok: true,
+      message: 'Password updated successfully.',
+    }
+  } catch (error) {
+    if (error.code && error.code.startsWith('http/')) {
+      // Already an HttpsError
+      throw error
+    }
+
+    logger.error('Error updating user password.', {
+      uid,
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+
+    throw new HttpsError('internal', `Failed to update password. ${error.message}`)
   }
 })
