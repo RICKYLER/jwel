@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
@@ -29,6 +29,8 @@ export default function InventoryReportsSection({
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [actionMenuOpen, setActionMenuOpen] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const reportsPerPage = 15
 
   const normalizedSearchTerm = normalizeText(searchTerm)
 
@@ -65,6 +67,18 @@ export default function InventoryReportsSection({
       return searchMatch && categoryMatch && dateMatch
     })
   }, [activeTab, inventoryLogs, searchTerm, normalizedSearchTerm, dateFrom, dateTo])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm, dateFrom, dateTo])
+
+  const totalPages = Math.ceil(filteredLogs.length / reportsPerPage)
+  const startIndex = (currentPage - 1) * reportsPerPage
+  const endIndex = startIndex + reportsPerPage
+  const paginatedLogs = useMemo(() => {
+    return filteredLogs.slice(startIndex, endIndex)
+  }, [filteredLogs, startIndex, endIndex])
 
   const summaryStats = useMemo(() => {
     const stats = {
@@ -254,19 +268,6 @@ export default function InventoryReportsSection({
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <label className="inventory-reports-search-box flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-4 py-2 flex-1">
-              <SearchRoundedIcon sx={{ fontSize: 18 }} style={{ color: 'rgba(255,255,255,0.5)' }} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, model, or added by..."
-                className="flex-1 border-0 bg-transparent text-sm text-white placeholder-white/40 outline-none"
-              />
-            </label>
-          </div>
-
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/60">From:</span>
@@ -318,7 +319,7 @@ export default function InventoryReportsSection({
 
         <div className="divide-y divide-white/5">
           {filteredLogs.length > 0 ? (
-            filteredLogs.map((log) => (
+            paginatedLogs.map((log) => (
               <div key={log.id} className="grid gap-3 px-3 py-4 md:grid-cols-[0.6fr_1fr_1fr_1.2fr_0.8fr_1fr_1.2fr_1.5fr_0.8fr] md:items-center">
                 <div className="flex items-center justify-center">
                   {log.imageUrl ? (
@@ -382,8 +383,44 @@ export default function InventoryReportsSection({
           )}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-[11px] text-white/40">
-          <span>Showing {filteredLogs.length} records</span>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-[11px] text-white/40">
+          <span>Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} records</span>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                ‹ Prev
+              </button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                  const pageNum = i + 1
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`inventory-pagination-page ${currentPage === pageNum ? 'is-active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                Next ›
+              </button>
+            </div>
+          )}
+          
           <span>Live sync from inventoryLogs collection</span>
         </div>
       </div>

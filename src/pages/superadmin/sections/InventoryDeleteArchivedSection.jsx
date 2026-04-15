@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { deleteDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import DeleteForeverRoundedIcon from '@mui/icons-material/DeleteForeverRounded'
 import RestoreRoundedIcon from '@mui/icons-material/RestoreRounded'
@@ -22,6 +22,8 @@ export default function InventoryDeleteArchivedSection({
   const [searchTerm, setSearchTerm] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null, itemName: '' })
   const [isDeleting, setIsDeleting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
 
   // Debug: Check actual role
   const isSuperAdmin = currentAccessRole && String(currentAccessRole).toLowerCase() === 'superadmin'
@@ -39,6 +41,18 @@ export default function InventoryDeleteArchivedSection({
       return !searchTerm || searchHaystack.includes(normalizedSearchTerm)
     })
   }, [deletedItems, searchTerm])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedItems = useMemo(() => {
+    return filteredItems.slice(startIndex, endIndex)
+  }, [filteredItems, startIndex, endIndex])
 
   const handlePermanentDelete = (itemId, itemName) => {
     if (!actualCanDelete) {
@@ -94,20 +108,6 @@ export default function InventoryDeleteArchivedSection({
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className={`rounded-2xl p-4 border ${!isDarkMode ? 'bg-white border-gray-200' : 'bg-white/6 border-white/10'}`}>
-        <div className="flex items-center gap-3">
-          <SearchRoundedIcon className="text-white/40" sx={{ fontSize: 20 }} />
-          <input
-            type="text"
-            placeholder="Search by item name, model or category..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={`flex-1 bg-transparent text-sm font-medium placeholder-white/30 outline-none ${!isDarkMode ? 'text-gray-900' : 'text-white'}`}
-          />
-        </div>
-      </div>
-
       {/* Items List */}
       <div className={`rounded-2xl border overflow-hidden ${!isDarkMode ? 'bg-white border-gray-200' : 'bg-white/6 border-white/10'}`}>
         <div className="p-4">
@@ -117,7 +117,7 @@ export default function InventoryDeleteArchivedSection({
 
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredItems.length > 0 ? (
-              filteredItems.map((item) => (
+              paginatedItems.map((item) => (
                 <div
                   key={item.id}
                   className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
@@ -186,6 +186,45 @@ export default function InventoryDeleteArchivedSection({
             )}
           </div>
         </div>
+
+        {totalPages > 1 && filteredItems.length > 0 && (
+          <div className="mt-4 flex items-center justify-between text-[11px] text-white/40">
+            <span>Showing {startIndex + 1}-{Math.min(endIndex, filteredItems.length)} of {filteredItems.length} items</span>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                ‹ Prev
+              </button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const pageNum = i + 1
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`inventory-pagination-page ${currentPage === pageNum ? 'is-active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                Next ›
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Summary */}
@@ -197,7 +236,7 @@ export default function InventoryDeleteArchivedSection({
         ].map((stat, idx) => (
           <article
             key={idx}
-            className={`rounded-2xl p-4 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/10'}`}
+            className="inventory-delete-archived-summary-card rounded-2xl p-4"
           >
             <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${!isDarkMode ? 'text-gray-600' : 'text-white/40'}`}>
               {stat.label}

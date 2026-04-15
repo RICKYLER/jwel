@@ -1,5 +1,5 @@
 .inventory-delete-archived-shell .inventory-control-title {
-  background: linear-gradient(135deg, #2563eb 0%, #ff6a63 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -9,4 +9,47 @@
   background: none;
   -webkit-text-fill-color: unset;
   color: white;
+}
+
+.inventory-delete-archived-summary-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Inventory Deleted Items Pagination */
+.inventory-pagination-button,
+.inventory-pagination-page {
+  padding: 0.4rem 0.6rem;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inventory-pagination-button:hover:not(:disabled),
+.inventory-pagination-page:hover {
+  background: var(--border);
+  border-color: var(--primary);
+}
+
+.inventory-pagination-page.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+.inventory-pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

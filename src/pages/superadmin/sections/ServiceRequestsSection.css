@@ -1,37 +1,30 @@
 .service-requests-section {
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: #1c1b1b;
+  border: 1px solid var(--border);
+  background: var(--bg);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.service-requests-section h3,
+.service-requests-section h4 {
+  color: var(--text);
+}
+
+.service-requests-section p {
+  color: var(--text);
+  opacity: 0.7;
 }
 
 .service-request-card,
 .service-request-empty {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #161616;
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Light Mode Support */
-.service-requests-section.light-mode {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.service-requests-section.light-mode h3,
-.service-requests-section.light-mode h4 {
-  color: #111827;
-}
-
-.service-requests-section.light-mode p {
-  color: #6b7280;
-}
-
-.service-requests-section.light-mode .service-request-card {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-}
-
-.service-requests-section.light-mode .service-request-card select {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
+.service-request-card select {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  transition: all 0.3s ease;
 }

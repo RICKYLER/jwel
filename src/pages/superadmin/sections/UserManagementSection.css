@@ -5,18 +5,24 @@
 .user-management-primary-action {
   min-width: 11rem;
   border: 0;
-  background: linear-gradient(90deg, #22d3ee 0%, #2563eb 100%);
-  box-shadow: 0 16px 28px rgba(225, 1, 0, 0.28);
+  background: var(--primary);
+  box-shadow: 0 16px 28px rgba(197, 29, 52, 0.28);
+  transition: all 0.2s ease;
+  color: white;
 }
 
-.user-stat-card,
-.user-table-shell {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(18, 18, 20, 0.98) 0%, rgba(12, 12, 14, 0.98) 100%);
+.user-stat-card {
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .user-table-shell {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
   overflow: hidden;
 }
 
@@ -46,17 +52,19 @@
 
 .user-table-search input {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #fff;
+  background: var(--card);
+  color: var(--text);
   padding: 0.78rem 0.95rem 0.78rem 2.65rem;
   font-size: 0.9rem;
   outline: none;
+  transition: all 0.3s ease;
 }
 
 .user-table-search input::placeholder {
-  color: rgba(255, 255, 255, 0.38);
+  color: var(--text);
+  opacity: 0.5;
 }
 
 .user-table-filter-group {
@@ -68,13 +76,14 @@
 
 .user-table-select {
   min-width: 7.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #f5f5f5;
+  background: var(--card);
+  color: var(--text);
   padding: 0.72rem 0.85rem;
   font-size: 0.82rem;
   outline: none;
+  transition: all 0.3s ease;
 }
 
 .user-table-icon-button,
@@ -86,9 +95,9 @@
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
   cursor: pointer;
   transition: all 0.18s ease;
 }
@@ -96,18 +105,20 @@
 .user-table-icon-button:hover,
 .user-action-icon:hover,
 .user-action-menu > summary:hover {
-  border-color: rgba(225, 1, 0, 0.35);
-  color: #fff;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .user-action-icon--danger {
-  color: #ff8d8d;
+  border-color: rgba(197, 29, 52, 0.38);
+  background: rgba(197, 29, 52, 0.1);
+  color: var(--primary);
 }
 
 .user-action-icon--danger:hover {
-  border-color: rgba(225, 1, 0, 0.45);
-  background: rgba(225, 1, 0, 0.12);
-  color: #ffc1c1;
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
 }
 
 .user-table-header,
@@ -120,12 +131,13 @@
 
 .user-table-header {
   padding: 0.6rem 0.9rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border);
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text);
+  opacity: 0.5;
 }
 
 .user-table-body {
@@ -134,7 +146,7 @@
 
 .user-table-row {
   padding: 0.95rem 0.9rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
 }
 
 .user-table-row:last-child {
@@ -142,7 +154,7 @@
 }
 
 .user-avatar {
-  background: linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
 }
 
@@ -235,7 +247,7 @@
 
 .user-role-menu button:hover,
 .user-role-menu button.is-selected {
-  background: rgba(225, 1, 0, 0.14);
+  background: rgba(197, 29, 52, 0.14);
   color: #fff;
 }
 
@@ -272,7 +284,7 @@
 
 .archived-users-kicker {
   margin: 0;
-  color: #ff9e96;
+  color: #ff8a8a;
   font-size: 0.64rem;
   font-weight: 900;
   letter-spacing: 0.24em;
@@ -322,14 +334,27 @@
 }
 
 .archived-user-delete {
-  border: 1px solid rgba(225, 1, 0, 0.28);
+  border: 1px solid rgba(197, 29, 52, 0.28);
   border-radius: 10px;
-  background: rgba(225, 1, 0, 0.12);
-  color: #ffd5d5;
+  background: rgba(197, 29, 52, 0.12);
+  color: #ffc5c5;
   padding: 0.55rem 0.75rem;
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.archived-user-delete:hover:not(:disabled) {
+  border-color: #C51D34;
+  background: #C51D34;
+  color: #fff;
+}
+
+.archived-user-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .archived-user-empty {
@@ -354,8 +379,8 @@
 }
 
 .user-pagination-button.is-active {
-  border-color: rgba(225, 1, 0, 0.5);
-  background: #2563eb;
+  border-color: rgba(197, 29, 52, 0.5);
+  background: #C51D34;
   color: #fff;
 }
 
@@ -426,3 +451,150 @@
 .user-management-shell.light-mode .user-table-search input::placeholder {
   color: #9ca3af;
 }
+
+/* Entrance Animations */
+@keyframes animate-entrance {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes animate-archived-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-management-shell.animate-entrance {
+  animation: animate-entrance 0.6s ease-out forwards;
+}
+
+.archived-users-shell.animate-archived-in {
+  animation: animate-archived-in 0.4s ease-out forwards;
+}
+
+/* Confirmation Dialog Styles */
+.confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.confirmation-dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confirmation-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--superadmin-text);
+  margin-bottom: 12px;
+}
+
+.confirmation-message {
+  font-size: 14px;
+  color: var(--superadmin-text);
+  opacity: 0.75;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirmation-button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.confirmation-button--cancel {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--superadmin-text);
+}
+
+.confirmation-button--cancel:hover {
+  background: var(--border);
+}
+
+.confirmation-button--confirm {
+  background: var(--primary);
+  color: white;
+}
+
+.confirmation-button--confirm:hover {
+  background: var(--primary-hover);
+}
+
+.user-management-shell.light-mode .confirmation-dialog {
+  background: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.user-management-shell.light-mode .confirmation-title {
+  color: #111827;
+}
+
+.user-management-shell.light-mode .confirmation-message {
+  color: #6b7280;
+}
+
+.user-management-shell.light-mode .confirmation-button--cancel {
+  border-color: #e5e7eb;
+  color: #111827;
+}
+
+.user-management-shell.light-mode .confirmation-button--cancel:hover {
+  background: #f3f4f6;
+}
+

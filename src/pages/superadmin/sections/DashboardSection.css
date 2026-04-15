@@ -6,9 +6,10 @@
 .dashboard-chart-card,
 .dashboard-crew-card,
 .dashboard-dispatch-card {
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: #1c1b1b;
+  border: 1px solid var(--border);
+  background: var(--card);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .dashboard-chart-bars {
@@ -16,7 +17,7 @@
 }
 
 .dispatch-table-shell {
-  scrollbar-color: rgba(225, 1, 0, 0.5) transparent;
+  scrollbar-color: rgba(197, 29, 52, 0.5) transparent;
 }
 
 @media (min-width: 1024px) {

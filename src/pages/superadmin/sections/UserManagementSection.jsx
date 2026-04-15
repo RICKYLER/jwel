@@ -4,7 +4,7 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
 import './UserManagementSection.css'
 
 const isRecentDate = (value) => {
@@ -70,10 +70,14 @@ export default function UserManagementSection({
   onOpenNewUserModal,
   onEditUser,
   onArchiveUser,
-  onDeleteArchivedUser,  isDarkMode = true,}) {
+  onDeleteArchivedUser,
+  isDarkMode = true,
+}) {
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [showArchived, setShowArchived] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
   const pageSize = 4
 
   const mappedUsers = useMemo(() => {
@@ -187,6 +191,39 @@ export default function UserManagementSection({
     setCurrentPage(1)
   }
 
+  const handleConfirmedEdit = (user) => {
+    setConfirmAction({
+      type: 'edit',
+      user,
+      onConfirm: () => {
+        onEditUser?.(user)
+        setConfirmAction(null)
+      },
+    })
+  }
+
+  const handleConfirmedArchive = (user) => {
+    setConfirmAction({
+      type: 'archive',
+      user,
+      onConfirm: () => {
+        onArchiveUser?.(user)
+        setConfirmAction(null)
+      },
+    })
+  }
+
+  const handleConfirmedDelete = (user) => {
+    setConfirmAction({
+      type: 'delete',
+      user,
+      onConfirm: () => {
+        onDeleteArchivedUser?.(user)
+        setConfirmAction(null)
+      },
+    })
+  }
+
   const handleExportVisibleUsers = () => {
     if (typeof window === 'undefined' || !visibleUsers.length) {
       return
@@ -220,7 +257,46 @@ export default function UserManagementSection({
   }
 
   return (
-    <section className={`user-management-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
+    <section className={`user-management-shell animate-entrance space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
+      {confirmAction && (
+        <div
+          className="confirmation-overlay"
+          onClick={() => setConfirmAction(null)}
+        >
+          <div
+            className="confirmation-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="confirmation-title">
+              {confirmAction.type === 'edit' && 'Edit User Account?'}
+              {confirmAction.type === 'archive' && 'Archive This User?'}
+              {confirmAction.type === 'delete' && 'Permanently Delete Archived User?'}
+            </h3>
+            <p className="confirmation-message">
+              {confirmAction.type === 'edit' && `Update account details for ${confirmAction.user?.fullName || confirmAction.user?.email}?`}
+              {confirmAction.type === 'archive' && `Move ${confirmAction.user?.fullName || confirmAction.user?.email} to archived records?`}
+              {confirmAction.type === 'delete' && `This action cannot be undone. ${confirmAction.user?.fullName || confirmAction.user?.email} will be permanently removed from the system.`}
+            </p>
+            <div className="confirmation-actions">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="confirmation-button confirmation-button--cancel"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmAction.onConfirm()}
+                className="confirmation-button confirmation-button--confirm"
+              >
+                {confirmAction.type === 'delete' ? 'Delete' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className={`font-['Epilogue'] text-3xl font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'} sm:text-4xl`}>
@@ -259,16 +335,6 @@ export default function UserManagementSection({
 
       <div className="user-table-shell rounded-[28px] p-4 sm:p-5">
         <div className="user-table-toolbar">
-          <label className="user-table-search" aria-label="Search users">
-            <SearchRoundedIcon sx={{ fontSize: 18 }} />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Search by name or email..."
-            />
-          </label>
-
           <div className="user-table-filter-group">
             <select
               value={roleFilter}
@@ -314,6 +380,15 @@ export default function UserManagementSection({
               aria-label="Export users"
             >
               <DownloadRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowArchived(!showArchived)}
+              className={`user-table-icon-button user-table-archived-toggle ${showArchived ? 'is-active' : ''}`}
+              aria-label="Toggle archived users"
+            >
+              <ArchiveRoundedIcon sx={{ fontSize: 18 }} />
             </button>
           </div>
         </div>
@@ -362,7 +437,7 @@ export default function UserManagementSection({
               <div className="user-actions-cell">
                 <button
                   type="button"
-                  onClick={() => onEditUser?.(user)}
+                  onClick={() => handleConfirmedEdit(user)}
                   disabled={
                     !canManageAccess ||
                     !user.email ||
@@ -376,7 +451,7 @@ export default function UserManagementSection({
 
                 <button
                   type="button"
-                  onClick={() => onArchiveUser?.(user)}
+                  onClick={() => handleConfirmedArchive(user)}
                   disabled={
                     !canManageAccess ||
                     !user.email ||
@@ -433,47 +508,49 @@ export default function UserManagementSection({
           </div>
         </div>
 
-        <div className="archived-users-shell">
-          <div className="archived-users-header">
-            <div>
-              <p className="archived-users-kicker">Delete Archived</p>
-              <h3>Archived Users</h3>
-              <p>
-                Admin can view archived records only. Only superadmin can permanently delete them.
-              </p>
+        {showArchived && (
+          <div className="archived-users-shell animate-archived-in">
+            <div className="archived-users-header">
+              <div>
+                <p className="archived-users-kicker">Delete Archived</p>
+                <h3>Archived Users</h3>
+                <p>
+                  Admin can view archived records only. Only superadmin can permanently delete them.
+                </p>
+              </div>
+            </div>
+
+            <div className="archived-users-list">
+              {visibleArchivedUsers.length ? (
+                visibleArchivedUsers.map((user) => (
+                  <div key={user.email || user.id} className="archived-user-item">
+                    <div>
+                      <p className="archived-user-name">{user.fullName || user.displayName || user.email || 'Archived User'}</p>
+                      <p className="archived-user-meta">
+                        {user.email || 'No email'} • {formatRoleLabel(user.role)} • {formatDate(user.archivedAt || user.updatedAt || user.createdAt)}
+                      </p>
+                    </div>
+
+                    {currentAccessRole === 'superadmin' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmedDelete(user)}
+                        disabled={isSubmitting}
+                        className="archived-user-delete"
+                      >
+                        Delete Permanently
+                      </button>
+                    ) : (
+                      <span className="archived-user-view-only">View only</span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="archived-user-empty">No archived user records yet.</div>
+              )}
             </div>
           </div>
-
-          <div className="archived-users-list">
-            {visibleArchivedUsers.length ? (
-              visibleArchivedUsers.map((user) => (
-                <div key={user.email || user.id} className="archived-user-item">
-                  <div>
-                    <p className="archived-user-name">{user.fullName || user.displayName || user.email || 'Archived User'}</p>
-                    <p className="archived-user-meta">
-                      {user.email || 'No email'} • {formatRoleLabel(user.role)} • {formatDate(user.archivedAt || user.updatedAt || user.createdAt)}
-                    </p>
-                  </div>
-
-                  {currentAccessRole === 'superadmin' ? (
-                    <button
-                      type="button"
-                      onClick={() => onDeleteArchivedUser?.(user)}
-                      disabled={isSubmitting}
-                      className="archived-user-delete"
-                    >
-                      Delete Permanently
-                    </button>
-                  ) : (
-                    <span className="archived-user-view-only">View only</span>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="archived-user-empty">No archived user records yet.</div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </section>
   )

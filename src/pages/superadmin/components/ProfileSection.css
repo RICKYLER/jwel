@@ -1,31 +1,33 @@
 .profile-card {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: #1c1b1b;
+  border: 1px solid var(--border);
+  background: var(--card);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 .profile-avatar {
-  background: linear-gradient(135deg, #2563eb 0%, #7a0000 100%);
+  background: linear-gradient(135deg, #C51D34 0%, #a01728 100%);
 }
 
 /* Light Mode Support */
-.profile-section-grid.light-mode .profile-card {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+[data-theme='light'] .profile-section-grid .profile-card {
+  border: 1px solid var(--border);
+  background: var(--card);
 }
 
-.profile-section-grid.light-mode h3,
-.profile-section-grid.light-mode h4 {
-  color: #111827;
+[data-theme='light'] .profile-section-grid h3,
+[data-theme='light'] .profile-section-grid h4 {
+  color: var(--text);
 }
 
-.profile-section-grid.light-mode p {
-  color: #6b7280;
+[data-theme='light'] .profile-section-grid p {
+  color: var(--text-muted, rgba(46, 46, 48, 0.72));
 }
 
-.profile-section-grid.light-mode input,
-.profile-section-grid.light-mode textarea {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
+[data-theme='light'] .profile-section-grid input,
+[data-theme='light'] .profile-section-grid textarea {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
 }

@@ -1,28 +1,30 @@
 .superadmin-shell {
-  --superadmin-bg: #131313;
-  --superadmin-surface: #1c1b1b;
-  --superadmin-sidebar-bg: #0e0e0e;
-  --superadmin-topbar-bg: rgba(19, 19, 19, 0.82);
+  --superadmin-bg: var(--bg, #2E2E30);
+  --superadmin-surface: var(--card, #3a3a3d);
+  --superadmin-sidebar-bg: var(--card, #3a3a3d);
+  --superadmin-topbar-bg: rgba(var(--bg-rgb, 46 46 48), 0.82);
   --superadmin-border: rgba(255, 255, 255, 0.08);
-  --superadmin-text: #e5e2e1;
-  --superadmin-text-muted: rgba(229, 226, 225, 0.72);
-  --superadmin-text-soft: rgba(229, 226, 225, 0.5);
+  --superadmin-text: var(--text, #F5F5F5);
+  --superadmin-text-muted: rgba(245, 245, 245, 0.72);
+  --superadmin-text-soft: rgba(245, 245, 245, 0.5);
   min-height: 100vh;
-  background: var(--superadmin-bg);
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
   color: var(--superadmin-text);
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-.superadmin-shell.light-mode {
-  --superadmin-bg: #f4f7fb;
-  --superadmin-surface: #ffffff;
-  --superadmin-sidebar-bg: #ffffff;
-  --superadmin-topbar-bg: rgba(244, 247, 251, 0.92);
-  --superadmin-border: rgba(15, 23, 42, 0.12);
-  --superadmin-text: #0f172a;
-  --superadmin-text-muted: rgba(15, 23, 42, 0.82);
-  --superadmin-text-soft: rgba(15, 23, 42, 0.68);
+[data-theme='light'] .superadmin-shell,
+.superadmin-shell[data-theme='light'] {
+  --superadmin-bg: #F5F5F5;
+  --superadmin-surface: #FFFFFF;
+  --superadmin-sidebar-bg: #FFFFFF;
+  --superadmin-topbar-bg: rgba(245, 245, 245, 0.92);
+  --superadmin-border: rgba(46, 46, 48, 0.12);
+  --superadmin-text: #2E2E30;
+  --superadmin-text-muted: rgba(46, 46, 48, 0.82);
+  --superadmin-text-soft: rgba(46, 46, 48, 0.68);
   color: var(--superadmin-text);
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
 }
 
 .superadmin-sidebar {
@@ -36,8 +38,8 @@
 }
 
 .superadmin-brand-mark {
-  background: linear-gradient(135deg, #2563eb 0%, #1e3a8a 100%);
-  box-shadow: 0 10px 24px rgba(225, 1, 0, 0.35);
+  background: linear-gradient(135deg, #C51D34 0%, #a8182b 100%);
+  box-shadow: 0 10px 24px rgba(197, 29, 52, 0.35);
 }
 
 .superadmin-brand-title,
@@ -76,7 +78,7 @@
 .superadmin-nav-item.is-active {
   opacity: 1;
   color: #ffffff;
-  box-shadow: inset 0 0 0 1px rgba(225, 1, 0, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(197, 29, 52, 0.08);
 }
 
 .superadmin-quick-action {
@@ -96,7 +98,7 @@
 
 .superadmin-content {
   min-height: 100vh;
-  background: var(--superadmin-bg);
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
   transition: background-color 0.25s ease;
 }
 
@@ -161,7 +163,7 @@
 }
 
 .superadmin-shell .text-\[\#2563eb\] {
-  color: #60a5fa !important;
+  color: #C51D34 !important;
 }
 
 .superadmin-shell .text-black,
@@ -177,76 +179,71 @@
   color: var(--superadmin-text) !important;
 }
 
-.superadmin-shell.light-mode input,
-.superadmin-shell.light-mode select,
-.superadmin-shell.light-mode textarea {
-  border-color: rgba(15, 23, 42, 0.16) !important;
+[data-theme='light'] .superadmin-shell input,
+[data-theme='light'] .superadmin-shell select,
+[data-theme='light'] .superadmin-shell textarea {
+  border-color: rgba(46, 46, 48, 0.16) !important;
   background: #ffffff !important;
-  color: #0f172a !important;
+  color: #2E2E30 !important;
 }
 
-.superadmin-shell.light-mode .bg-white\/5,
-.superadmin-shell.light-mode .bg-white\/8,
-.superadmin-shell.light-mode .bg-white\/10,
-.superadmin-shell.light-mode .bg-black\/20,
-.superadmin-shell.light-mode .bg-black\/30,
-.superadmin-shell.light-mode .bg-\[\#101010\],
-.superadmin-shell.light-mode .bg-\[\#141414\],
-.superadmin-shell.light-mode .bg-\[\#161616\],
-.superadmin-shell.light-mode .bg-\[\#1f1f1f\],
-.superadmin-shell.light-mode .bg-\[\#353534\] {
+[data-theme='light'] .superadmin-shell .bg-white\/5,
+[data-theme='light'] .superadmin-shell .bg-white\/8,
+[data-theme='light'] .superadmin-shell .bg-white\/10,
+[data-theme='light'] .superadmin-shell .bg-black\/20,
+[data-theme='light'] .superadmin-shell .bg-black\/30 {
   background: #eef3f9 !important;
 }
 
-.superadmin-shell.light-mode .superadmin-sidebar,
-.superadmin-shell.light-mode .superadmin-topbar,
-.superadmin-shell.light-mode .superadmin-main,
-.superadmin-shell.light-mode .superadmin-content {
+[data-theme='light'] .superadmin-shell .superadmin-sidebar,
+[data-theme='light'] .superadmin-shell .superadmin-topbar,
+[data-theme='light'] .superadmin-shell .superadmin-main,
+[data-theme='light'] .superadmin-shell .superadmin-content {
   color: var(--superadmin-text);
 }
 
-.superadmin-shell.light-mode .superadmin-nav-item,
-.superadmin-shell.light-mode .superadmin-sidebar-action,
-.superadmin-shell.light-mode .superadmin-topbar-icon,
-.superadmin-shell.light-mode .superadmin-brand-title,
-.superadmin-shell.light-mode .superadmin-brand-subtitle,
-.superadmin-shell.light-mode .superadmin-profile-trigger {
+[data-theme='light'] .superadmin-shell .superadmin-nav-item,
+[data-theme='light'] .superadmin-shell .superadmin-sidebar-action,
+[data-theme='light'] .superadmin-shell .superadmin-topbar-icon,
+[data-theme='light'] .superadmin-shell .superadmin-brand-title,
+[data-theme='light'] .superadmin-shell .superadmin-brand-subtitle,
+[data-theme='light'] .superadmin-shell .superadmin-profile-trigger {
   color: var(--superadmin-text) !important;
   opacity: 1;
 }
 
-.superadmin-shell.light-mode .superadmin-nav-item:not(.is-active),
-.superadmin-shell.light-mode .superadmin-sidebar-action {
+[data-theme='light'] .superadmin-shell .superadmin-nav-item:not(.is-active),
+[data-theme='light'] .superadmin-shell .superadmin-sidebar-action {
   color: var(--superadmin-text-muted) !important;
 }
 
-.superadmin-shell.light-mode .superadmin-nav-item.is-active {
-  color: #b00017 !important;
-  background: linear-gradient(90deg, rgba(225, 1, 0, 0.08) 0%, rgba(225, 1, 0, 0.02) 100%);
+[data-theme='light'] .superadmin-shell .superadmin-nav-item.is-active {
+  color: #C51D34 !important;
+  background: linear-gradient(90deg, rgba(197, 29, 52, 0.08) 0%, rgba(197, 29, 52, 0.02) 100%);
 }
 
-.superadmin-shell.light-mode .superadmin-search-input::placeholder {
-  color: rgba(15, 23, 42, 0.58);
+[data-theme='light'] .superadmin-shell .superadmin-search-input::placeholder {
+  color: rgba(46, 46, 48, 0.58);
 }
 
-.superadmin-shell.light-mode svg {
+[data-theme='light'] .superadmin-shell svg {
   color: inherit;
 }
 
-.superadmin-shell.light-mode .border-white\/10,
-.superadmin-shell.light-mode .border-white\/5 {
-  border-color: rgba(15, 23, 42, 0.12) !important;
+[data-theme='light'] .superadmin-shell .border-white\/10,
+[data-theme='light'] .superadmin-shell .border-white\/5 {
+  border-color: rgba(46, 46, 48, 0.12) !important;
 }
 
 .superadmin-shell .notifications-drawer {
   color: var(--superadmin-text);
 }
 
-.superadmin-shell.light-mode .notifications-drawer {
+[data-theme='light'] .superadmin-shell .notifications-drawer {
   background: #ffffff;
 }
 
-.superadmin-shell.light-mode .notification-card {
+[data-theme='light'] .superadmin-shell .notification-card {
   background: #f8fafc;
 }
 
@@ -277,11 +274,9 @@
   }
 }
 
-.superadmin-shell.light-mode .text-\[\#ffb4a8\],
-.superadmin-shell.light-mode .text-\[\#2563eb\],
-.superadmin-shell.light-mode .text-blue-400,
-.superadmin-shell.light-mode .text-blue-500,
-.superadmin-shell.light-mode .text-emerald-300,
-.superadmin-shell.light-mode .text-emerald-400 {
+[data-theme='light'] .superadmin-shell .text-blue-400,
+[data-theme='light'] .superadmin-shell .text-blue-500,
+[data-theme='light'] .superadmin-shell .text-emerald-300,
+[data-theme='light'] .superadmin-shell .text-emerald-400 {
   filter: saturate(1.1);
 }

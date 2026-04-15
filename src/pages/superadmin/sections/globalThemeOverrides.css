@@ -1,5 +1,5 @@
 /* Global Theme Support - Light Mode Overrides */
-/* This file provides comprehensive light-mode styling to override hardcoded dark-mode Tailwind classes */
+/* This file provides comprehensive light-mode styling using the design system colors */
 
 /* Text color overrides for light mode */
 html[data-theme="light"] .text-white,
@@ -7,61 +7,77 @@ html[data-theme="light"] .text-white\/50,
 html[data-theme="light"] .text-white\/40,
 html[data-theme="light"] .text-white\/60,
 html[data-theme="light"] .text-white\/70 {
-  color: #111827 !important;
+  color: #2E2E30 !important;
 }
 
 html[data-theme="light"] .text-white\/40,
 html[data-theme="light"] .text-white\/50 {
-  color: #6b7280 !important;
+  color: #808080 !important;
 }
 
 html[data-theme="light"] .text-white\/60,
 html[data-theme="light"] .text-white\/70 {
-  color: #4b5563 !important;
+  color: #555555 !important;
 }
 
-/* Background color overrides for light mode - Dark gray backgrounds become light */
+/* Background color overrides for light mode - Dark backgrounds become light */
 html[data-theme="light"] [class*="bg-"],
 html[data-theme="light"] div[class*="bg-white"],
 html[data-theme="light"] section[class*="bg-"] {
-  background-color: #f9fafb !important;
+  background-color: #F5F5F5 !important;
 }
 
 html[data-theme="light"] .bg-white\/5,
 html[data-theme="light"] .bg-white\/10,
 html[data-theme="light"] .bg-white\/15 {
-  background-color: #f3f4f6 !important;
+  background-color: #EFEFEF !important;
 }
 
 /* Border color overrides for light mode */
 html[data-theme="light"] .border-white\/5,
 html[data-theme="light"] .border-white\/10,
 html[data-theme="light"] .border-white\/15 {
-  border-color: #e5e7eb !important;
+  border-color: #E0E0E0 !important;
 }
 
 /* Input elements */
 html[data-theme="light"] input,
 html[data-theme="light"] select,
 html[data-theme="light"] textarea {
-  background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #d1d5db !important;
+  background-color: #FFFFFF !important;
+  color: #2E2E30 !important;
+  border-color: #D0D0D0 !important;
 }
 
 html[data-theme="light"] input::placeholder,
 html[data-theme="light"] textarea::placeholder {
-  color: #9ca3af !important;
+  color: #999999 !important;
 }
 
 /* Hover states */
 html[data-theme="light"] .hover\:bg-white\/10:hover {
-  background-color: #e5e7eb !important;
+  background-color: #E0E0E0 !important;
 }
 
-/* Light mode variants for specific components */
+/* Light mode variant styles */
 html[data-theme="light"] .light-mode {
-  color: #111827 !important;
-  background-color: #f9fafb !important;
-  border-color: #e5e7eb !important;
+  color: #2E2E30 !important;
+  background-color: #F5F5F5 !important;
+  border-color: #E0E0E0 !important;
+}
+
+/* Primary color accent in light mode */
+html[data-theme="light"] .text-red-600,
+html[data-theme="light"] .text-red-500 {
+  color: #C51D34 !important;
+}
+
+html[data-theme="light"] .bg-red-600,
+html[data-theme="light"] .bg-red-500 {
+  background-color: #C51D34 !important;
+}
+
+html[data-theme="light"] .border-red-600,
+html[data-theme="light"] .border-red-500 {
+  border-color: #C51D34 !important;
 }

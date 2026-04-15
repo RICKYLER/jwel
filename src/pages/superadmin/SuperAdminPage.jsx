@@ -1518,7 +1518,10 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   }
 
   return (
-    <div className={`superadmin-shell ${isDarkMode ? 'dark-mode' : 'light-mode'} font-['Manrope'] text-[#e5e2e1]`}>
+    <div 
+      className="superadmin-shell font-['Manrope']"
+      data-theme={isDarkMode ? 'dark' : 'light'}
+    >
       <NotificationsDrawer
         open={isNotificationsOpen}
         notifications={notificationItems}

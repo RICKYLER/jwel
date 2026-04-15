@@ -2,6 +2,23 @@
 @import './pages/superadmin/sections/globalThemeOverrides.css';
 
 :root {
+  /* Color Palette */
+  --red: #C51D34;
+  --dark: #2E2E30;
+  --gray: #808080;
+  --light: #F5F5F5;
+
+  /* Light Mode Theme (Default) */
+  --bg: #F5F5F5;
+  --text: #2E2E30;
+  --card: #FFFFFF;
+  --border: #E0E0E0;
+  --primary: #C51D34;
+  --primary-hover: #a8182b;
+  --secondary: #2E2E30;
+  --secondary-hover: #3a3a3d;
+  --disabled: #808080;
+
   font-family: Inter, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -9,6 +26,24 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark Mode Theme */
+[data-theme='dark'] {
+  --bg: #2E2E30;
+  --text: #F5F5F5;
+  --card: #3a3a3d;
+  --border: #555;
+  --primary: #C51D34;
+  --primary-hover: #e03a4f;
+  --secondary: #F5F5F5;
+  --secondary-hover: #dcdcdc;
+  --disabled: #808080;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 html {
@@ -26,28 +61,20 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
-  background: #131313;
-  color: #e5e2e1;
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
+  color: var(--text);
   font-family: 'Manrope', Inter, 'Segoe UI', sans-serif;
-  transition: background-color 0.25s ease, color 0.25s ease;
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 body[data-theme='light'] {
-  background: #f4f7fb;
-  color: #0f172a;
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
+  color: #2E2E30;
 }
 
 body[data-theme='dark'] {
-  background: #131313;
-  color: #e5e2e1;
+  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
+  color: #F5F5F5;
 }
 
 ::selection {

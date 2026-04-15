@@ -1,9 +1,9 @@
-import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
-import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 
 export default function SuperAdminHeader({
   searchTerm,
@@ -55,13 +55,19 @@ export default function SuperAdminHeader({
           )}
         </button>
 
+        {/* Dark/Light mode toggle */}
         <button
           type="button"
           onClick={onToggleTheme}
-          className="superadmin-topbar-icon transition"
-          aria-label="Toggle theme"
+          className="superadmin-topbar-icon transition duration-300 hover:bg-white/10"
+          aria-label="Toggle dark/light mode"
+          title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {isDarkMode ? <LightModeRoundedIcon sx={{ fontSize: 20 }} /> : <DarkModeRoundedIcon sx={{ fontSize: 20 }} />}
+          {isDarkMode ? (
+            <LightModeRoundedIcon sx={{ fontSize: 20 }} />
+          ) : (
+            <DarkModeRoundedIcon sx={{ fontSize: 20 }} />
+          )}
         </button>
 
         <button

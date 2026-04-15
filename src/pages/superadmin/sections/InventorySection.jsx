@@ -9,6 +9,7 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db, storage } from '../../../firebase'
 import ConfirmationModal from '../components/ConfirmationModal'
@@ -102,6 +103,8 @@ export default function InventorySection({
   const [stockNumberPadOpen, setStockNumberPadOpen] = useState(false)
   const [stockNumberPadValue, setStockNumberPadValue] = useState('')
   const [stockNumberPadItemId, setStockNumberPadItemId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Load archived items for superadmin
   useEffect(() => {
@@ -166,6 +169,18 @@ export default function InventorySection({
       return true
     })
   }, [activeTab, items, archivedItems, searchTerm, statusFilter])
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, searchTerm, statusFilter])
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedItems = useMemo(() => {
+    return filteredItems.slice(startIndex, endIndex)
+  }, [filteredItems, startIndex, endIndex])
 
   const summaryCards = useMemo(() => {
     const totalUnits = items.reduce((sum, item) => sum + Number(item.stock ?? 0), 0)
@@ -631,6 +646,13 @@ export default function InventorySection({
       return
     }
 
+    // Handle edit confirm - open the edit modal
+    if (action === 'edit-confirm') {
+      setConfirmModal({ open: false, action: null, itemId: null })
+      setIsEditModalOpen(true)
+      return
+    }
+
     // Handle edit update
     if (action === 'edit-update') {
       setConfirmModal({ open: false, action: null, itemId: null })
@@ -753,6 +775,7 @@ export default function InventorySection({
             disabled={!canEditOperations}
             className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"
           >
+            <RefreshRoundedIcon sx={{ fontSize: 18 }} />
             Update Stocks
           </button>
   
@@ -810,17 +833,6 @@ export default function InventorySection({
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <label className="inventory-search-box flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-4 py-2 flex-1">
-              <SearchRoundedIcon sx={{ fontSize: 18 }} style={{ color: 'rgba(255,255,255,0.5)' }} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, model, SKU..."
-                className="flex-1 border-0 bg-transparent text-sm text-white placeholder-white/40 outline-none"
-              />
-            </label>
-
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -846,7 +858,7 @@ export default function InventorySection({
         </div>
 
         <div className="divide-y divide-white/5">
-          {filteredItems.map((item, index) => {
+          {paginatedItems.map((item, index) => {
             const stockValue = Number(item.stock ?? 0)
             const maxStock = Math.max(...items.map((item) => Number(item.stock ?? 0)), 100)
             const stockPercentage = (stockValue / maxStock) * 100
@@ -936,7 +948,7 @@ export default function InventorySection({
                           const variantItem = variants.find(v => v.id === item.variantId)
                           setEditSelectedModel(modelItem || null)
                           setEditSelectedVariant(variantItem || null)
-                          setIsEditModalOpen(true)
+                          setConfirmModal({ open: true, action: 'edit-confirm', itemId: item.id, itemName: item.name, item })
                           setActionMenuOpen(null)
                         }}
                         className="inventory-action-item inline-flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-colors"
@@ -971,8 +983,44 @@ export default function InventorySection({
           )}
         </div>
 
-        <div className="mt-4 flex items-center justify-between text-[11px] text-white/40">
-          <span>Showing {filteredItems.length} of {items.length} results</span>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-[11px] text-white/40">
+          <span>Showing {startIndex + 1}-{Math.min(endIndex, filteredItems.length)} of {filteredItems.length} results</span>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                ‹ Prev
+              </button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => {
+                  const pageNum = i + 1
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`inventory-pagination-page ${currentPage === pageNum ? 'is-active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="inventory-pagination-button disabled:opacity-50"
+              >
+                Next ›
+              </button>
+            </div>
+          )}
+          
           <span>Synced live from `inventory`</span>
         </div>
       </div>
@@ -2255,6 +2303,7 @@ export default function InventorySection({
         title={
           confirmModal.action === 'add-unit-confirm' ? 'Confirm Save Unit' :
           confirmModal.action === 'add-spare-parts-confirm' ? 'Confirm Save Spare Part' :
+          confirmModal.action === 'edit-confirm' ? 'Edit Item' :
           confirmModal.action === 'edit-update' ? 'Update Item' :
           confirmModal.action === 'edit-cancel' ? 'Discard Changes' :
           confirmModal.action === 'update-stocks' ? 'Confirm Stock Update' :
@@ -2266,6 +2315,7 @@ export default function InventorySection({
         message={
           confirmModal.action === 'add-unit-confirm' ? 'Are you sure you want to save this unit? It will be added to the inventory and published to the showroom.' :
           confirmModal.action === 'add-spare-parts-confirm' ? 'Are you sure you want to save this spare part? It will be added to the inventory and published to the showroom.' :
+          confirmModal.action === 'edit-confirm' ? 'Edit item details?' :
           confirmModal.action === 'edit-update' ? 'Are you sure you want to update this item? This change will be saved to the database.' :
           confirmModal.action === 'edit-cancel' ? 'You have unsaved changes. Are you sure you want to discard them?' :
           confirmModal.action === 'update-stocks' ? 'Are you sure you want to update the stock levels? This will permanently change the inventory counts.' :
@@ -2277,6 +2327,7 @@ export default function InventorySection({
         confirmText={
           confirmModal.action === 'add-unit-confirm' ? 'Yes, Save Unit' :
           confirmModal.action === 'add-spare-parts-confirm' ? 'Yes, Save Spare Part' :
+          confirmModal.action === 'edit-confirm' ? 'Edit' :
           confirmModal.action === 'edit-update' ? 'Update' :
           confirmModal.action === 'edit-cancel' ? 'Discard' :
           confirmModal.action === 'update-stocks' ? 'Update Stocks' :

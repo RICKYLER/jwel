@@ -15,6 +15,7 @@ export const themeClasses = {
   bgSecondary: (isDarkMode) => isDarkMode ? 'bg-[#161616]' : 'bg-gray-50',
   bgTertiary: (isDarkMode) => isDarkMode ? 'bg-white/5' : 'bg-gray-100',
   bgHover: (isDarkMode) => isDarkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200',
+  bgStatCard: (isDarkMode) => isDarkMode ? 'bg-gradient-to-b from-[rgba(93,20,20,0.88)] via-[rgba(36,28,29,0.96)] to-[#1d1d1f]' : 'bg-gradient-to-b from-[rgba(93,20,20,0.88)] via-[rgba(36,28,29,0.96)] to-[#1d1d1f]',
 
   // Border classes
   border: (isDarkMode) => isDarkMode ? 'border-white/10' : 'border-gray-300',
