@@ -182,10 +182,18 @@ export default function ApprovedApplicationPage({ referenceId, motorcycleName, a
             {/* Actions */}
             <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <button
-                onClick={onTrackApplication}
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log('TRACK MY STATUS clicked, referenceId:', referenceId, 'callback:', typeof onTrackApplication)
+                  if (typeof onTrackApplication === 'function') {
+                    onTrackApplication()
+                  } else {
+                    console.error('onTrackApplication is not a function')
+                  }
+                }}
                 className="flex items-center justify-center gap-2 rounded-sm bg-red-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-red-700 active:scale-95"
               >
-                View Details
+                Track My Status
                 <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
               </button>
               <button
@@ -295,7 +303,15 @@ export default function ApprovedApplicationPage({ referenceId, motorcycleName, a
 
             <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
               <button
-                onClick={onTrackApplication}
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log('Track Application clicked, referenceId:', referenceId, 'callback:', typeof onTrackApplication)
+                  if (typeof onTrackApplication === 'function') {
+                    onTrackApplication()
+                  } else {
+                    console.error('onTrackApplication is not a function')
+                  }
+                }}
                 className="flex items-center justify-center gap-2 rounded-sm bg-red-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-red-700 active:scale-95"
               >
                 Track Application

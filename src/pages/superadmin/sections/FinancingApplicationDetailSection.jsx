@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy } from 'firebase/firestore'
-import { auth, db } from '../../../firebase'
+import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
+import { auth, db, functions } from '../../../firebase'
 import './FinancingApplicationDetailSection.css'
 
 export default function FinancingApplicationDetailSection({
@@ -16,19 +17,57 @@ export default function FinancingApplicationDetailSection({
   const [isSaving, setIsSaving] = useState(false)
   const [confirmModal, setConfirmModal] = useState(null)
   const [conversationMessages, setConversationMessages] = useState([])
+  const [liveApplication, setLiveApplication] = useState(application)
   const unsubscribeRef = useRef(null)
+  const applicationUnsubscribeRef = useRef(null)
   const messagesEndRef = useRef(null)
 
-  const normalizedStatus = String(application?.status || 'submitted').toLowerCase()
+  // Use live application data if available, fallback to passed-in application
+  const currentApplication = liveApplication || application
+  const normalizedStatus = String(currentApplication?.status || 'submitted').toLowerCase()
 
-  const downPaymentAmount = Number(application?.terms?.downPaymentAmount || 0)
-  const remainingBalance = Number(application?.terms?.remainingBalance || 0)
-  const monthlyAmortization = Number(application?.terms?.monthlyAmortization || 0)
+  const downPaymentAmount = Number(currentApplication?.terms?.downPaymentAmount || 0)
+  const remainingBalance = Number(currentApplication?.terms?.remainingBalance || 0)
+  const monthlyAmortization = Number(currentApplication?.terms?.monthlyAmortization || 0)
 
   const profileRiskRatio = useMemo(() => {
-    const downPaymentPercent = Number(application?.terms?.downPaymentPercent || 0)
+    const downPaymentPercent = Number(currentApplication?.terms?.downPaymentPercent || 0)
     return `${Math.max(5, Math.min(85, Math.round(28 - downPaymentPercent / 2)))}.4%`
-  }, [application?.terms?.downPaymentPercent])
+  }, [currentApplication?.terms?.downPaymentPercent])
+
+  // Real-time listener for the application document itself
+  useEffect(() => {
+    if (!application?.id) return
+
+    // Clean up previous subscription
+    if (applicationUnsubscribeRef.current) {
+      applicationUnsubscribeRef.current()
+    }
+
+    try {
+      const appDocRef = doc(db, 'financingApplications', application.id)
+      
+      applicationUnsubscribeRef.current = onSnapshot(appDocRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setLiveApplication({
+            id: snapshot.id,
+            ...snapshot.data(),
+          })
+        }
+      }, (err) => {
+        console.error('Error listening to application changes:', err)
+      })
+    } catch (err) {
+      console.error('Error setting up application listener:', err)
+    }
+
+    // Cleanup on unmount or when application ID changes
+    return () => {
+      if (applicationUnsubscribeRef.current) {
+        applicationUnsubscribeRef.current()
+      }
+    }
+  }, [application?.id])
 
   // Real-time listener for conversation messages
   useEffect(() => {
@@ -68,14 +107,14 @@ export default function FinancingApplicationDetailSection({
   }, [application?.id])
 
   const handleSendMessage = async (message) => {
-    if (!message.trim() || !application?.id || isSaving) return
+    if (!message.trim() || !currentApplication?.id || isSaving) return
 
     const user = auth.currentUser
     if (!user) return
 
     try {
       setIsSaving(true)
-      const messagesRef = collection(db, 'financingApplications', application.id, 'messages')
+      const messagesRef = collection(db, 'financingApplications', currentApplication.id, 'messages')
       
       await addDoc(messagesRef, {
         senderType: 'admin',
@@ -102,20 +141,20 @@ export default function FinancingApplicationDetailSection({
         open: true,
         type: 'qualify',
         title: 'Qualify Application?',
-        message: `Are you sure you want to qualify this application for ${application.applicant?.fullName || 'Applicant'}? This will approve their financing request and move them to the next stage. They will receive a notification of their approval.`,
+        message: `Are you sure you want to qualify this application for ${currentApplication.applicant?.fullName || 'Applicant'}? This will approve their financing request and move them to the next stage. They will receive a notification of their approval.`,
         confirmText: 'Yes, Approve Application',
         cancelText: 'Cancel',
       })
       return
     }
 
-    if (!application?.id || !canEditOperations) return
+    if (!currentApplication?.id || !canEditOperations) return
 
     try {
       setIsSaving(true)
       
       // Update status in Firestore
-      await handleCollectionUpdate('financingApplications', application.id, {
+      await handleCollectionUpdate('financingApplications', currentApplication.id, {
         status: nextStatus,
         reviewNote: replyMessage.trim(),
       })
@@ -131,32 +170,33 @@ export default function FinancingApplicationDetailSection({
 
   const handleConfirmQualification = async () => {
     setConfirmModal(null)
-    if (!application?.id || !canEditOperations) return
+    if (!currentApplication?.id || !canEditOperations) return
 
     try {
       setIsSaving(true)
       
-      // Update status to approved
-      await handleCollectionUpdate('financingApplications', application.id, {
-        status: 'approved',
+      // Call Cloud Function to approve application
+      const approveApplication = httpsCallable(functions, 'approveFinancingApplication')
+      const result = await approveApplication({
+        applicationId: currentApplication.id,
         reviewNote: replyMessage.trim(),
       })
-      
+
       // Also send as a message if there's text
       if (replyMessage.trim()) {
         await handleSendMessage(replyMessage)
       }
 
-      // Close the detail panel and return to list
-      setTimeout(() => {
-        onBack?.()
-      }, 500)
+      // Keep detail panel open - user can see the application is approved
+      // setTimeout(() => {
+      //   onBack?.()
+      // }, 500)
     } finally {
       setIsSaving(false)
     }
   }
 
-  if (!application?.id) {
+  if (!currentApplication?.id) {
     return (
       <section className="fa-detail-shell rounded-xl p-6">
         <div className="fa-detail-top">
@@ -178,7 +218,7 @@ export default function FinancingApplicationDetailSection({
       <div className="fa-detail-top">
         <div>
           <h3 className="fa-detail-title">Financing Inquiry Response Detail</h3>
-          <p className="fa-detail-sub">Reference: {application.referenceId || application.id}</p>
+          <p className="fa-detail-sub">Reference: {currentApplication.referenceId || currentApplication.id}</p>
         </div>
         <button type="button" className="fa-detail-back" onClick={onBack}>
           Return to List View
@@ -189,24 +229,45 @@ export default function FinancingApplicationDetailSection({
         <div>
           <article className="fa-detail-card">
             <h4>Primary Applicant</h4>
-            <p className="fa-person-name">{application.applicant?.fullName || 'Unknown Applicant'}</p>
+            <p className="fa-person-name">{currentApplication.applicant?.fullName || 'Unknown Applicant'}</p>
             <p className="fa-person-meta">
-              {application.applicant?.address || 'No address provided'}
+              {currentApplication.applicant?.address || 'No address provided'}
               <br />
-              {application.applicant?.contactNumber || 'No contact number'}
+              {currentApplication.applicant?.contactNumber || 'No contact number'}
               <br />
-              {application.submittedBy?.email || 'No email'}
+              {currentApplication.submittedBy?.email || 'No email'}
             </p>
           </article>
 
           <article className="fa-detail-card fa-identity-card">
             <h4>ID Verification</h4>
-            <img
-              className="fa-id-image"
-              src={application.motorcycle?.imageUrl || 'https://via.placeholder.com/400x220?text=ID+VERIFICATION'}
-              alt="Verification"
-            />
-            <p className="fa-kv"><strong>File:</strong> {application.applicant?.identityFileName || 'No uploaded file name'}</p>
+            <div className="fa-image-container">
+              <img
+                className="fa-id-image"
+                src={application.applicant?.identityFileUrl || application.applicant?.identityDocumentUrl || application.applicant?.idImageUrl || application.applicant?.idPhotoUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="220"%3E%3Crect fill="%23333" width="400" height="220"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%23999"%3EID VERIFICATION%3C/text%3E%3C/svg%3E'}
+                alt="ID Verification"
+                onError={(e) => {
+                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="220"%3E%3Crect fill="%23333" width="400" height="220"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%23999"%3ENO IMAGE%3C/text%3E%3C/svg%3E'
+                }}
+              />
+            </div>
+            <p className="fa-kv"><strong>File:</strong> {currentApplication.applicant?.identityFileName || 'No uploaded file name'}</p>
+          </article>
+
+          <article className="fa-detail-card fa-identity-card">
+            <h4>Selected Motorcycle Unit</h4>
+            <div className="fa-image-container">
+              <img
+                className="fa-id-image"
+                src={currentApplication.motorcycle?.imageUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="220"%3E%3Crect fill="%23333" width="400" height="220"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%23999"%3ENO IMAGE%3C/text%3E%3C/svg%3E'}
+                alt="Selected Unit"
+                onError={(e) => {
+                  e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="220"%3E%3Crect fill="%23333" width="400" height="220"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="18" fill="%23999"%3ENO IMAGE%3C/text%3E%3C/svg%3E'
+                }}
+              />
+            </div>
+            <p className="fa-kv"><strong>Unit:</strong> {currentApplication.motorcycle?.name || 'No unit selected'}</p>
+            <p className="fa-kv"><strong>Price:</strong> {formatCurrency(currentApplication.motorcycle?.price || 0)}</p>
           </article>
         </div>
 
@@ -233,10 +294,10 @@ export default function FinancingApplicationDetailSection({
             <h4>Financing Breakdown</h4>
             <div className="fa-breakdown-row">
               <span>Vehicle SRP</span>
-              <strong>{formatCurrency(application.motorcycle?.price || 0)}</strong>
+              <strong>{formatCurrency(currentApplication.motorcycle?.price || 0)}</strong>
             </div>
             <div className="fa-breakdown-row negative">
-              <span>Applied Downpayment ({application.terms?.downPaymentPercent || 0}%)</span>
+              <span>Applied Downpayment ({currentApplication.terms?.downPaymentPercent || 0}%)</span>
               <strong>-{formatCurrency(downPaymentAmount)}</strong>
             </div>
             <div className="fa-breakdown-row">
@@ -247,27 +308,31 @@ export default function FinancingApplicationDetailSection({
             <div className="fa-amort-box">
               <p>Monthly Amortization</p>
               <strong>{formatCurrency(monthlyAmortization)}</strong>
-              <span>{application.terms?.paymentTerm || 0} months</span>
+              <span>{currentApplication.terms?.paymentTerm || 0} months</span>
             </div>
           </article>
 
           <div className="fa-action-row">
-            <button
-              type="button"
-              className="qualify"
-              disabled={!canEditOperations || isSaving}
-              onClick={() => void handleStatusAction('approved')}
-            >
-              Qualify Application
-            </button>
-            <button
-              type="button"
-              className="disqualify"
-              disabled={!canEditOperations || isSaving}
-              onClick={() => void handleStatusAction('rejected')}
-            >
-              Disqualify
-            </button>
+            {(normalizedStatus === 'submitted' || normalizedStatus === 'pending' || normalizedStatus === 'reviewing' || normalizedStatus === 'under-review') && (
+              <>
+                <button
+                  type="button"
+                  className="qualify"
+                  disabled={!canEditOperations || isSaving}
+                  onClick={() => void handleStatusAction('approved')}
+                >
+                  Qualify Application
+                </button>
+                <button
+                  type="button"
+                  className="disqualify"
+                  disabled={!canEditOperations || isSaving}
+                  onClick={() => void handleStatusAction('rejected')}
+                >
+                  Disqualify
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -397,28 +462,42 @@ export default function FinancingApplicationDetailSection({
           <article className="fa-detail-card fa-identity-card">
             <h4>Application Audit</h4>
             <div className="fa-audit-list">
-              <div className="fa-audit-item">
-                <span className="fa-dot" />
-                <div>
-                  <strong>Status update under review</strong>
-                  <br />
-                  {formatDate(application.updatedAt || application.createdAt)}
+              {(normalizedStatus === 'approved' || normalizedStatus === 'reviewing' || normalizedStatus === 'under-review') && (
+                <div className="fa-audit-item">
+                  <span className="fa-dot" />
+                  <div>
+                    <strong>Status update {normalizedStatus === 'approved' ? 'approved' : 'under review'}</strong>
+                    <br />
+                    {formatDate(currentApplication.updatedAt || currentApplication.createdAt)}
+                  </div>
                 </div>
-              </div>
-              <div className="fa-audit-item">
-                <span className="fa-dot" />
-                <div>
-                  <strong>Additional document uploaded</strong>
-                  <br />
-                  {application.applicant?.identityFileName || 'No file attached'}
+              )}
+              {(normalizedStatus === 'completed') && (
+                <div className="fa-audit-item">
+                  <span className="fa-dot" />
+                  <div>
+                    <strong>Status update completed</strong>
+                    <br />
+                    {formatDate(currentApplication.updatedAt || currentApplication.createdAt)}
+                  </div>
                 </div>
-              </div>
+              )}
+              {currentApplication.applicant?.identityFileName && (
+                <div className="fa-audit-item">
+                  <span className="fa-dot" />
+                  <div>
+                    <strong>ID document uploaded</strong>
+                    <br />
+                    {currentApplication.applicant?.identityFileName}
+                  </div>
+                </div>
+              )}
               <div className="fa-audit-item">
                 <span className="fa-dot" />
                 <div>
-                  <strong>Initial submission received</strong>
+                  <strong>Application submitted</strong>
                   <br />
-                  {formatDate(application.createdAt)}
+                  {formatDate(currentApplication.createdAt)}
                 </div>
               </div>
             </div>
@@ -432,32 +511,32 @@ export default function FinancingApplicationDetailSection({
       <div style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
+        background: 'rgba(0, 0, 0, 0.7)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
       }}>
         <div style={{
-          background: isDarkMode ? '#1f2937' : '#ffffff',
+          background: 'linear-gradient(180deg, rgba(22, 22, 23, 0.98) 0%, #121212 100%)',
           padding: '24px',
           borderRadius: '12px',
           maxWidth: '400px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-          border: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
         }}>
           <h3 style={{
             margin: '0 0 12px 0',
             fontSize: '18px',
             fontWeight: 700,
-            color: isDarkMode ? '#ffffff' : '#1f2937',
+            color: '#ffffff',
           }}>
             {confirmModal.title}
           </h3>
           <p style={{
             margin: '0 0 20px 0',
             fontSize: '14px',
-            color: isDarkMode ? '#d1d5db' : '#4b5563',
+            color: 'rgba(255, 255, 255, 0.7)',
             lineHeight: '1.5',
           }}>
             {confirmModal.message}
@@ -467,9 +546,9 @@ export default function FinancingApplicationDetailSection({
               onClick={() => setConfirmModal(null)}
               style={{
                 padding: '8px 16px',
-                background: isDarkMode ? '#374151' : '#e5e7eb',
-                color: isDarkMode ? '#d1d5db' : '#1f2937',
-                border: 'none',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: 'rgba(255, 255, 255, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: 600,
@@ -483,9 +562,9 @@ export default function FinancingApplicationDetailSection({
               disabled={isSaving}
               style={{
                 padding: '8px 16px',
-                background: '#b80012',
+                background: 'linear-gradient(135deg, rgba(225, 1, 0, 0.2) 0%, rgba(225, 1, 0, 0.1) 100%)',
                 color: '#ffffff',
-                border: 'none',
+                border: '1px solid rgba(225, 1, 0, 0.3)',
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: 600,

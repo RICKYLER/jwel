@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import './FinancingApplicationsSection.css'
+import ConfirmationModal from '../components/ConfirmationModal'
 
 export default function FinancingApplicationsSection({
   applications,
@@ -9,6 +10,7 @@ export default function FinancingApplicationsSection({
   onOpenApplication,
   isDarkMode = true,
 }) {
+  const [confirmModal, setConfirmModal] = useState(null)
   const normalizeStatus = (status = '') => {
     const normalized = String(status || '').trim().toLowerCase()
     if (normalized === 'reviewing') return 'under-review'
@@ -63,13 +65,23 @@ export default function FinancingApplicationsSection({
     const currentStatus = normalizeStatus(application.status)
 
     if (currentStatus === 'pending-review' && canEditOperations) {
-      const shouldProceed =
-        typeof window === 'undefined'
-          ? true
-          : window.confirm('Click this application proceed to under review?')
+      setConfirmModal({
+        open: true,
+        application,
+      })
+      return
+    }
 
-      if (!shouldProceed) return
+    onOpenApplication?.(application)
+  }
 
+  const handleConfirmQualification = async () => {
+    const { application } = confirmModal
+    setConfirmModal(null)
+
+    if (!application?.id) return
+
+    try {
       await handleCollectionUpdate('financingApplications', application.id, {
         status: 'reviewing',
       })
@@ -78,10 +90,9 @@ export default function FinancingApplicationsSection({
         ...application,
         status: 'reviewing',
       })
-      return
+    } catch (error) {
+      console.error('Error updating application status:', error)
     }
-
-    onOpenApplication?.(application)
   }
 
   return (
@@ -139,7 +150,7 @@ export default function FinancingApplicationsSection({
             </thead>
             <tbody>
               {visibleApplications.map((application) => (
-                <tr key={application.id} onClick={() => void handleRowClick(application)}>
+                <tr key={application.id}>
                   <td>
                     <div className="fa-applicant-cell">
                       <span className="fa-avatar">{toInitials(application.applicant?.fullName)}</span>
@@ -171,9 +182,35 @@ export default function FinancingApplicationsSection({
                     </div>
                   </td>
                   <td>
-                    <span className={`fa-status-chip ${statusChipClass(application.status)}`}>
-                      {displayStatus(application.status)}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'space-between' }}>
+                      <span className={`fa-status-chip ${statusChipClass(application.status)}`}>
+                        {displayStatus(application.status)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void handleRowClick(application)}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '11px',
+                          textTransform: 'uppercase',
+                          fontWeight: '900',
+                          letterSpacing: '0.12em',
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.color = 'rgba(255, 255, 255, 0.9)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.color = 'rgba(255, 255, 255, 0.7)'
+                        }}
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -187,15 +224,20 @@ export default function FinancingApplicationsSection({
 
         <div className="fa-panel-footer">
           <p>Showing {visibleApplications.length} of {applications.length} applications</p>
-          <button
-            type="button"
-            onClick={() => visibleApplications[0] && void handleRowClick(visibleApplications[0])}
-            disabled={!visibleApplications.length}
-          >
-            + New Manual Review
-          </button>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={confirmModal?.open}
+        title="Proceed to Under Review?"
+        message="Process this application to begin detailed review. Click OK to move forward."
+        confirmText="Proceed"
+        cancelText="Cancel"
+        onConfirm={handleConfirmQualification}
+        onCancel={() => setConfirmModal(null)}
+        isDangerous={false}
+        isDarkMode={isDarkMode}
+      />
     </section>
   )
 }

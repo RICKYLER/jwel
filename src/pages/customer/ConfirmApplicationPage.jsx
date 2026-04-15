@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { signOut } from 'firebase/auth'
 import { httpsCallable } from 'firebase/functions'
-import { auth, functions } from '../../firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { auth, functions, storage } from '../../firebase'
 import NavHeaderCustomer from './components/NavHeaderCustomer'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -52,6 +53,18 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
     setIsSubmitting(true)
 
     try {
+      let identityFileUrl = ''
+
+      // Upload identity file to Storage if it exists
+      if (applicant.identityFile && applicant.identityFile instanceof File) {
+        const timestamp = Date.now()
+        const fileName = `${timestamp}-${applicant.identityFile.name}`
+        const storageRef = ref(storage, `financing/${currentUser?.uid}/${fileName}`)
+        
+        const snapshot = await uploadBytes(storageRef, applicant.identityFile)
+        identityFileUrl = await getDownloadURL(snapshot.ref)
+      }
+
       const submitFinancingApplication = httpsCallable(functions, 'submitFinancingApplication')
       const result = await submitFinancingApplication({
         motorcycle,
@@ -62,6 +75,7 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
           email: applicant.email,
           uid: applicant.uid,
           identityFileName: applicant.identityFileName,
+          identityFileUrl: identityFileUrl,
         },
         terms,
       })

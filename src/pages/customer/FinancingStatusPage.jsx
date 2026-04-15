@@ -4,6 +4,8 @@ import { collection, query, where, addDoc, serverTimestamp, onSnapshot, orderBy,
 import { auth, db } from '../../firebase'
 import { functions } from '../../firebase'
 import NavHeaderCustomer from './components/NavHeaderCustomer'
+import CheckIcon from '@mui/icons-material/Check'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import './FinancingStatusPage.css'
 
 export default function FinancingStatusPage({ referenceId, currentUser, onNavigateToShowroom, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onSignOut }) {
@@ -87,6 +89,51 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
     fetchUserAvatar()
   }, [currentUser?.uid])
 
+  // Clear state when referenceId is removed (user navigating back to list)
+  useEffect(() => {
+    if (referenceId === undefined || referenceId === null || referenceId === '') {
+      setStatusData(null)
+      setApplicationId(null)
+      setTrackedReferenceId('')
+      setError('')
+      setConversationMessages([])
+    }
+  }, [referenceId])
+
+  // Auto-load application if referenceId is provided
+  useEffect(() => {
+    if (!referenceId || !isAuthReady) return
+    
+    // First, check if this application is already in the list
+    const app = allApplications.find(a => a.referenceId === referenceId)
+    if (app && !applicationId) {
+      setTrackedReferenceId(referenceId)
+      setApplicationId(app.id)
+      return
+    }
+
+    // If not found and we don't have statusData yet, try to load it directly
+    if (!statusData) {
+      const loadDirectly = async () => {
+        try {
+          const getStatus = httpsCallable(functions, 'getFinancingApplicationStatus')
+          const result = await getStatus({ referenceId })
+          if (result?.data) {
+            setStatusData(result.data)
+            setTrackedReferenceId(referenceId)
+            setError('')
+          } else {
+            setError('Application not found')
+          }
+        } catch (err) {
+          console.error('Failed to load application directly:', err)
+          setError('Failed to load application. Please try again.')
+        }
+      }
+      loadDirectly()
+    }
+  }, [referenceId, isAuthReady, allApplications, statusData, applicationId])
+
   // Wait for auth to be ready
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(() => {
@@ -166,6 +213,22 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
         if (selectedApp) {
           setApplicationId(selectedApp.id)
           setTrackedReferenceId(selectedRef)
+        } else if (selectedRef) {
+          // If we couldn't find the app in the list but we have a referenceId,
+          // try to load it directly via Cloud Function
+          const loadDirectly = async () => {
+            try {
+              const getStatus = httpsCallable(functions, 'getFinancingApplicationStatus')
+              const result = await getStatus({ referenceId: selectedRef })
+              if (result?.data) {
+                setStatusData(result.data)
+                setTrackedReferenceId(selectedRef)
+              }
+            } catch (err) {
+              console.error('Failed to load application directly:', err)
+            }
+          }
+          loadDirectly()
         }
       }
 
@@ -185,30 +248,57 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
 
   // Real-time listener for application status updates
   useEffect(() => {
-    if (!applicationId) return
+    if (!applicationId) {
+      // Clean up if applicationId is cleared
+      if (statusUnsubscribeRef.current) {
+        statusUnsubscribeRef.current()
+        statusUnsubscribeRef.current = null
+      }
+      return
+    }
 
     try {
-      // Subscribe only to the specific application document the user has permission to read
+      // Clean up previous listener if one exists
+      if (statusUnsubscribeRef.current) {
+        statusUnsubscribeRef.current()
+        statusUnsubscribeRef.current = null
+      }
+
+      // Subscribe to the specific application document
       const appDocRef = doc(db, 'financingApplications', applicationId)
       
-      statusUnsubscribeRef.current = onSnapshot(appDocRef, (snapshot) => {
+      const unsubscribe = onSnapshot(appDocRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data()
-          // Update statusData with the latest information
-          setStatusData(prev => ({
-            ...prev,
-            ...data,
-            stage: getStageFromStatus(data.status),
-          }))
+          // Update statusData with fresh data from Firestore
+          setStatusData(prevData => {
+            const newData = {
+              ...data,
+              stage: getStageFromStatus(data.status),
+            }
+            return newData
+          })
+        } else {
+          console.warn('Application document not found:', applicationId)
+          setError('Application not found in database')
+          setStatusData(null)
         }
+      },
+      (err) => {
+        console.error('Error listening to application status:', err)
+        setError('Lost connection to application data. Please refresh.')
       })
+      
+      statusUnsubscribeRef.current = unsubscribe
     } catch (err) {
       console.error('Error setting up status listener:', err)
+      setError('Failed to load application status. Please refresh.')
     }
 
     return () => {
       if (statusUnsubscribeRef.current) {
         statusUnsubscribeRef.current()
+        statusUnsubscribeRef.current = null
       }
     }
   }, [applicationId])
@@ -310,26 +400,42 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
   }
 
   const handleSelectApplication = async (app) => {
-    setTrackedReferenceId(app.referenceId)
-    setApplicationId(app.id)
-    setIsLoading(true)
-    setError('')
-    
+    if (!app?.id || !app?.referenceId) {
+      setError('Invalid application selected. Please try again.')
+      return
+    }
+
     try {
+      // Clear previous data immediately when switching applications
+      setStatusData(null)
+      setConversationMessages([])
+      setError('')
+      setIsLoading(true)
+      setTrackedReferenceId(app.referenceId)
+      setApplicationId(app.id)  // This triggers the real-time listener useEffect
+      
+      // Fetch fresh status data from Cloud Function
       const getStatus = httpsCallable(functions, 'getFinancingApplicationStatus')
       const result = await getStatus({ referenceId: app.referenceId })
-      setStatusData(result?.data || null)
       
-      if (!result?.data) {
-        setError('No application found for this reference ID')
+      if (result?.data) {
+        setStatusData(result.data)
+        setError('')
+      } else {
+        setError('No application data found for this reference ID')
+        setStatusData(null)
       }
     } catch (err) {
       console.error('Error loading application:', err)
-      setError(err?.message || 'Failed to load application. Please try again.')
+      const errorMsg = err?.message || 'Failed to load application. Please try again.'
+      setError(errorMsg)
+      setStatusData(null)
     } finally {
       setIsLoading(false)
     }
   }
+
+
 
   return (
     <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1]' : 'bg-white text-slate-900'} font-['Manrope']`}>
@@ -405,6 +511,165 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
           <div className={`border border-red-600/50 bg-red-600/10 p-8 rounded-lg text-center`}>
             <p className="text-base font-bold uppercase tracking-[0.14em] text-red-400">{error}</p>
           </div>
+        ) : statusData?.status?.toLowerCase() === 'completed' ? (
+          // Completed State - Unit Ready for Release View
+          <div className="relative flex flex-col items-start justify-start overflow-hidden">
+            <div className="pointer-events-none absolute right-0 top-0 -z-10 h-full w-1/2 translate-x-24 -skew-x-12 bg-red-600/5" />
+
+            <div className="w-full max-w-5xl mx-auto">
+              {/* Header Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg overflow-hidden">
+                {/* Left - Image */}
+                <div className="group relative min-h-64 md:min-h-full bg-slate-800">
+                  <img
+                    className="absolute inset-0 h-full w-full object-cover opacity-60 group-hover:opacity-75 transition-opacity"
+                    alt="Ready for release motorcycle"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuChRzd7zwwLzJTjJ0Umhp_tJJmKGQlJPYMsWpiX9RkJQbypU6gbiEyZNCzxVv5Bs7q_VA7ngHFsu_L4-6CRQiXW48bhpgZkuEkIMsLfmb50ZaSS3NYCUOQINERkcjQVIaE_2FTwmLSKS2IfrpB5hPmXMAf9zaai1gRFv6wt-ve90qOTkd9LFQRl284VQE0mUeiHIUBH6AgEuulI4eNcMfi2f4xgmN5OgwAXJduCRUsivtn3-cKyagpsgK4AARdQYyJt0Lu2DRtgTGk"
+                  />
+                  <div className="absolute inset-0 bg-red-600/20 mix-blend-multiply" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="mb-4 text-sm font-black uppercase tracking-widest text-red-400">Ready for</p>
+                      <h2 className="text-5xl font-black italic leading-tight text-white">RELEASE</h2>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right - Status */}
+                <div className="flex flex-col justify-center p-8 md:p-10">
+                  <div className="mb-8">
+                    <p className="text-xs font-black uppercase tracking-widest text-red-600 mb-3">Completion Status</p>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-bold text-slate-300">Verification Status</span>
+                        <span className="text-2xl font-black text-green-400">100%</span>
+                      </div>
+                      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-full bg-linear-to-r from-red-600 to-red-500 w-full rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-l-4 border-green-500 bg-slate-800/50 p-4 rounded-r-lg mb-6">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Reference ID</p>
+                    <p className="font-mono text-lg font-bold tracking-tight text-green-400">
+                      {trackedReferenceId || 'REF-COMPLETED'}
+                    </p>
+                  </div>
+
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    All technical inspections, documentation, and compliance checks are completed. Your motorcycle is waiting at the apex.
+                  </p>
+                </div>
+              </div>
+
+              {/* Application Journey */}
+              <div className="mb-12 border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg p-8">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8">Application Journey</h3>
+                
+                <div className="flex items-center justify-between mb-6">
+                  {[
+                    { label: 'INQUIRY', completed: true },
+                    { label: 'FINANCING APPROVED', completed: true },
+                    { label: 'DOCUMENT REVIEW', completed: true },
+                    { label: 'FINAL', completed: true, active: true }
+                  ].map((stage, idx) => (
+                    <div key={idx} className="flex flex-col items-center flex-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 mb-3 transition-all ${
+                        stage.active 
+                          ? 'border-red-600 bg-red-600 shadow-lg shadow-red-600/50'
+                          : stage.completed
+                          ? 'border-green-500 bg-green-500/20'
+                          : 'border-slate-600 bg-slate-800'
+                      }`}>
+                        {stage.completed ? (
+                          <CheckIcon sx={{ fontSize: 20 }} className={stage.active ? 'text-white' : 'text-green-400'} />
+                        ) : (
+                          <span className="text-sm font-bold text-slate-300">{idx + 1}</span>
+                        )}
+                      </div>
+                      <p className={`text-xs font-black uppercase tracking-tight text-center leading-tight ${
+                        stage.active ? 'text-red-600' : stage.completed ? 'text-green-400' : 'text-slate-500'
+                      }`}>
+                        {stage.label}
+                      </p>
+                      {idx < 3 && (
+                        <div className={`absolute w-[calc(25%-20px)] h-1 top-10.5 ml-[calc(12.5%+20px)] ${
+                          stage.completed ? 'bg-green-500' : 'bg-slate-700'
+                        }`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dealership Visit & Final Signatures */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* Dealership Visit */}
+                <div className="border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg p-6">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600 flex items-center justify-center shrink-0">
+                      <span className="text-lg font-black text-red-600">01</span>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black text-white mb-1">Dealership Visit</h4>
+                      <p className="text-xs text-slate-400">Visit our showroom to inspect and finalize</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Visit us in person to inspect your selected motorcycle unit, review final paperwork, and complete the transfer process.
+                  </p>
+                </div>
+
+                {/* Final Signatures */}
+                <div className="border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg p-6">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-red-600/20 border border-red-600 flex items-center justify-center shrink-0">
+                      <span className="text-lg font-black text-red-600">02</span>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-black text-white mb-1">Final Signatures</h4>
+                      <p className="text-xs text-slate-400">Sign the transfer process documents</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Three physical documents need to be signed to complete the transfer process and finalize your purchase.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <button
+                  onClick={() => {
+                    // Clear state IMMEDIATELY before navigation to prevent showing stale completed view
+                    setStatusData(null)
+                    setApplicationId(null)
+                    setTrackedReferenceId('')
+                    setError('')
+                    setConversationMessages([])
+                    if (typeof onNavigateToFinancingStatus === 'function') {
+                      onNavigateToFinancingStatus()
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 rounded-sm bg-red-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white transition hover:bg-red-700 active:scale-95"
+                >
+                  Track My Status
+                  <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
+                </button>
+                <button
+                  onClick={onNavigateToShowroom}
+                  className="flex items-center justify-center gap-2 rounded-sm border border-slate-700 bg-transparent px-6 py-3 text-xs font-black uppercase tracking-wider text-slate-300 transition hover:border-red-600 hover:text-red-600"
+                >
+                  Back to Showroom
+                </button>
+              </div>
+
+              <p className="mt-8 text-[10px] text-center text-slate-500 uppercase tracking-widest">
+                Financing by Yamaha Motor Finance • Licensed & Insured
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="space-y-8">
             {/* Page Header */}
@@ -434,7 +699,10 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
                           <button
                             key={app.id}
                             onClick={() => handleSelectApplication(app)}
+                            disabled={isLoading}
                             className={`w-full p-3 rounded-sm text-left transition ${
+                              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'
+                            } ${
                               trackedReferenceId === app.referenceId
                                 ? 'bg-red-600/20 border border-red-600/50'
                                 : 'bg-slate-800/50 border border-slate-700/50 hover:border-red-600/50'
@@ -535,7 +803,25 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
 
               {/* Main Content - Status Details */}
               <div className="lg:col-span-8 space-y-6">
-                {statusData && (
+                {isLoading && !statusData ? (
+                  <div className={`border border-slate-800 bg-slate-900/60 p-12 backdrop-blur-sm rounded-lg text-center`}>
+                    <div className="inline-block">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
+                    </div>
+                    <p className="text-slate-400 text-sm">Loading application details...</p>
+                  </div>
+                ) : error ? (
+                  <div className={`border border-red-600/50 bg-red-600/10 p-6 backdrop-blur-sm rounded-lg`}>
+                    <p className="text-red-400 font-semibold">Error Loading Application</p>
+                    <p className="text-red-300 text-sm mt-2">{error}</p>
+                    <button 
+                      onClick={handleRefreshStatus}
+                      className="mt-4 bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-xs font-black uppercase rounded-sm transition"
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                ) : statusData ? (
                   <>
                     {/* Application Card */}
                     <div className={`border border-slate-800 bg-slate-900/60 p-6 backdrop-blur-sm rounded-lg`}>
@@ -703,6 +989,10 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
                       </div>
                     )}
                   </>
+                ) : (
+                  <div className={`border border-slate-800 bg-slate-900/60 p-12 backdrop-blur-sm rounded-lg text-center`}>
+                    <p className="text-slate-400 text-sm">Select an application to view details</p>
+                  </div>
                 )}
               </div>
             </div>

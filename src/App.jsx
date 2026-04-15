@@ -1308,7 +1308,7 @@ function App() {
     )
   }
 
-  if (shouldShowAccessLoader && (isPageLoading && !isLoadingScreenComplete)) {
+  if (shouldShowAccessLoader) {
     return (
       <GlobalLoadingScreen
         role={requiredDashboardRole ? roleLabels[requiredDashboardRole] : 'Dashboard'}

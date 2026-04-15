@@ -1008,6 +1008,7 @@ exports.submitFinancingApplication = onCall({ cors: true }, async (request) => {
       contactNumber,
       address,
       identityFileName: String(applicant.identityFileName || '').trim(),
+      identityFileUrl: String(applicant.identityFileUrl || '').trim(),
     },
     motorcycle: {
       id: motorcycleId,
@@ -1379,5 +1380,96 @@ exports.updateUserPassword = onCall(async (request) => {
     })
 
     throw new HttpsError('internal', `Failed to update password. ${error.message}`)
+  }
+})
+
+exports.approveFinancingApplication = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to approve applications.')
+  }
+
+  const applicationId = String(request.data?.applicationId || '').trim()
+  const reviewNote = String(request.data?.reviewNote || '').trim()
+
+  if (!applicationId) {
+    throw new HttpsError('invalid-argument', 'Application ID is required.')
+  }
+
+  try {
+    const db = admin.firestore()
+    
+    // Get the application from financingApplications collection
+    const applicationRef = db.collection('financingApplications').doc(applicationId)
+    const applicationDoc = await applicationRef.get()
+
+    if (!applicationDoc.exists) {
+      logger.warn('Application not found for approval', {
+        applicationId,
+        uid: request.auth.uid,
+        structuredData: true,
+      })
+      throw new HttpsError('not-found', 'Application not found.')
+    }
+
+    const applicationData = applicationDoc.data()
+
+    // Create approved application in approvedApplications collection
+    const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
+    
+    const approvedData = {
+      ...applicationData,
+      status: 'approved',
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: {
+        uid: request.auth.uid,
+        email: String(request.auth.token.email || '').trim().toLowerCase(),
+      },
+      reviewNote: reviewNote,
+      originalApplicationId: applicationId,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }
+
+    // Set the approved application in the new collection
+    await approvedApplicationRef.set(approvedData)
+
+    // Update the status in the original collection
+    await applicationRef.update({
+      status: 'approved',
+      reviewNote: reviewNote,
+      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+      approvedBy: {
+        uid: request.auth.uid,
+        email: String(request.auth.token.email || '').trim().toLowerCase(),
+      },
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+
+    logger.info('Financing application approved successfully.', {
+      applicationId,
+      referenceId: applicationData.referenceId,
+      uid: request.auth.uid,
+      structuredData: true,
+    })
+
+    return {
+      ok: true,
+      applicationId,
+      referenceId: applicationData.referenceId,
+      message: 'Application approved successfully.',
+    }
+  } catch (error) {
+    logger.error('Error approving financing application.', {
+      applicationId: request.data?.applicationId,
+      uid: request.auth.uid,
+      errorCode: error.code,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+
+    if (error instanceof HttpsError) {
+      throw error
+    }
+
+    throw new HttpsError('internal', `Failed to approve application: ${error.message}`)
   }
 })
