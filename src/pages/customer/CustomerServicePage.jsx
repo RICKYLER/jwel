@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db } from '../../firebase'
 import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded'
 import BuildCircleRoundedIcon from '@mui/icons-material/BuildCircleRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
@@ -8,8 +10,8 @@ import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded'
 import TireRepairRoundedIcon from '@mui/icons-material/TireRepairRounded'
-import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
+import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
 import NavHeaderCustomer from './components/NavHeaderCustomer'
 import ChatBox from '../../components/ChatBox'
 
@@ -20,49 +22,7 @@ const bookingSteps = [
   { id: 'confirm', label: 'Confirm', icon: CheckCircleRoundedIcon },
 ]
 
-const serviceOptions = [
-  {
-    id: 'change-oil',
-    title: 'Change Oil',
-    description: 'Professional oil and filter replacement with system check.',
-    icon: TuneRoundedIcon,
-    cost: 85,
-  },
-  {
-    id: 'full-tune-up',
-    title: 'Full Tune Up',
-    description: 'Complete maintenance package with fluid checks and adjustments.',
-    cover: true,
-    featured: true,
-    icon: BuildCircleRoundedIcon,
-    cost: 165,
-  },
-  {
-    id: 'brake-cleaning',
-    title: 'Brake Cleaning',
-    description: 'Deep clean and inspection of braking system.',
-    icon: TireRepairRoundedIcon,
-    cost: 120,
-  },
-  {
-    id: 'chain-service',
-    title: 'Chain Service',
-    description: 'Chain cleaning, lubrication, and tension adjustment.',
-    icon: SpeedRoundedIcon,
-    cost: 75,
-  },
-  {
-    id: 'electrical-check',
-    title: 'Electrical Check',
-    description: 'Battery and electrical system diagnostic and testing.',
-    icon: BiotechRoundedIcon,
-    cost: 95,
-  },
-]
-
-const appointmentDays = ['12', '13', '14', '15', '16', '17', '18']
 const timeSlots = ['08:00 AM', '10:30 AM', '01:45 PM', '03:00 PM', '05:15 PM']
-const modelOptions = ['YZF-R1M', 'MT-09 SP', 'Ténéré 700', 'XSR900', 'YZF-R7', 'Tracer 9']
 
 export default function CustomerServicePage({
   currentUser,
@@ -76,19 +36,81 @@ export default function CustomerServicePage({
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeStep, setActiveStep] = useState('service-type')
-  const [selectedService, setSelectedService] = useState('full-tune-up')
-  const [selectedDay, setSelectedDay] = useState('15')
+  const [selectedService, setSelectedService] = useState(null)
+  const [selectedDay, setSelectedDay] = useState(String(new Date().getDate() + 1))
   const [selectedTime, setSelectedTime] = useState('10:30 AM')
+  const [serviceOptions, setServiceOptions] = useState([])
+  const [userVehicles, setUserVehicles] = useState([])
   const [vehicleInfo, setVehicleInfo] = useState({
-    model: modelOptions[0],
-    year: '2023',
+    model: '',
+    year: new Date().getFullYear().toString(),
   })
+  const [loading, setLoading] = useState(true)
   const [unreadNotifications] = useState([
     { id: 1, title: 'New Service', message: 'New diagnostic tools available', timestamp: 'Just now', read: false },
     { id: 2, title: 'Promotions', message: '10% off on service packages', timestamp: '2 hours ago', read: true },
   ])
 
-  const estimatedCost = serviceOptions.find((service) => service.id === selectedService)?.cost ?? 165
+  // Fetch services from Firestore
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const servicesRef = collection(db, 'services')
+        const snapshot = await getDocs(servicesRef)
+        if (!snapshot.empty) {
+          const services = snapshot.docs.map((doc) => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              title: data.title || '',
+              description: data.description || '',
+              cost: data.cost || 0,
+              iconUrl: data.iconUrl || '',
+            }
+          })
+          setServiceOptions(services)
+          // Set first service as selected
+          if (services.length > 0) {
+            setSelectedService(services[0].id)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching services:', error)
+      }
+    }
+
+    const fetchUserVehicles = async () => {
+      try {
+        if (currentUser?.uid) {
+          const vehiclesRef = collection(db, `users/${currentUser.uid}/vehicles`)
+          const snapshot = await getDocs(vehiclesRef)
+          if (!snapshot.empty) {
+            const vehicles = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }))
+            setUserVehicles(vehicles)
+            // Set first vehicle as selected
+            if (vehicles.length > 0) {
+              setVehicleInfo({
+                model: vehicles[0].model || '',
+                year: vehicles[0].year || new Date().getFullYear().toString(),
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching vehicles:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchServices()
+    fetchUserVehicles()
+  }, [currentUser])
+
+  const estimatedCost = serviceOptions.find((service) => service.id === selectedService)?.cost ?? 0
 
   const handleServiceSelect = (serviceId) => {
     setSelectedService(serviceId)
@@ -96,6 +118,34 @@ export default function CustomerServicePage({
 
   const handleStepChange = (stepId) => {
     setActiveStep(stepId)
+  }
+
+  const handleContinue = () => {
+    // Validate current step before moving forward
+    if (activeStep === 'service-type' && !selectedService) {
+      alert('Please select a service')
+      return
+    }
+    if (activeStep === 'vehicle-info' && !vehicleInfo.model) {
+      alert('Please select or enter a vehicle model')
+      return
+    }
+    if (activeStep === 'schedule' && !selectedDay) {
+      alert('Please select a date')
+      return
+    }
+
+    const stepIndex = bookingSteps.findIndex((step) => step.id === activeStep)
+    if (stepIndex < bookingSteps.length - 1) {
+      setActiveStep(bookingSteps[stepIndex + 1].id)
+    }
+  }
+
+  const handleBack = () => {
+    const stepIndex = bookingSteps.findIndex((step) => step.id === activeStep)
+    if (stepIndex > 0) {
+      setActiveStep(bookingSteps[stepIndex - 1].id)
+    }
   }
 
   const handleScheduleService = () => {
@@ -111,36 +161,57 @@ export default function CustomerServicePage({
     switch (activeStep) {
       case 'service-type':
         return (
-          <div className="space-y-4">
-            <h2 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Select Services
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-6">
+            <div>
+              <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Select Maintenance Package
+              </h2>
+              <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                {serviceOptions.length} Services Available
+              </p>
+            </div>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               {serviceOptions.map((service) => {
-                const Icon = service.icon
                 const isSelected = selectedService === service.id
                 return (
                   <button
                     key={service.id}
                     onClick={() => handleServiceSelect(service.id)}
-                    className={`rounded-2xl p-6 text-left transition-all ${
+                    className={`rounded-xl overflow-hidden text-left transition-all border-2 ${
                       isSelected
-                        ? isDarkMode
-                          ? 'border-2 border-red-600 bg-red-600/10'
-                          : 'border-2 border-red-600 bg-red-50'
+                        ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
                         : isDarkMode
-                          ? 'border border-white/10 bg-white/5 hover:bg-white/10'
-                          : 'border border-gray-200 bg-gray-50 hover:bg-gray-100'
+                          ? 'border-white/10 bg-white/5 hover:bg-white/10'
+                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                     }`}
                   >
-                    <Icon sx={{ fontSize: 32 }} className={`mb-3 ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-700'}`} />
-                    <h3 className={`font-bold text-lg ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {service.title}
-                    </h3>
-                    <p className={`text-sm mt-2 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>{service.description}</p>
-                    <p className={`font-bold mt-3 ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      ${service.cost}.00
-                    </p>
+                    {/* Icon area */}
+                    <div className={`h-32 flex items-center justify-center ${
+                      isDarkMode ? 'bg-linear-to-br from-red-600/10 to-red-400/5' : 'bg-linear-to-br from-red-100 to-red-50'
+                    }`}>
+                      {service.iconUrl ? (
+                        <img
+                          src={service.iconUrl}
+                          alt={service.title}
+                          className="w-20 h-20 object-contain"
+                        />
+                      ) : (
+                        <CloudUploadRoundedIcon sx={{ fontSize: 40, opacity: 0.3 }} />
+                      )}
+                    </div>
+
+                    {/* Content area */}
+                    <div className="p-6">
+                      <h3 className={`font-bold text-lg mb-2 ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {service.title}
+                      </h3>
+                      <p className={`text-sm mb-4 line-clamp-2 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                        {service.description}
+                      </p>
+                      <p className={`font-bold text-lg ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        ₱{service.cost}
+                      </p>
+                    </div>
                   </button>
                 )
               })}
@@ -151,29 +222,59 @@ export default function CustomerServicePage({
       case 'vehicle-info':
         return (
           <div className="space-y-6 max-w-2xl">
-            <h2 className={`text-2xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Vehicle Information
-            </h2>
+            <div>
+              <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Vehicle Information
+              </h2>
+              <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                Select or enter your vehicle details
+              </p>
+            </div>
+            {userVehicles.length > 0 && (
+              <div>
+                <label className={`block text-sm font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  My Vehicles
+                </label>
+                <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+                  {userVehicles.map((vehicle) => (
+                    <button
+                      key={vehicle.id}
+                      onClick={() => setVehicleInfo({ model: vehicle.model, year: vehicle.year })}
+                      className={`rounded-lg p-4 text-left border-2 transition ${
+                        vehicleInfo.model === vehicle.model
+                          ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
+                          : isDarkMode
+                            ? 'border-white/10 bg-white/5 hover:bg-white/10'
+                            : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {vehicle.model}
+                      </p>
+                      <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                        {vehicle.year}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className={`block text-sm font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   Model
                 </label>
-                <select
+                <input
+                  type="text"
                   value={vehicleInfo.model}
                   onChange={(e) => setVehicleInfo({ ...vehicleInfo, model: e.target.value })}
+                  placeholder="E.g., YZF-R5M"
                   className={`w-full rounded-lg px-4 py-3 border ${
                     isDarkMode
-                      ? 'border-white/10 bg-white/5 text-white'
+                      ? 'border-white/10 bg-white/5 text-white placeholder-white/40'
                       : 'border-gray-300 bg-white text-gray-900'
                   }`}
-                >
-                  {modelOptions.map((model) => (
-                    <option key={model} value={model}>
-                      {model}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
               <div>
                 <label className={`block text-sm font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -188,7 +289,7 @@ export default function CustomerServicePage({
                       : 'border-gray-300 bg-white text-gray-900'
                   }`}
                 >
-                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                  {Array.from({ length: 20 }, (_, i) => new Date().getFullYear() - i).map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
@@ -292,7 +393,7 @@ export default function CustomerServicePage({
                 </div>
                 <div className="border-t border-white/10 pt-3 mt-3 flex justify-between">
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total:</span>
-                  <span className="text-2xl font-black text-red-600">${estimatedCost}.00</span>
+                  <span className="text-2xl font-black text-red-600">₱{estimatedCost}</span>
                 </div>
               </div>
             </div>
@@ -333,41 +434,51 @@ export default function CustomerServicePage({
 
       <main className="pt-20 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          {/* Steps Navigation */}
-          <div className="mb-8 flex gap-2 overflow-x-auto lg:justify-center">
-            {bookingSteps.map((step, index) => {
-              const Icon = step.icon
-              const isActive = activeStep === step.id
-              const isCompleted = ['service-type', 'vehicle-info', 'schedule', 'confirm'].indexOf(activeStep) > index
+          {/* Steps Navigation - Matching Design */}
+          <div className="mb-12">
+            <h1 className={`text-3xl font-black mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              <span>SERVICE</span>
+              <span className="text-red-600">BOOKING</span>
+            </h1>
+            <div className="flex gap-8 justify-start">
+              {bookingSteps.map((step, index) => {
+                const isActive = activeStep === step.id
+                const isCompleted = bookingSteps.findIndex((s) => s.id === activeStep) > index
 
-              return (
-                <div key={step.id} className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleStepChange(step.id)}
-                    className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-3 text-xs font-bold uppercase tracking-widest transition ${
-                      isActive
-                        ? 'bg-red-600 text-white'
-                        : isCompleted
+                return (
+                  <div key={step.id} className="flex flex-col items-start gap-3">
+                    <div
+                      className={`flex items-center justify-center w-14 h-14 rounded-lg font-black text-sm transition ${
+                        isActive
+                          ? 'bg-red-600 text-white'
+                          : isCompleted
+                            ? isDarkMode
+                              ? 'bg-emerald-600/20 text-emerald-400'
+                              : 'bg-emerald-100 text-emerald-700'
+                            : isDarkMode
+                              ? 'bg-white/5 text-white/30'
+                              : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      {String(index + 1).padStart(2, '0')}
+                    </div>
+                    <span
+                      className={`text-xs font-bold uppercase tracking-widest ${
+                        isActive || isCompleted
                           ? isDarkMode
-                            ? 'bg-emerald-600/20 text-emerald-400'
-                            : 'bg-emerald-100 text-emerald-700'
+                            ? 'text-red-600'
+                            : 'text-red-600'
                           : isDarkMode
-                            ? 'bg-white/5 text-white/50'
-                            : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    <Icon sx={{ fontSize: 16 }} />
-                    {step.label}
-                  </button>
-                  {index < bookingSteps.length - 1 && (
-                    <ChevronRightRoundedIcon
-                      sx={{ fontSize: 20 }}
-                      className={isDarkMode ? 'text-white/20' : 'text-gray-300'}
-                    />
-                  )}
-                </div>
-              )
-            })}
+                            ? 'text-gray-500'
+                            : 'text-gray-400'
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Content Area */}
@@ -376,55 +487,106 @@ export default function CustomerServicePage({
               <StepContent />
             </div>
 
-            {/* Right Sidebar - Summary */}
+            {/* Right Sidebar - ORDER SUMMARY */}
             <div
-              className={`rounded-2xl p-6 h-fit sticky top-24 ${
-                isDarkMode ? 'border border-white/10 bg-white/5' : 'border border-gray-200 bg-gray-50'
+              className={`rounded-xl p-8 h-fit sticky top-24 ${
+                isDarkMode ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-700'
               }`}
             >
-              <h3 className={`text-xl font-black mb-6 ${isDarkMode ? 'text-red-600' : 'text-red-600'}`}>
-                Appointment Summary
+              <h3 className="text-sm font-black mb-8 text-white/80 uppercase tracking-widest">
+                Order Summary
               </h3>
 
-              <div className={`space-y-4 mb-6 pb-6 border-b ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-                <div className="flex justify-between items-start">
-                  <span className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Service</span>
-                  <span className={`font-bold text-right ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              {/* Service Selection */}
+              {selectedService && (
+                <div className="mb-8 pb-8 border-b border-gray-700 space-y-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
+                    Service Selection
+                  </p>
+                  <p className="text-lg font-bold text-white">
                     {serviceOptions.find((s) => s.id === selectedService)?.title}
-                  </span>
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Date & Time</span>
-                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedDay} Apr, {selectedTime}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mb-6 flex justify-between items-center">
-                <span className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total</span>
-                <span className="text-3xl font-black text-red-600">${estimatedCost}</span>
-              </div>
-
-              {activeStep === 'confirm' && (
-                <button
-                  onClick={handleScheduleService}
-                  className="w-full rounded-lg bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 transition mb-3"
-                >
-                  Schedule Service
-                </button>
               )}
 
+              {/* Schedule Info */}
+              {(activeStep === 'schedule' || activeStep === 'confirm') && (
+                <div className="mb-8 pb-8 border-b border-gray-700 space-y-3">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    Schedule
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} className="text-gray-500" />
+                    <p className="text-sm font-bold text-white">
+                      {selectedDay} Apr, {selectedTime}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Vehicle Info */}
+              {(activeStep === 'vehicle-info' || activeStep === 'confirm') && vehicleInfo.model && (
+                <div className="mb-8 pb-8 border-b border-gray-700 space-y-2">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    Vehicle
+                  </p>
+                  <p className="text-sm font-bold text-white">
+                    {vehicleInfo.model.toUpperCase()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {vehicleInfo.year}
+                  </p>
+                </div>
+              )}
+
+              {/* Total Estimation */}
+              <div className="mb-8 pb-8 border-b border-gray-700">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+                  Total Estimation
+                </p>
+                <p className="text-5xl font-black text-red-600">
+                  ₱{estimatedCost}
+                </p>
+              </div>
+
+              {/* Continue Button */}
               <button
-                className={`w-full rounded-lg px-4 py-3 font-bold text-sm transition flex items-center justify-center gap-2 ${
-                  isDarkMode
-                    ? 'border border-white/10 text-white hover:bg-white/5'
-                    : 'border border-gray-300 text-gray-900 hover:bg-gray-100'
-                }`}
+                onClick={handleContinue}
+                disabled={
+                  (activeStep === 'service-type' && !selectedService) ||
+                  (activeStep === 'vehicle-info' && !vehicleInfo.model)
+                }
+                className="w-full rounded-lg bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-700 transition mb-4 uppercase text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <PhoneRoundedIcon sx={{ fontSize: 18 }} />
+                {activeStep === 'confirm' ? 'Confirm Booking' : `Continue to ${bookingSteps[Math.min(bookingSteps.findIndex((s) => s.id === activeStep) + 1, bookingSteps.length - 1)].label}`}
+              </button>
+
+              {/* Forgot Something */}
+              <button
+                className="w-full rounded-lg px-6 py-3 font-bold text-gray-400 hover:text-white transition text-sm"
+              >
                 Forgot Something?
               </button>
+
+              {/* Current Unit */}
+              {vehicleInfo.model && (
+                <div className={`mt-6 pt-6 border-t border-gray-700 space-y-3`}>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    Current Unit
+                  </p>
+                  <div className={`bg-gray-800/50 rounded-lg p-4 flex items-center gap-3`}>
+                    <TwoWheelerRoundedIcon sx={{ fontSize: 32 }} className="text-gray-600" />
+                    <div>
+                      <p className="text-sm font-bold text-white">
+                        {vehicleInfo.model.toUpperCase()}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Reg. {vehicleInfo.year}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

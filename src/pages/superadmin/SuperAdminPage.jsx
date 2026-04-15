@@ -12,6 +12,7 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
 import { db, functions } from '../../firebase'
 import { useTheme } from '../../context/ThemeContext'
 import ConfirmationModal from './components/ConfirmationModal'
@@ -34,6 +35,7 @@ import FinancingApplicationDetailSection from './sections/FinancingApplicationDe
 import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
+import ServiceTypeSection from './sections/ServiceTypeSection'
 import {
   buildChartBars,
   fallbackTechnicians,
@@ -73,7 +75,15 @@ const baseSidebarItems = [
     ]
   },
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
-  { id: 'service-logs', label: 'Service Logs', icon: BuildRoundedIcon },
+  { 
+    id: 'service-management', 
+    label: 'Service Management', 
+    icon: TuneRoundedIcon,
+    subitems: [
+      { id: 'service-type', label: 'Service Type' },
+      { id: 'service-logs', label: 'Service Logs' },
+    ]
+  },
   { id: 'financing-applications', label: 'Financing Applications', icon: AnalyticsRoundedIcon },
   { id: 'approved-applications', label: 'Approved Applications', icon: TrendingUpRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
@@ -1374,6 +1384,13 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onUnreadCountChange={recountUnreadMessages}
             focusRequest={chatFocusRequest}
             onConversationRead={markConversationNotificationsRead}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'service-management':
+      case 'service-type':
+        return (
+          <ServiceTypeSection
             isDarkMode={isDarkMode}
           />
         )

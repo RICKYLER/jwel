@@ -211,5 +211,16 @@ service cloud.firestore {
         allow update: if isAdminOrHigher();
       }
     }
+
+    match /services/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminOrHigher();
+    }
+
+    match /users/{userId}/vehicles/{vehicleId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+    }
   }
 }
