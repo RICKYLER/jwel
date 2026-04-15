@@ -17,7 +17,7 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onNavigateBack }) {
+export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onNavigateBack }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [unreadNotifications] = useState([
@@ -207,6 +207,7 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
         activePage="showroom"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateBack}
+        onNavigateToService={onNavigateToService}
         onNavigateToFinancing={onNavigateToFinancing}
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
         onNavigateToProfile={onNavigateToProfile}

@@ -8,7 +8,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat'
 
-export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus }) {
+export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus, onNavigateToService }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -26,6 +26,7 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
           activePage="financing"
           unreadNotifications={unreadNotifications}
           onNavigateToShowroom={onNavigateBack}
+          onNavigateToService={onNavigateToService}
           onNavigateToFinancing={onNavigateBack}
           onNavigateToFinancingStatus={() => {}}
           onNavigateToProfile={() => {}}
@@ -114,6 +115,7 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
         activePage="financing"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateBack}
+        onNavigateToService={onNavigateToService}
         onNavigateToFinancing={onNavigateBack}
         onNavigateToFinancingStatus={() => {}}
         onNavigateToProfile={() => {}}

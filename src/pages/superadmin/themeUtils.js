@@ -1,0 +1,55 @@
+/**
+ * Theme utility functions for consistent dark/light mode styling across SuperAdmin sections
+ * Usage: Import and call these functions to get conditional Tailwind class names
+ */
+
+export const themeClasses = {
+  // Text color classes
+  textPrimary: (isDarkMode) => isDarkMode ? 'text-white' : 'text-gray-900',
+  textSecondary: (isDarkMode) => isDarkMode ? 'text-white/70' : 'text-gray-600',
+  textTertiary: (isDarkMode) => isDarkMode ? 'text-white/40' : 'text-gray-500',
+  textMuted: (isDarkMode) => isDarkMode ? 'text-white/50' : 'text-gray-400',
+
+  // Background classes
+  bgPrimary: (isDarkMode) => isDarkMode ? 'bg-[#1c1b1b]' : 'bg-white',
+  bgSecondary: (isDarkMode) => isDarkMode ? 'bg-[#161616]' : 'bg-gray-50',
+  bgTertiary: (isDarkMode) => isDarkMode ? 'bg-white/5' : 'bg-gray-100',
+  bgHover: (isDarkMode) => isDarkMode ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200',
+
+  // Border classes
+  border: (isDarkMode) => isDarkMode ? 'border-white/10' : 'border-gray-300',
+  borderLight: (isDarkMode) => isDarkMode ? 'border-white/5' : 'border-gray-200',
+
+  // Input classes
+  input: (isDarkMode) => isDarkMode 
+    ? 'border-white/10 bg-[#101010] text-white placeholder-neutral-500' 
+    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400',
+
+  // Button classes
+  buttonPrimary: (isDarkMode) => isDarkMode
+    ? 'bg-red-600 text-white hover:bg-red-700'
+    : 'bg-red-600 text-white hover:bg-red-700',
+
+  buttonSecondary: (isDarkMode) => isDarkMode
+    ? 'bg-white/10 text-white/70 hover:bg-white/20'
+    : 'bg-gray-200 text-gray-700 hover:bg-gray-300',
+}
+
+// Helper function to build consistent theme-aware class strings
+export const getThemeClass = (color, intensity, isDarkMode) => {
+  if (color === 'text') {
+    if (intensity === 'primary') return themeClasses.textPrimary(isDarkMode)
+    if (intensity === 'secondary') return themeClasses.textSecondary(isDarkMode)
+    if (intensity === 'tertiary') return themeClasses.textTertiary(isDarkMode)
+    if (intensity === 'muted') return themeClasses.textMuted(isDarkMode)
+  }
+  if (color === 'bg') {
+    if (intensity === 'primary') return themeClasses.bgPrimary(isDarkMode)
+    if (intensity === 'secondary') return themeClasses.bgSecondary(isDarkMode)
+    if (intensity === 'tertiary') return themeClasses.bgTertiary(isDarkMode)
+  }
+  if (color === 'border') {
+    return intensity === 'light' ? themeClasses.borderLight(isDarkMode) : themeClasses.border(isDarkMode)
+  }
+  return ''
+}

@@ -19,6 +19,7 @@ import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
+import CustomerServicePage from './pages/customer/CustomerServicePage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
 import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
@@ -31,6 +32,7 @@ import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
 import ToastNotification from './components/ToastNotification'
 import { ToastProvider } from './context/ToastContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { auth, db, functions, googleProvider } from './firebase'
 
 const navLinks = [
@@ -1205,6 +1207,7 @@ function App() {
         referenceId={referenceId}
         currentUser={currentUser}
         onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
@@ -1222,6 +1225,7 @@ function App() {
           setPendingApplicationData(null)
           navigateTo('/financing')
         }}
+        onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancingStatus={(referenceId) => {
           setPendingApplicationData(null)
           navigateTo(`/financing/status/${encodeURIComponent(referenceId)}`)
@@ -1245,6 +1249,7 @@ function App() {
         onNavigateBack={() => navigateTo('/customer')}
         onSignOut={currentUser ? handleSignOut : null}
         productId={financingProductId}
+        onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateToConfirmApplication={(applicationData) => {
           setPendingApplicationData(applicationData)
@@ -1267,10 +1272,28 @@ function App() {
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onSignOut={handleSignOut}
         onNavigateToProduct={handleNavigateToProduct}
+        onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateBack={() => goToHomeSection('home', 'Home')}
+      />,
+    )
+  }
+
+  // Customer Service Page Route
+  if (currentPath === '/customer/service' && currentUser && accessProfile.role === 'customer') {
+    return withSecurityModal(
+      <CustomerServicePage
+        currentUser={currentUser}
+        onNavigateHome={() => goToHomeSection('home', 'Home')}
+        onSignOut={handleSignOut}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateBack={() => navigateTo('/customer')}
       />,
     )
   }
@@ -1300,6 +1323,7 @@ function App() {
         currentUser={currentUser}
         onNavigateBack={() => navigateTo('/customer')}
         onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
@@ -1321,6 +1345,14 @@ function App() {
   if (dashboardRequirements[currentDashboardBasePath] && currentUser && canViewCurrentDashboard && !isAccessResolving) {
     const financingDetailMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications\/(.+)$/)
     const financingListMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications$/)
+    const approvedApplicationsMatch = currentPath.match(/^\/(superadmin|admin)\/approved-applications$/)
+
+    let initialSection = 'dashboard'
+    if (financingDetailMatch || financingListMatch) {
+      initialSection = 'financing-applications'
+    } else if (approvedApplicationsMatch) {
+      initialSection = 'approved-applications'
+    }
 
     return withSecurityModal(
       <SuperAdminPage
@@ -1330,7 +1362,7 @@ function App() {
         accessProfile={accessProfile}
         dashboardPath={currentDashboardBasePath}
         currentPath={currentPath}
-        initialSection={financingDetailMatch || financingListMatch ? 'financing-applications' : 'dashboard'}
+        initialSection={initialSection}
         initialFinancingApplicationId={financingDetailMatch?.[2] ? decodeURIComponent(financingDetailMatch[2]) : ''}
         onNavigateDashboardPath={(nextPath) => navigateTo(nextPath)}
       />,
@@ -1357,10 +1389,12 @@ function App() {
 
 function AppWithToast() {
   return (
-    <ToastProvider>
-      <App />
-      <ToastNotification />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <App />
+        <ToastNotification />
+      </ToastProvider>
+    </ThemeProvider>
   )
 }
 

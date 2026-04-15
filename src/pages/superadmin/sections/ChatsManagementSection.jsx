@@ -17,6 +17,7 @@ export default function ChatsManagementSection({
   onUnreadCountChange,
   focusRequest,
   onConversationRead,
+  isDarkMode = true,
 }) {
   const [conversations, setConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
@@ -341,8 +342,6 @@ export default function ChatsManagementSection({
     setDeleteConfirmation(null)
     setIsBulkDeleteMode(false)
   }, [deleteConfirmation])
-
-  const isDarkMode = true // Assuming dark mode is default based on component styling
 
   return (
     <div className="chats-management-container">

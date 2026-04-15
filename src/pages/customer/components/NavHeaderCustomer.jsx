@@ -17,11 +17,12 @@ export default function NavHeaderCustomer({
   isDarkMode,
   setIsDarkMode,
   onNavigateToShowroom,
+  onNavigateToService,
   onNavigateToFinancing,
   onNavigateToFinancingStatus,
   onNavigateToProfile,
   onSignOut,
-  activePage = 'showroom', // 'showroom', 'financing', 'status', 'profile'
+  activePage = 'showroom', // 'showroom', 'service', 'financing', 'status', 'profile'
   unreadNotifications = [],
   userAvatar = null,
 }) {
@@ -116,6 +117,18 @@ export default function NavHeaderCustomer({
               }`}
             >
               Showroom
+            </button>
+            <button
+              onClick={onNavigateToService}
+              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                isActive('service')
+                  ? 'border-red-600 text-red-600'
+                  : isDarkMode
+                    ? 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Service
             </button>
             <button
               onClick={onNavigateToFinancing}
@@ -222,6 +235,9 @@ export default function NavHeaderCustomer({
           <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <button onClick={onNavigateToShowroom} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Showroom
+            </button>
+            <button onClick={onNavigateToService} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              Service
             </button>
             <button onClick={onNavigateToFinancing} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Financing

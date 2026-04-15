@@ -6,6 +6,7 @@ export default function TechniciansSection({
   technicianStatusOptions,
   handleCollectionUpdate,
   getStatusClasses,
+  isDarkMode = true,
 }) {
   return (
     <section className="technicians-section rounded-xl p-6">

@@ -13,6 +13,7 @@ import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import { db, functions } from '../../firebase'
+import { useTheme } from '../../context/ThemeContext'
 import ConfirmationModal from './components/ConfirmationModal'
 import EditUserModal from './components/EditUserModal'
 import NewUserModal from './components/NewUserModal'
@@ -160,21 +161,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   })
   const [chatFocusRequest, setChatFocusRequest] = useState(null)
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window === 'undefined') {
-      return true
-    }
-
-    const savedTheme =
-      window.localStorage.getItem('bykelink-theme') ||
-      window.localStorage.getItem('bykelink-superadmin-theme')
-
-    if (savedTheme) {
-      return savedTheme !== 'light'
-    }
-
-    return !window.matchMedia('(prefers-color-scheme: light)').matches
-  })
+  const { isDarkMode, toggleTheme } = useTheme()
   const [profileForm, setProfileForm] = useState({
     fullName: '',
     title: '',
@@ -241,21 +228,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
     return () => window.clearTimeout(timerId)
   }, [actionMessage])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined
-    }
-
-    const theme = isDarkMode ? 'dark' : 'light'
-
-    window.localStorage.setItem('bykelink-theme', theme)
-    window.localStorage.setItem('bykelink-superadmin-theme', theme)
-    document.documentElement.setAttribute('data-theme', theme)
-    document.body.setAttribute('data-theme', theme)
-
-    return undefined
-  }, [isDarkMode])
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -1014,9 +986,15 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const handleSectionChange = (sectionId) => {
     setActiveSection(sectionId)
 
+    // Update URL based on section type
     if (sectionId === 'financing-applications') {
       onNavigateDashboardPath?.(`${dashboardPath}/financing-applications`)
-    } else if (sectionId !== 'financing-application-detail') {
+    } else if (sectionId === 'approved-applications') {
+      onNavigateDashboardPath?.(`${dashboardPath}/approved-applications`)
+    } else if (sectionId !== 'financing-application-detail' && sectionId !== 'dashboard') {
+      // For other sections, keep current path structure or update appropriately
+      onNavigateDashboardPath?.(dashboardPath)
+    } else if (sectionId === 'dashboard') {
       onNavigateDashboardPath?.(dashboardPath)
     }
 
@@ -1396,6 +1374,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onUnreadCountChange={recountUnreadMessages}
             focusRequest={chatFocusRequest}
             onConversationRead={markConversationNotificationsRead}
+            isDarkMode={isDarkMode}
           />
         )
       case 'technicians':
@@ -1406,6 +1385,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             technicianStatusOptions={technicianStatusOptions}
             handleCollectionUpdate={handleCollectionUpdate}
             getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
           />
         )
       case 'analytics':
@@ -1514,6 +1494,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             serviceRequests={filteredServiceRequests}
             setActiveSection={handleSectionChange}
             getStatusClasses={getStatusClasses}
+            isDarkMode={isDarkMode}
           />
         )
     }
@@ -1594,7 +1575,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           onSearchChange={setSearchTerm}
           sectionTitle={sectionTitle}
           isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode((current) => !current)}
+          onToggleTheme={toggleTheme}
           onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
           onToggleNotifications={handleToggleNotifications}
           notificationCount={unreadChatCount}
