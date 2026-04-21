@@ -64,7 +64,9 @@ export default function ChatBox({ currentUser }) {
             status: 'open',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            lastMessageTime: serverTimestamp(),
             messageCount: 0,
+            participants: [currentUser.uid],
           })
           setConversationId(newConvRef.id)
         } else {
@@ -100,7 +102,9 @@ export default function ChatBox({ currentUser }) {
             status: 'open',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            lastMessageTime: serverTimestamp(),
             messageCount: 0,
+            participants: [guestUserId],
           })
           
           // Store guest conversation in localStorage

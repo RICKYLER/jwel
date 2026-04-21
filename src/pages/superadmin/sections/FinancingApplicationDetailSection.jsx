@@ -11,7 +11,7 @@ export default function FinancingApplicationDetailSection({
   formatCurrency,
   formatDate,
   onBack,
-  isDarkMode = false,
+  _isDarkMode = false,
 }) {
   const [replyMessage, setReplyMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -177,7 +177,7 @@ export default function FinancingApplicationDetailSection({
       
       // Call Cloud Function to approve application
       const approveApplication = httpsCallable(functions, 'approveFinancingApplication')
-      const result = await approveApplication({
+      await approveApplication({
         applicationId: currentApplication.id,
         reviewNote: replyMessage.trim(),
       })

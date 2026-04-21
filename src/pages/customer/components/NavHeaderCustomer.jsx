@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
-import Brightness4RoundedIcon from '@mui/icons-material/Brightness4Rounded'
-import Brightness7RoundedIcon from '@mui/icons-material/Brightness7Rounded'
+import ChatRoundedIcon from '@mui/icons-material/ChatRounded'
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded'
@@ -15,14 +14,14 @@ import bykelinkLogo from '../../../assets/bykelinklogo.png'
 export default function NavHeaderCustomer({
   currentUser,
   isDarkMode,
-  setIsDarkMode,
   onNavigateToShowroom,
   onNavigateToService,
   onNavigateToFinancing,
   onNavigateToFinancingStatus,
+  onNavigateToMessages,
   onNavigateToProfile,
   onSignOut,
-  activePage = 'showroom', // 'showroom', 'service', 'financing', 'status', 'profile'
+  activePage = 'showroom',
   unreadNotifications = [],
   userAvatar = null,
 }) {
@@ -142,11 +141,18 @@ export default function NavHeaderCustomer({
             >
               Financing
             </button>
-            <a
-              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] border-transparent ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} transition-colors`}
+            <button
+              onClick={onNavigateToMessages}
+              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                isActive('messages')
+                  ? 'border-red-600 text-red-600'
+                  : isDarkMode
+                    ? 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
             >
-              Chat Support
-            </a>
+              Messages
+            </button>
           </nav>
 
           {/* Desktop Right Section */}
@@ -188,13 +194,6 @@ export default function NavHeaderCustomer({
               )}
             </div>
 
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
-            >
-              {isDarkMode ? <Brightness7RoundedIcon sx={{ fontSize: 22 }} /> : <Brightness4RoundedIcon sx={{ fontSize: 22 }} />}
-            </button>
 
             {/* Profile Button */}
             <button
@@ -241,6 +240,9 @@ export default function NavHeaderCustomer({
             </button>
             <button onClick={onNavigateToFinancing} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Financing
+            </button>
+            <button onClick={onNavigateToMessages} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              Messages
             </button>
             <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Support</a>
           </nav>

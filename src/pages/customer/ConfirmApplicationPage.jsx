@@ -8,7 +8,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat'
 
-export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus, onNavigateToService }) {
+export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToService }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -22,13 +22,13 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
         <NavHeaderCustomer
           currentUser={currentUser}
           isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
           activePage="financing"
           unreadNotifications={unreadNotifications}
           onNavigateToShowroom={onNavigateBack}
           onNavigateToService={onNavigateToService}
           onNavigateToFinancing={onNavigateBack}
           onNavigateToFinancingStatus={() => {}}
+          onNavigateToMessages={onNavigateToMessages}
           onNavigateToProfile={() => {}}
           onSignOut={currentUser ? onSignOut : null}
         />
@@ -111,13 +111,13 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         activePage="financing"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateBack}
         onNavigateToService={onNavigateToService}
         onNavigateToFinancing={onNavigateBack}
         onNavigateToFinancingStatus={() => {}}
+        onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={() => {}}
         onSignOut={currentUser ? handleLogout : null}
       />

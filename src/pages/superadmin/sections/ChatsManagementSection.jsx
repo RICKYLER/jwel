@@ -8,6 +8,7 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import CheckboxOutlinedIcon from '@mui/icons-material/CheckboxOutlined'
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
 import DeleteSweepRoundedIcon from '@mui/icons-material/DeleteSweepRounded'
+import EmojiEmotionsRoundedIcon from '@mui/icons-material/EmojiEmotionsRounded'
 import { db } from '../../../firebase'
 import ConfirmationModal from '../components/ConfirmationModal'
 import './ChatsManagementSection.css'
@@ -32,6 +33,11 @@ export default function ChatsManagementSection({
   const [deleteConfirmation, setDeleteConfirmation] = useState(null)
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false)
   const unsubscribersRef = useRef(new Map())
+  const messagesEndRef = useRef(null)
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }
 
   // Load all conversations
   useEffect(() => {
@@ -90,8 +96,10 @@ export default function ChatsManagementSection({
 
     return () => {
       unsubscribe()
-      unsubscribersRef.current.forEach((unsub) => unsub())
-      unsubscribersRef.current.clear()
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const unsubs = unsubscribersRef.current
+      unsubs.forEach((unsub) => unsub())
+      unsubs.clear()
     }
   }, [])
 
@@ -124,6 +132,14 @@ export default function ChatsManagementSection({
 
     return () => unsubscribe()
   }, [selectedConversation, onUnreadCountChange])
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToBottom()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [messages])
 
   const activeConversationCount = useMemo(
     () => conversations.filter((conv) => conv.status !== 'archived' && conv.status !== 'deleted').length,
@@ -223,7 +239,7 @@ export default function ChatsManagementSection({
     setIsBulkDeleteMode(false)
   }, [conversations, focusRequest])
 
-  const handleConversationStatusChange = async (conversationId, status) => {
+  const handleConversationStatusChange = useCallback(async (conversationId, status) => {
     try {
       await updateDoc(doc(db, 'conversations', conversationId), {
         status,
@@ -252,7 +268,7 @@ export default function ChatsManagementSection({
     } catch (error) {
       console.error(`Error updating conversation status to ${status}:`, error)
     }
-  }
+  }, [selectedConversation])
 
   const formatDate = (date) => {
     if (!date) return ''
@@ -274,18 +290,6 @@ export default function ChatsManagementSection({
     if (!date) return ''
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
   }
-
-  const toggleConversationSelection = useCallback((conversationId) => {
-    setSelectedConversationIds((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(conversationId)) {
-        newSet.delete(conversationId)
-      } else {
-        newSet.add(conversationId)
-      }
-      return newSet
-    })
-  }, [])
 
   const toggleSelectAll = useCallback(() => {
     if (selectedConversationIds.size === filteredConversations.length) {
@@ -341,7 +345,7 @@ export default function ChatsManagementSection({
 
     setDeleteConfirmation(null)
     setIsBulkDeleteMode(false)
-  }, [deleteConfirmation])
+  }, [deleteConfirmation, handleConversationStatusChange])
 
   return (
     <div className={`chats-management-container ${!isDarkMode ? 'light-mode' : ''}`}>
@@ -439,63 +443,106 @@ export default function ChatsManagementSection({
             </div>
           ) : filteredConversations.length ? (
             filteredConversations.map((conv) => {
-              const lastMessage = conversationLastMessages[conv.id] || { text: 'No messages yet' }
+              const lastMessage = conversationLastMessages[conv.id] || {}
               const isSelected = selectedConversation?.id === conv.id
               const isChecked = selectedConversationIds.has(conv.id)
-              const initials = (conv.userName || 'U').split(' ').map(n => n[0]).join('').toUpperCase()
 
               return (
                 <div
                   key={conv.id}
-                  onClick={() => setSelectedConversation(conv)}
-                  className={`conversation-item ${isSelected ? 'active' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+                  onClick={() => {
+                    if (!isBulkDeleteMode) {
                       setSelectedConversation(conv)
+                    } else {
+                      // Toggle selection in bulk delete mode
+                      const newSet = new Set(selectedConversationIds)
+                      if (newSet.has(conv.id)) {
+                        newSet.delete(conv.id)
+                      } else {
+                        newSet.add(conv.id)
+                      }
+                      setSelectedConversationIds(newSet)
                     }
                   }}
+                  className={`w-full border-b px-4 py-3 transition text-left cursor-pointer ${
+                    isBulkDeleteMode
+                      ? isChecked
+                        ? 'bg-red-600/20 border-red-600/50'
+                        : 'hover:bg-red-600/10 border-slate-800'
+                      : isSelected
+                        ? 'bg-slate-800 border-slate-700'
+                        : 'hover:bg-slate-800/50 border-slate-800'
+                  }`}
+                  role="button"
+                  tabIndex={0}
                 >
-                  <div className="conversation-avatar">
-                    {initials}
-                  </div>
-                  <div className="conversation-content">
-                    <div className="conversation-header">
-                      <h4 className="conversation-name">{conv.userName}</h4>
-                      <span className="conversation-time">{formatDate(conv.updatedAt?.toDate?.(new Date()))}</span>
-                    </div>
-                    <p className="conversation-preview">{lastMessage?.text || 'No messages yet'}</p>
-                  </div>
-                  {!isBulkDeleteMode && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteChatClick(conv.id, e)
-                      }}
-                      className="mt-2.5 shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-400 transition hover:bg-red-600/20 hidden group-hover:block"
-                      title="Delete conversation"
-                    >
-                      <DeleteRoundedIcon sx={{ fontSize: 18 }} />
-                    </button>
-                  )}
-                  {isBulkDeleteMode && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        toggleConversationSelection(conv.id)
-                      }}
-                      className="mt-0.5 shrink-0 text-white/60 transition hover:text-white"
-                    >
-                      {isChecked ? (
-                        <CheckboxOutlinedIcon sx={{ fontSize: 20 }} />
+                  <div className="flex items-start gap-3">
+                    {isBulkDeleteMode && (
+                      <div className="mt-1">
+                        {isChecked ? (
+                          <CheckboxOutlinedIcon sx={{ fontSize: 20 }} className="text-red-600" />
+                        ) : (
+                          <CheckBoxOutlineBlankIcon sx={{ fontSize: 20 }} className="text-white/40" />
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="shrink-0">
+                      {conv.otherUserAvatar ? (
+                        <img
+                          src={conv.otherUserAvatar}
+                          alt={conv.userName}
+                          className="w-12 h-12 rounded-full object-cover border border-red-600"
+                        />
                       ) : (
-                        <CheckBoxOutlineBlankIcon sx={{ fontSize: 20 }} />
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-700">
+                          {(conv.userName || 'U').charAt(0).toUpperCase()}
+                        </div>
                       )}
-                    </button>
-                  )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate ${
+                        isBulkDeleteMode
+                          ? isChecked
+                            ? 'text-white'
+                            : 'text-slate-400'
+                          : isSelected
+                            ? 'text-white'
+                            : 'text-white'
+                      }`}>
+                        {conv.userName || 'Unknown User'}
+                      </p>
+                      <p className={`text-xs truncate mt-1 ${
+                        isBulkDeleteMode
+                          ? isChecked
+                            ? 'text-slate-300'
+                            : 'text-slate-500'
+                          : isSelected
+                            ? 'text-slate-300'
+                            : 'text-slate-400'
+                      }`}>
+                        {lastMessage?.text || 'No messages yet'}
+                      </p>
+                      <p className="text-xs mt-1 text-slate-500">
+                        {formatDate(conv.updatedAt?.toDate?.() || new Date())}
+                      </p>
+                    </div>
+                    
+                    {!isBulkDeleteMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteChatClick(conv.id, e)
+                        }}
+                        className="shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-400 transition hover:bg-red-600/20"
+                        title="Delete conversation"
+                      >
+                        <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )
             })
@@ -555,24 +602,59 @@ export default function ChatsManagementSection({
             {/* Messages */}
             <div className="messages-container">
               {messages.length ? (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`message-bubble ${message.type === 'user' ? 'user-message' : 'admin-message'}`}
-                  >
-                    <div className="message-content">
-                      <div className="text-xs font-semibold text-neutral-300 mb-1">{message.senderName}</div>
-                      <p className="text-sm leading-relaxed">{message.text}</p>
-                      <div className="text-xs mt-2 opacity-75">{formatTime(message.timestamp)}</div>
+                messages.map((message, index) => {
+                  const showAvatar = index === 0 || messages[index - 1]?.senderId !== message.senderId
+                  const isAdminMessage = message.sender === 'admin' || message.type === 'admin'
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex gap-2 mb-4 ${isAdminMessage ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {!isAdminMessage && (
+                        <div className="shrink-0">
+                          {showAvatar ? (
+                            message.senderAvatar ? (
+                              <img
+                                src={message.senderAvatar}
+                                alt={message.senderName}
+                                className="w-8 h-8 rounded-full object-cover border border-red-600"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold bg-slate-700">
+                                {message.senderName?.charAt(0).toUpperCase() || 'U'}
+                              </div>
+                            )
+                          ) : (
+                            <div className="w-8" />
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className={`max-w-xs ${isAdminMessage ? 'flex-row-reverse' : ''}`}>
+                        <div
+                          className={`rounded-lg px-4 py-2 ${
+                            isAdminMessage
+                              ? 'bg-red-600 text-white rounded-br-none'
+                              : 'bg-slate-800 text-white rounded-bl-none'
+                          }`}
+                        >
+                          <p className="text-sm">{message.text}</p>
+                        </div>
+                        <p className={`text-xs mt-1 text-slate-500 ${isAdminMessage ? 'text-right' : 'text-left'}`}>
+                          {formatTime(message.timestamp)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <div className="text-center text-neutral-500 pt-8">
                   <SmartToyRoundedIcon sx={{ fontSize: 40 }} className="mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No messages in this conversation</p>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Response Input */}
@@ -581,17 +663,24 @@ export default function ChatsManagementSection({
                 value={responseText}
                 onChange={(e) => setResponseText(e.target.value)}
                 placeholder={selectedConversation.status === 'archived' ? 'Restore this conversation to reply...' : 'Type your response...'}
-                rows="3"
+                rows="2"
                 disabled={selectedConversation.status === 'archived'}
-                className="flex-1 resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-neutral-500 focus:border-red-600/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                className="resize-none rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-neutral-500 focus:border-red-600/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
               />
+              <button
+                type="button"
+                className="p-2 text-white/60 hover:text-red-600 transition"
+                title="Emoji"
+              >
+                <EmojiEmotionsRoundedIcon sx={{ fontSize: 20 }} />
+              </button>
               <button
                 onClick={handleSendResponse}
                 disabled={isSending || !responseText.trim() || selectedConversation.status === 'archived'}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-red-600 py-2 font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                className="p-2 text-white/60 hover:text-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isSending ? 'Sending...' : 'Send'}
               >
-                <SendRoundedIcon sx={{ fontSize: 18 }} />
-                {isSending ? 'Sending...' : 'Send Response'}
+                <SendRoundedIcon sx={{ fontSize: 20 }} />
               </button>
             </div>
           </>

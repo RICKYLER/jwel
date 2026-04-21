@@ -7,7 +7,7 @@ import TrendingFlatIcon from '@mui/icons-material/TrendingFlat'
 import { auth, db } from '../../firebase'
 import NavHeaderCustomer from './components/NavHeaderCustomer'
 
-export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, productId, onNavigateToService, onNavigateToProfile, onNavigateToConfirmApplication }) {
+export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, productId, onNavigateToService, onNavigateToMessages, onNavigateToProfile, onNavigateToConfirmApplication }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [userProfileComplete, setUserProfileComplete] = useState(true)
   const [unreadNotifications] = useState([
@@ -282,13 +282,13 @@ export default function FinancingPage({ currentUser, onNavigateBack, onSignOut, 
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         activePage="financing"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateBack}
         onNavigateToService={onNavigateToService}
         onNavigateToFinancing={() => {}}
         onNavigateToFinancingStatus={() => {}}
+        onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
         onSignOut={currentUser ? handleLogout : null}
         userAvatar={userAvatar}

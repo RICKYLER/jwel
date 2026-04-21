@@ -30,10 +30,11 @@ export default function CustomerServicePage({
   onNavigateToShowroom,
   onNavigateToFinancing,
   onNavigateToFinancingStatus,
+  onNavigateToMessages,
   onNavigateToProfile,
   onNavigateBack,
 }) {
-  const [isDarkMode, setIsDarkMode] = useState(true)
+  const [isDarkMode] = useState(true)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeStep, setActiveStep] = useState('service-type')
   const [selectedService, setSelectedService] = useState(null)
@@ -433,13 +434,13 @@ export default function CustomerServicePage({
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         activePage="service"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateToShowroom}
         onNavigateToService={onNavigateBack}
         onNavigateToFinancing={onNavigateToFinancing}
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
+        onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
         onSignOut={onSignOut}
       />

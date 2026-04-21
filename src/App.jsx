@@ -20,6 +20,7 @@ import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import CustomerServicePage from './pages/customer/CustomerServicePage'
+import CustomerMessagesPage from './pages/customer/CustomerMessagesPage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
 import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
@@ -363,7 +364,6 @@ function App() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [isAuthInitializing, setIsAuthInitializing] = useState(true)
   const [isAccessResolving, setIsAccessResolving] = useState(false)
-  const [isLoadingScreenComplete, setIsLoadingScreenComplete] = useState(false)
   const [authMessage, setAuthMessage] = useState(null)
   const [authForm, setAuthForm] = useState({
     fullName: '',
@@ -1210,6 +1210,7 @@ function App() {
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onSignOut={currentUser ? handleSignOut : null}
       />,
@@ -1226,6 +1227,7 @@ function App() {
           navigateTo('/financing')
         }}
         onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToFinancingStatus={(referenceId) => {
           setPendingApplicationData(null)
           navigateTo(`/financing/status/${encodeURIComponent(referenceId)}`)
@@ -1250,6 +1252,7 @@ function App() {
         onSignOut={currentUser ? handleSignOut : null}
         productId={financingProductId}
         onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateToConfirmApplication={(applicationData) => {
           setPendingApplicationData(applicationData)
@@ -1275,6 +1278,7 @@ function App() {
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateBack={() => goToHomeSection('home', 'Home')}
       />,
@@ -1292,8 +1296,26 @@ function App() {
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateBack={() => navigateTo('/customer')}
+      />,
+    )
+  }
+
+  // Customer Messages Page Route
+  if (currentPath === '/customer/messages' && currentUser && accessProfile.role === 'customer') {
+    return withSecurityModal(
+      <CustomerMessagesPage
+        currentUser={currentUser}
+        isDarkMode={true}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onSignOut={handleSignOut}
       />,
     )
   }
@@ -1326,6 +1348,7 @@ function App() {
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onSignOut={handleSignOut}
       />,

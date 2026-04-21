@@ -14,12 +14,9 @@ export default function InventoryDeleteArchivedSection({
   canDeletePermanently = false,
   handleCollectionUpdate,
   formatDate,
-  formatCurrency,
   isDarkMode = true,
-  currentUser = null,
   currentAccessRole = null,
 }) {
-  const [searchTerm, setSearchTerm] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null, itemName: '' })
   const [isDeleting, setIsDeleting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -31,21 +28,18 @@ export default function InventoryDeleteArchivedSection({
   const canShowDeleteButton = canDeletePermanently || isAdmin || isSuperAdmin
   const canShowRestoreButton = isSuperAdmin
   
-  const normalizedSearchTerm = normalizeText(searchTerm)
+  const normalizedSearchTerm = ''
 
   const filteredItems = useMemo(() => {
     return deletedItems.filter((item) => {
-      const searchHaystack = normalizeText(
-        `${item.name || ''} ${item.model || ''} ${item.category || ''}`
-      )
-      return !searchTerm || searchHaystack.includes(normalizedSearchTerm)
+      return true
     })
-  }, [deletedItems, searchTerm])
+  }, [deletedItems])
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm])
+  }, [])
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -55,14 +49,14 @@ export default function InventoryDeleteArchivedSection({
   }, [filteredItems, startIndex, endIndex])
 
   const handlePermanentDelete = (itemId, itemName) => {
-    if (!actualCanDelete) {
+    if (!canShowDeleteButton) {
       return
     }
     setConfirmModal({ open: true, action: 'permanent-delete', itemId, itemName })
   }
 
   const handleRestore = (itemId, itemName) => {
-    if (!actualCanDelete) {
+    if (!canShowRestoreButton) {
       return
     }
     setConfirmModal({ open: true, action: 'restore', itemId, itemName })
@@ -78,7 +72,7 @@ export default function InventoryDeleteArchivedSection({
         // Restore item to inventory
         const itemToRestore = deletedItems.find(item => item.id === itemId)
         if (itemToRestore) {
-          const { id, deletedAt, deletedBy, ...itemData } = itemToRestore
+          const { id, ...itemData } = itemToRestore
           await setDoc(doc(db, 'inventory', id), {
             ...itemData,
             updatedAt: serverTimestamp(),
@@ -179,9 +173,7 @@ export default function InventoryDeleteArchivedSection({
               ))
             ) : (
               <div className={`text-center py-8 text-sm ${!isDarkMode ? 'text-gray-500' : 'text-white/50'}`}>
-                {searchTerm
-                  ? 'No deleted items match your search.'
-                  : 'No deleted items yet. Items deleted by users are archived here.'}
+                No deleted items yet. Items deleted by users are archived here.
               </div>
             )}
           </div>

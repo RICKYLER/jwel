@@ -405,3 +405,18 @@
 [data-theme='light'] .superadmin-shell .outline-brand {
   outline: 2px solid #C51D34;
 }
+
+/* ChatsManagementSection Integration */
+.superadmin-main .chats-management-container {
+  margin: -1.5rem -1rem -3rem -1rem;
+  padding: 0 !important;
+  width: calc(100% + 2rem);
+  /* More conservative height to ensure input is visible */
+  height: 70vh;
+  max-height: none;
+  min-height: auto;
+  display: grid;
+  grid-template-rows: 1fr;
+  grid-template-columns: 320px 1fr;
+  overflow: hidden;
+}

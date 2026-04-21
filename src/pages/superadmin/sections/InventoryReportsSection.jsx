@@ -6,7 +6,7 @@ import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import CloudDownloadRoundedIcon from '@mui/icons-material/CloudDownloadRounded'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import 'jspdf-autotable'
 import './InventoryReportsSection.css'
 
 const reportTabs = [
@@ -21,14 +21,12 @@ export default function InventoryReportsSection({
   inventoryLogs = [],
   formatDate,
   formatCurrency,
-  currentUser,
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const [actionMenuOpen, setActionMenuOpen] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const reportsPerPage = 15
 
@@ -71,6 +69,7 @@ export default function InventoryReportsSection({
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, searchTerm, dateFrom, dateTo])
 
   const totalPages = Math.ceil(filteredLogs.length / reportsPerPage)
@@ -136,7 +135,7 @@ export default function InventoryReportsSection({
   const handleExportPDF = () => {
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
+    const _pageHeight = doc.internal.pageSize.getHeight()
 
     // Add title
     doc.setFontSize(16)

@@ -7,7 +7,6 @@ export default function DashboardSection({
   serviceRequests,
   setActiveSection,
   getStatusClasses,
-  isDarkMode = true,
 }) {
   return (
     <div className="dashboard-section space-y-12">

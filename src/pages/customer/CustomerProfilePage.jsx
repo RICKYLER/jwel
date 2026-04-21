@@ -23,7 +23,7 @@ const PASSWORD_REQUIREMENTS = [
   { label: 'At least one special character (!@#$%^&*)', regex: /[!@#$%^&*()_+\-={}|:;"'<>,.?]/ },
 ]
 
-export default function CustomerProfilePage({ currentUser, onNavigateBack, onNavigateToShowroom, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onSignOut }) {
+export default function CustomerProfilePage({ currentUser, onNavigateBack, onNavigateToShowroom, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToProfile, onSignOut }) {
   const toast = useToast()
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
@@ -415,13 +415,13 @@ export default function CustomerProfilePage({ currentUser, onNavigateBack, onNav
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         activePage="profile"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateToShowroom}
         onNavigateToService={onNavigateToService}
         onNavigateToFinancing={onNavigateToFinancing}
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
+        onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
         onSignOut={onSignOut}
         userAvatar={avatarUrl}

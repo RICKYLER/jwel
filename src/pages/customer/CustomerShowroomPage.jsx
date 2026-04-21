@@ -17,7 +17,7 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToProfile, onNavigateBack }) {
+export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigateToProduct, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToProfile, onNavigateBack }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [unreadNotifications] = useState([
@@ -203,13 +203,13 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
         activePage="showroom"
         unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateBack}
         onNavigateToService={onNavigateToService}
         onNavigateToFinancing={onNavigateToFinancing}
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
+        onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
         onSignOut={onSignOut}
         userAvatar={userAvatar}
@@ -347,7 +347,7 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Need Help?</p>
                     <h3 className="text-2xl font-black uppercase text-white leading-tight">Find Your Match</h3>
                     <p className="text-sm text-slate-300">Our experts are ready to help you choose the right ride.</p>
-                    <button onClick={() => setIsChatOpen(true)} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 text-[11px] font-black uppercase tracking-[0.18em] transition rounded-sm">
+                    <button onClick={onNavigateToMessages} className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 text-[11px] font-black uppercase tracking-[0.18em] transition rounded-sm">
                       Chat With Us
                     </button>
                   </div>
