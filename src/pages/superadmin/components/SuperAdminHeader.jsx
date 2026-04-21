@@ -23,7 +23,7 @@ export default function SuperAdminHeader({
       <button
         type="button"
         onClick={onToggleSidebar}
-        className="superadmin-mobile-toggle superadmin-topbar-icon mr-3 inline-flex rounded-full border border-white/10 bg-white/5 p-2 lg:hidden"
+        className="superadmin-mobile-toggle superadmin-topbar-icon mr-3 inline-flex rounded-full border border-white/10 bg-white/5 p-2"
         aria-label="Toggle menu"
       >
         <MenuRoundedIcon sx={{ fontSize: 20 }} />

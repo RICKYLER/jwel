@@ -61,7 +61,7 @@ export default function SuperAdminSidebar({
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 px-2">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-2 scrollbar-hide">
           {sidebarItems.map((item) => {
             const Icon = item.icon
             const isActive = activeSection === item.id

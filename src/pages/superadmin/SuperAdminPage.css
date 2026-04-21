@@ -13,6 +13,16 @@
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+/* Scrollbar hiding utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 [data-theme='light'] .superadmin-shell,
 .superadmin-shell[data-theme='light'] {
   --superadmin-bg: #F5F5F5;
@@ -24,7 +34,7 @@
   --superadmin-text-muted: rgba(46, 46, 48, 0.82);
   --superadmin-text-soft: rgba(46, 46, 48, 0.68);
   color: var(--superadmin-text);
-  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
+  background: #F5F5F5;
 }
 
 .superadmin-sidebar {
@@ -100,6 +110,11 @@
   min-height: 100vh;
   background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
   transition: background-color 0.25s ease;
+}
+
+[data-theme='light'] .superadmin-content,
+.superadmin-content[data-theme='light'] {
+  background: #F5F5F5;
 }
 
 .superadmin-topbar {
@@ -248,13 +263,7 @@
 }
 
 .superadmin-mobile-toggle {
-  display: inline-flex;
-}
-
-@media (min-width: 1024px) {
-  .superadmin-mobile-toggle {
-    display: none;
-  }
+  display: inline-flex !important;
 }
 
 @media (max-width: 1023px) {
@@ -266,11 +275,52 @@
   .superadmin-topbar {
     position: sticky !important;
     width: 100% !important;
+    height: auto;
+    min-height: 4rem;
+    flex-wrap: wrap;
   }
 
   .superadmin-main {
     margin-left: 0 !important;
-    padding-top: 1.5rem !important;
+    padding-top: 1rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .superadmin-topbar {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .superadmin-main {
+    padding: 0.75rem 0.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .superadmin-topbar {
+    padding: 0.5rem 0.75rem !important;
+    height: auto;
+  }
+
+  .superadmin-main {
+    padding: 0.5rem !important;
+  }
+
+  .superadmin-sidebar {
+    width: 100vw !important;
+    max-width: 85vw !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .superadmin-topbar {
+    padding: 0.5rem !important;
+  }
+
+  .superadmin-main {
+    padding: 0.25rem !important;
   }
 }
 
@@ -279,4 +329,79 @@
 [data-theme='light'] .superadmin-shell .text-emerald-300,
 [data-theme='light'] .superadmin-shell .text-emerald-400 {
   filter: saturate(1.1);
+}
+
+/* Outline styling - Enhanced visibility */
+.superadmin-shell [class*="outline"] {
+  outline-style: solid;
+  transition: outline-color 0.2s ease, outline-width 0.2s ease;
+}
+
+/* Dark mode outlines */
+[data-theme='dark'] .superadmin-shell .focus-outline,
+[data-theme='dark'] .superadmin-shell .focus-ring,
+[data-theme='dark'] .superadmin-shell button:focus-visible,
+[data-theme='dark'] .superadmin-shell input:focus-visible {
+  outline: 2px solid rgba(197, 29, 52, 0.8);
+  outline-offset: 2px;
+}
+
+/* Light mode outlines - Increased visibility */
+[data-theme='light'] .superadmin-shell .focus-outline,
+[data-theme='light'] .superadmin-shell .focus-ring,
+[data-theme='light'] .superadmin-shell button:focus-visible,
+[data-theme='light'] .superadmin-shell input:focus-visible,
+[data-theme='light'] .superadmin-shell select:focus-visible,
+[data-theme='light'] .superadmin-shell textarea:focus-visible {
+  outline: 2px solid #C51D34;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(197, 29, 52, 0.1);
+}
+
+/* Light mode link focus */
+[data-theme='light'] .superadmin-shell a:focus-visible,
+[data-theme='light'] .superadmin-shell [role="link"]:focus-visible {
+  outline: 2px dashed #C51D34;
+  outline-offset: 3px;
+}
+
+/* Icon button outline - Light mode */
+[data-theme='light'] .superadmin-shell button.icon-button:focus-visible,
+[data-theme='light'] .superadmin-shell .superadmin-topbar-icon:focus-visible,
+[data-theme='light'] .superadmin-shell .superadmin-sidebar-action:focus-visible {
+  outline: 2px solid #C51D34;
+  outline-offset: 2px;
+}
+
+/* Outline variant classes */
+.superadmin-shell .outline-light {
+  outline: 1px solid rgba(46, 46, 48, 0.2);
+}
+
+.superadmin-shell .outline-standard {
+  outline: 2px solid rgba(46, 46, 48, 0.4);
+}
+
+.superadmin-shell .outline-heavy {
+  outline: 2px solid rgba(46, 46, 48, 0.6);
+}
+
+.superadmin-shell .outline-brand {
+  outline: 2px solid #C51D34;
+}
+
+[data-theme='light'] .superadmin-shell .outline-light {
+  outline: 1px solid rgba(46, 46, 48, 0.3);
+}
+
+[data-theme='light'] .superadmin-shell .outline-standard {
+  outline: 2px solid rgba(46, 46, 48, 0.5);
+}
+
+[data-theme='light'] .superadmin-shell .outline-heavy {
+  outline: 2px solid rgba(46, 46, 48, 0.7);
+}
+
+[data-theme='light'] .superadmin-shell .outline-brand {
+  outline: 2px solid #C51D34;
 }

@@ -141,10 +141,10 @@ body.kinetic-scroll-lock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   padding: 24px;
   overflow: hidden;
-  padding-top: 64px;
+  min-height: 100vh;
 }
 
 /* Header */
@@ -155,7 +155,6 @@ body.kinetic-scroll-lock {
   align-items: center;
   gap: 8px;
   animation: fade-in-up 0.8s ease-out;
-  margin-bottom: 48px;
   flex-shrink: 0;
 }
 
@@ -199,7 +198,7 @@ body.kinetic-scroll-lock {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 64px;
+  gap: 48px;
   animation: fade-in-up 1s ease-out 0.2s both;
   flex: 1;
   justify-content: center;
@@ -318,6 +317,7 @@ body.kinetic-scroll-lock {
 .kinetic-glass-panel {
   width: 100%;
   max-width: 480px;
+  min-width: 280px;
   padding: 32px;
   background: rgba(30, 41, 59, 0.62);
   backdrop-filter: blur(20px);
@@ -329,6 +329,7 @@ body.kinetic-scroll-lock {
   flex-direction: column;
   gap: 24px;
   animation: fade-in-up 1.2s ease-out 0.4s both;
+  flex-shrink: 1;
 }
 
 /* Panel Header */
@@ -455,7 +456,6 @@ body.kinetic-scroll-lock {
   opacity: 0.4;
   animation: fade-in-up 1.4s ease-out 0.6s both;
   flex-shrink: 0;
-  margin-top: auto;
 }
 
 .kinetic-footer-item {
@@ -491,13 +491,32 @@ body.kinetic-scroll-lock {
 }
 
 /* Responsive */
+@media (max-height: 720px) {
+  .kinetic-spinner-container {
+    width: 180px;
+    height: 180px;
+  }
+
+  .kinetic-motorcycle-icon {
+    font-size: 44px;
+  }
+
+  .kinetic-loading-cluster {
+    gap: 40px;
+  }
+
+  .kinetic-glass-panel {
+    padding: 24px;
+  }
+}
+
 @media (max-width: 768px) {
   .kinetic-brand-title {
     font-size: 24px;
   }
 
   .kinetic-loading-cluster {
-    gap: 48px;
+    gap: 40px;
   }
 
   .kinetic-spinner-container {
@@ -515,12 +534,8 @@ body.kinetic-scroll-lock {
   }
 
   .kinetic-footer {
-    padding: 24px;
+    padding: 20px 32px;
     font-size: 12px;
-  }
-
-  .kinetic-main-content {
-    padding-top: 48px;
   }
 }
 
@@ -550,6 +565,202 @@ body.kinetic-scroll-lock {
   .kinetic-glow-pulse {
     width: 400px;
     height: 400px;
+  }
+
+  .kinetic-loading-cluster {
+    gap: 32px;
+  }
+
+  .kinetic-main-content {
+    padding: 16px;
+  }
+
+  .kinetic-footer {
+    padding: 16px 24px;
+    font-size: 11px;
+  }
+
+  .kinetic-metadata-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kinetic-glass-panel {
+    padding: 20px;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .kinetic-brand-title {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .kinetic-brand-tagline {
+    font-size: 8px;
+  }
+
+  .kinetic-spinner-container {
+    width: 140px;
+    height: 140px;
+  }
+
+  .kinetic-motorcycle-icon {
+    font-size: 32px;
+  }
+
+  .kinetic-outer-ring {
+    border-width: 3px;
+  }
+
+  .kinetic-spinner-edge {
+    border-top-width: 3px;
+  }
+
+  .kinetic-needle {
+    width: 3px;
+    height: 80px;
+    transform: translateY(-40px);
+  }
+
+  .kinetic-panel-title {
+    font-size: 14px;
+  }
+
+  .kinetic-status-label {
+    font-size: 9px;
+  }
+
+  .kinetic-progress-number {
+    font-size: 20px;
+  }
+
+  .kinetic-progress-unit {
+    font-size: 10px;
+  }
+
+  .kinetic-glow-pulse {
+    width: 300px;
+    height: 300px;
+  }
+
+  .kinetic-loading-cluster {
+    gap: 24px;
+  }
+
+  .kinetic-main-content {
+    padding: 12px;
+  }
+
+  .kinetic-footer {
+    padding: 12px 16px;
+    font-size: 9px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .kinetic-footer-item {
+    gap: 2px;
+  }
+
+  .kinetic-footer-label {
+    font-size: 8px;
+  }
+
+  .kinetic-footer-value {
+    font-size: 9px;
+  }
+
+  .kinetic-metadata-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-top: 8px;
+  }
+
+  .kinetic-metadata-item {
+    gap: 8px;
+  }
+
+  .kinetic-metadata-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .kinetic-metadata-item p {
+    font-size: 9px;
+  }
+
+  .kinetic-glass-panel {
+    padding: 16px;
+    max-width: 100%;
+    min-width: 280px;
+    gap: 16px;
+  }
+
+  .kinetic-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .kinetic-progress-bar-wrapper {
+    height: 6px;
+  }
+
+  .kinetic-speed-line:nth-child(1) {
+    width: 32px;
+  }
+
+  .kinetic-speed-line:nth-child(2) {
+    width: 56px;
+  }
+
+  .kinetic-speed-line:nth-child(3) {
+    width: 48px;
+  }
+}
+
+@media (max-width: 380px) {
+  .kinetic-brand-title {
+    font-size: 14px;
+  }
+
+  .kinetic-spinner-container {
+    width: 120px;
+    height: 120px;
+  }
+
+  .kinetic-motorcycle-icon {
+    font-size: 28px;
+  }
+
+  .kinetic-glow-pulse {
+    width: 240px;
+    height: 240px;
+  }
+
+  .kinetic-glass-panel {
+    padding: 12px;
+    min-width: auto;
+  }
+
+  .kinetic-main-content {
+    padding: 8px;
+  }
+
+  .kinetic-panel-title {
+    font-size: 12px;
+  }
+
+  .kinetic-progress-number {
+    font-size: 18px;
+  }
+
+  .kinetic-footer {
+    padding: 8px 12px;
+    font-size: 8px;
   }
 }
 

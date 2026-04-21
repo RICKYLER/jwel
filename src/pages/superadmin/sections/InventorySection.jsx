@@ -62,7 +62,7 @@ export default function InventorySection({
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false)
   const [isAddSparepartsModalOpen, setIsAddSparepartsModalOpen] = useState(false)
@@ -78,7 +78,6 @@ export default function InventorySection({
   const [galleryFiles, setGalleryFiles] = useState([])
   const [galleryPreviews, setGalleryPreviews] = useState([])
   const [formMessage, setFormMessage] = useState(null)
-  const [actionMenuOpen, setActionMenuOpen] = useState(null)
   const [stockUpdates, setStockUpdates] = useState({})
   const [editFormData, setEditFormData] = useState({})
   const [selectedModel, setSelectedModel] = useState(null)
@@ -759,7 +758,7 @@ export default function InventorySection({
   }
 
   return (
-    <section className="inventory-control-shell space-y-6">
+    <section className={`inventory-control-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="inventory-control-header flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="inventory-control-title font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
@@ -846,15 +845,15 @@ export default function InventorySection({
           </div>
         </div>
 
-        <div className="hidden grid-cols-[0.8fr_0.8fr_1fr_2fr_1.1fr_1.1fr_1fr_0.8fr] gap-3 border-b border-white/5 px-3 py-3 text-[10px] font-black uppercase tracking-[0.24em] text-white/35 md:grid">
-          <span>Image</span>
-          <span>Code</span>
-          <span>Category</span>
-          <span>Name / Model</span>
-          <span>Stock Level</span>
-          <span>Status</span>
-          <span>Price</span>
-          <span className="text-right">Actions</span>
+        <div className="hidden grid-cols-[0.8fr_0.8fr_1fr_2fr_1.1fr_1.1fr_1fr_0.8fr] gap-3 border-b border-white/5 px-3 py-3 md:grid">
+          <span className="inventory-header-badge">Image</span>
+          <span className="inventory-header-badge">Code</span>
+          <span className="inventory-header-badge">Category</span>
+          <span className="inventory-header-badge">Name / Model</span>
+          <span className="inventory-header-badge">Stock Level</span>
+          <span className="inventory-header-badge">Status</span>
+          <span className="inventory-header-badge">Price</span>
+          <span className="inventory-header-badge text-right">Actions</span>
         </div>
 
         <div className="divide-y divide-white/5">
@@ -921,56 +920,41 @@ export default function InventorySection({
                   <p className="text-sm font-bold text-white">{formatCurrency(item.price ?? 0)}</p>
                 </div>
 
-                <div className="relative">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setActionMenuOpen(actionMenuOpen === item.id ? null : item.id)}
-                    className="inventory-action-button inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10 transition-colors"
-                    aria-label={`Actions for ${item.name || item.id}`}
+                    onClick={() => {
+                      setEditingItem(item)
+                      setEditFormData({})
+                      setEditImageFile(null)
+                      setEditImagePreview('')
+                      setEditGalleryFiles([])
+                      setEditGalleryPreviews([])
+                      setEditSelectedColorForVariant(null)
+                      setEditColorVariantStock('')
+                      const modelItem = models.find(m => m.id === item.modelId)
+                      const variantItem = variants.find(v => v.id === item.variantId)
+                      setEditSelectedModel(modelItem || null)
+                      setEditSelectedVariant(variantItem || null)
+                      setConfirmModal({ open: true, action: 'edit-confirm', itemId: item.id, itemName: item.name, item })
+                    }}
+                    className="inventory-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+                    title={`Edit ${item.name || item.id}`}
+                    aria-label={`Edit ${item.name || item.id}`}
                   >
-                    <MoreVertRoundedIcon sx={{ fontSize: 18 }} />
+                    <EditRoundedIcon sx={{ fontSize: 16 }} />
                   </button>
-                  
-                  {actionMenuOpen === item.id && (
-                    <div className="inventory-action-dropdown absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-lg z-10 overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingItem(item)
-                          setEditFormData({})
-                          setEditImageFile(null)
-                          setEditImagePreview('')
-                          setEditGalleryFiles([])
-                          setEditGalleryPreviews([])
-                          setEditSelectedColorForVariant(null)
-                          setEditColorVariantStock('')
-                          const modelItem = models.find(m => m.id === item.modelId)
-                          const variantItem = variants.find(v => v.id === item.variantId)
-                          setEditSelectedModel(modelItem || null)
-                          setEditSelectedVariant(variantItem || null)
-                          setConfirmModal({ open: true, action: 'edit-confirm', itemId: item.id, itemName: item.name, item })
-                          setActionMenuOpen(null)
-                        }}
-                        className="inventory-action-item inline-flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-colors"
-                        aria-label={`Edit ${item.name || item.id}`}
-                      >
-                        <EditRoundedIcon sx={{ fontSize: 14 }} />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfirmModal({ open: true, action: 'delete', itemId: item.id, itemName: item.name, item })
-                          setActionMenuOpen(null)
-                        }}
-                        className="inventory-action-item inline-flex items-center gap-2 w-full px-3 py-2 text-xs font-bold text-[#ff6a63] hover:bg-red-950/30 transition-colors"
-                        aria-label={`Delete ${item.name || item.id}`}
-                      >
-                        <DeleteOutlineRoundedIcon sx={{ fontSize: 14 }} />
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmModal({ open: true, action: 'delete', itemId: item.id, itemName: item.name, item })
+                    }}
+                    className="inventory-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-red-950/30 text-red-400 hover:text-red-300 transition-colors"
+                    title={`Delete ${item.name || item.id}`}
+                    aria-label={`Delete ${item.name || item.id}`}
+                  >
+                    <DeleteOutlineRoundedIcon sx={{ fontSize: 16 }} />
+                  </button>
                 </div>
               </div>
             )

@@ -11,6 +11,12 @@
   color: white;
 }
 
+.user-management-primary-action:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 16px 28px rgba(197, 29, 52, 0.36);
+}
+
 .user-stat-card {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
@@ -33,6 +39,43 @@
   justify-content: space-between;
   gap: 0.9rem;
   margin-bottom: 1rem;
+}
+
+.user-table-search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 0;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.user-table-search-bar svg {
+  position: absolute;
+  left: 0;
+  color: rgba(255, 255, 255, 0.38);
+  flex-shrink: 0;
+}
+
+.user-table-search-bar input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0 0 0 2rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.user-table-search-bar input::placeholder {
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.user-table-search-bar input:focus {
+  color: var(--text);
 }
 
 .user-table-search {
@@ -156,6 +199,13 @@
 .user-avatar {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.user-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .user-member-name {
@@ -424,32 +474,343 @@
   }
 }
 
-/* Light Mode Support */
-.user-management-shell.light-mode .user-stat-card,
-.user-management-shell.light-mode .user-table-shell {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+/* Light Mode Support - Comprehensive Theme Overrides */
+
+/* Light mode container styling */
+.user-management-shell.light-mode {
+  background: #F5F5F5;
+  color: #2E2E30;
 }
 
+.user-management-shell.light-mode .user-management-primary-action {
+  background: #C51D34 !important;
+  box-shadow: 0 16px 28px rgba(197, 29, 52, 0.28) !important;
+  color: #FFFFFF !important;
+  border: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.user-management-shell.light-mode .user-management-primary-action:hover:not(:disabled) {
+  background: #C51D34 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 16px 28px rgba(197, 29, 52, 0.36) !important;
+  opacity: 1 !important;
+}
+
+.user-management-shell.light-mode .user-management-primary-action:disabled {
+  opacity: 0.7 !important;
+}
+
+.user-management-shell.light-mode .user-stat-card {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(46, 46, 48, 0.08);
+}
+
+.user-management-shell.light-mode .user-table-shell {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(46, 46, 48, 0.08);
+}
+
+/* Text color overrides - Light mode */
 .user-management-shell.light-mode h2,
 .user-management-shell.light-mode h3,
 .user-management-shell.light-mode h4 {
-  color: #111827;
+  color: #2E2E30;
 }
 
 .user-management-shell.light-mode p {
-  color: #6b7280;
+  color: #555555;
 }
 
-.user-management-shell.light-mode  .user-table-search input {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
+.user-management-shell.light-mode .user-member-name {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-member-email,
+.user-management-shell.light-mode .user-activity-secondary {
+  color: #808080;
+}
+
+.user-management-shell.light-mode .user-activity-primary {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-table-header {
+  color: #555555;
+  border-bottom-color: #D0D0D0;
+}
+
+.user-management-shell.light-mode .user-table-row {
+  border-bottom-color: #D0D0D0;
+  background: #FAFAFA;
+}
+
+.user-management-shell.light-mode .user-table-row:last-child {
+  border-bottom-color: #D0D0D0;
+}
+
+/* Badge/Pill color overrides - Light mode */
+.user-management-shell.light-mode .user-role-pill,
+.user-management-shell.light-mode .user-status-pill {
+  border: 1px solid transparent;
+}
+
+/* Emerald status pills (active, approved, online, completed) */
+.user-management-shell.light-mode .text-emerald-400 {
+  color: #059669 !important;
+}
+
+.user-management-shell.light-mode .bg-emerald-500\/10 {
+  background-color: #ECFDF5 !important;
+}
+
+.user-management-shell.light-mode .border-emerald-500\/20 {
+  border: 1px solid #86EFAC !important;
+}
+
+/* Amber status pills (pending, busy, low stock) */
+.user-management-shell.light-mode .text-amber-400 {
+  color: #D97706 !important;
+}
+
+.user-management-shell.light-mode .bg-amber-500\/10 {
+  background-color: #FFFBEB !important;
+}
+
+.user-management-shell.light-mode .border-amber-500\/20 {
+  border: 1px solid #FCD34D !important;
+}
+
+/* Red status pills (in progress, rejected, out of stock) */
+.user-management-shell.light-mode .text-\[#ff8d8d\] {
+  color: #DC2626 !important;
+}
+
+.user-management-shell.light-mode .bg-\[#e10100\]\/10 {
+  background-color: #FEE2E2 !important;
+}
+
+.user-management-shell.light-mode .border-\[#e10100\]\/20 {
+  border: 1px solid #FECACA !important;
+}
+
+/* Slate status pills (default) */
+.user-management-shell.light-mode .text-slate-300 {
+  color: #475569 !important;
+}
+
+.user-management-shell.light-mode .bg-slate-500\/10 {
+  background-color: #F1F5F9 !important;
+}
+
+.user-management-shell.light-mode .border-slate-500\/20 {
+  border: 1px solid #CBD5E1 !important;
+}
+
+/* Input and select styling - Light mode */
+.user-management-shell.light-mode .user-table-search input {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  color: #2E2E30;
+  transition: all 0.3s ease;
+}
+
+.user-management-shell.light-mode .user-table-search input:focus {
+  border-color: #C51D34;
+  box-shadow: 0 0 0 3px rgba(197, 29, 52, 0.1);
+  outline: none;
 }
 
 .user-management-shell.light-mode .user-table-search input::placeholder {
-  color: #9ca3af;
+  color: #999999;
+}
+
+.user-management-shell.light-mode .user-table-search svg {
+  color: #999999;
+}
+
+.user-management-shell.light-mode .user-table-select {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-table-select:focus {
+  border-color: #C51D34;
+  outline: none;
+}
+
+/* Button styling - Light mode */
+.user-management-shell.light-mode .user-table-icon-button,
+.user-management-shell.light-mode .user-action-icon,
+.user-management-shell.light-mode .user-action-menu > summary {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-table-icon-button:hover,
+.user-management-shell.light-mode .user-action-icon:hover,
+.user-management-shell.light-mode .user-action-menu > summary:hover {
+  border-color: #C51D34;
+  color: #C51D34;
+  background: #FFF5F5;
+}
+
+.user-management-shell.light-mode .user-action-icon--danger {
+  border: 1px solid #FECACA;
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.user-management-shell.light-mode .user-action-icon--danger:hover {
+  border-color: #C51D34;
+  background: #C51D34;
+  color: #DC2626;
+}
+
+.user-management-shell.light-mode .user-action-icon:disabled,
+.user-management-shell.light-mode .user-table-icon-button:disabled {
+  opacity: 0.5;
+}
+
+/* Role menu dropdown - Light mode */
+.user-management-shell.light-mode .user-role-menu {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(46, 46, 48, 0.1);
+}
+
+.user-management-shell.light-mode .user-role-menu button {
+  color: #555555;
+}
+
+.user-management-shell.light-mode .user-role-menu button:hover,
+.user-management-shell.light-mode .user-role-menu button.is-selected {
+  background: #FFF5F5;
+  color: #C51D34;
+}
+
+/* Pagination - Light mode */
+.user-management-shell.light-mode .user-pagination-button {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-pagination-button:hover:not(:disabled) {
+  border-color: #C51D34;
+  background: #FFF5F5;
+  color: #C51D34;
+}
+
+.user-management-shell.light-mode .user-pagination-button.is-active {
+  border-color: #C51D34;
+  background: #C51D34;
+  color: #FFF;
+}
+
+.user-management-shell.light-mode .user-pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.user-management-shell.light-mode .user-table-search-bar {
+  border-bottom-color: #D0D0D0;
+}
+
+.user-management-shell.light-mode .user-table-search-bar svg {
+  color: #999999;
+}
+
+.user-management-shell.light-mode .user-table-search-bar input {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .user-table-search-bar input::placeholder {
+  color: #999999;
+}
+
+.user-management-shell.light-mode .user-table-footer {
+  color: #555555;
+  border-top: 1px solid #E0E0E0;
+}
+
+/* Archived users section - Light mode */
+.user-management-shell.light-mode .archived-users-shell {
+  border-top: 1px solid #E0E0E0;
+}
+
+.user-management-shell.light-mode .archived-users-header h3 {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .archived-users-kicker {
+  color: #C51D34;
+}
+
+.user-management-shell.light-mode .archived-users-header p:last-child {
+  color: #808080;
+}
+
+.user-management-shell.light-mode .archived-user-item {
+  border: 1px solid #E0E0E0;
+  background: #FAFAFA;
+}
+
+.user-management-shell.light-mode .archived-user-name {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .archived-user-meta,
+.user-management-shell.light-mode .archived-user-empty,
+.user-management-shell.light-mode .archived-user-view-only {
+  color: #999999;
+}
+
+.user-management-shell.light-mode .archived-user-delete {
+  border: 1px solid #FECACA;
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.user-management-shell.light-mode .archived-user-delete:hover:not(:disabled) {
+  border-color: #C51D34;
+  background: #C51D34;
+  color: #FFF;
+}
+
+/* Stat cards text - Light mode */
+.user-management-shell.light-mode .user-stat-card p {
+  color: #555555;
+}
+
+.user-management-shell.light-mode .user-stat-card h3,
+.user-management-shell.light-mode .user-stat-card .text-3xl {
+  color: #2E2E30;
+}
+
+/* No results message - Light mode */
+.user-management-shell.light-mode .rounded-xl {
+  color: #999999;
+}
+
+/* Confirmation dialog - Light mode */
+.user-management-shell.light-mode .confirmation-dialog {
+  background: #FFFFFF;
+  border: 1px solid #D0D0D0;
+  box-shadow: 0 10px 25px rgba(46, 46, 48, 0.12);
+}
+
+.user-management-shell.light-mode .confirmation-title {
+  color: #2E2E30;
+}
+
+.user-management-shell.light-mode .confirmation-message {
+  color: #555555;
 }
 
 /* Entrance Animations */

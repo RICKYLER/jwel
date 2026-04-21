@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase'
 import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded'
 import BuildCircleRoundedIcon from '@mui/icons-material/BuildCircleRounded'
@@ -45,7 +45,6 @@ export default function CustomerServicePage({
     model: '',
     year: new Date().getFullYear().toString(),
   })
-  const [loading, setLoading] = useState(true)
   const [unreadNotifications] = useState([
     { id: 1, title: 'New Service', message: 'New diagnostic tools available', timestamp: 'Just now', read: false },
     { id: 2, title: 'Promotions', message: '10% off on service packages', timestamp: '2 hours ago', read: true },
@@ -101,8 +100,6 @@ export default function CustomerServicePage({
         }
       } catch (error) {
         console.error('Error fetching vehicles:', error)
-      } finally {
-        setLoading(false)
       }
     }
 
@@ -114,10 +111,6 @@ export default function CustomerServicePage({
 
   const handleServiceSelect = (serviceId) => {
     setSelectedService(serviceId)
-  }
-
-  const handleStepChange = (stepId) => {
-    setActiveStep(stepId)
   }
 
   const handleContinue = () => {
@@ -141,13 +134,6 @@ export default function CustomerServicePage({
     }
   }
 
-  const handleBack = () => {
-    const stepIndex = bookingSteps.findIndex((step) => step.id === activeStep)
-    if (stepIndex > 0) {
-      setActiveStep(bookingSteps[stepIndex - 1].id)
-    }
-  }
-
   const handleScheduleService = () => {
     console.log('Scheduling service:', {
       service: selectedService,
@@ -161,55 +147,81 @@ export default function CustomerServicePage({
     switch (activeStep) {
       case 'service-type':
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Header */}
             <div>
-              <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                Select Maintenance Package
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic mb-3 tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                SELECT SERVICE
               </h2>
-              <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
-                {serviceOptions.length} Services Available
+              <p className={`text-sm font-bold uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
+                Maintain your edge with precision tuning.
               </p>
             </div>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+
+            {/* Service Grid */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
               {serviceOptions.map((service) => {
                 const isSelected = selectedService === service.id
                 return (
                   <button
                     key={service.id}
                     onClick={() => handleServiceSelect(service.id)}
-                    className={`rounded-xl overflow-hidden text-left transition-all border-2 ${
+                    className={`rounded-2xl text-left transition-all border relative overflow-hidden p-4 sm:p-5 min-h-60 sm:min-h-65 ${
                       isSelected
-                        ? 'border-red-600 bg-red-50 dark:bg-red-950/20'
+                        ? isDarkMode
+                          ? 'border-red-600 bg-[#171922] border-l-4 border-l-red-600'
+                          : 'border-red-600 bg-white border-l-4 border-l-red-600'
                         : isDarkMode
-                          ? 'border-white/10 bg-white/5 hover:bg-white/10'
+                          ? 'border-white/5 bg-[#171922] hover:bg-[#1b1e28]'
                           : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
                     }`}
                   >
-                    {/* Icon area */}
-                    <div className={`h-32 flex items-center justify-center ${
-                      isDarkMode ? 'bg-linear-to-br from-red-600/10 to-red-400/5' : 'bg-linear-to-br from-red-100 to-red-50'
-                    }`}>
-                      {service.iconUrl ? (
+                    {/* Icon cover/overlay */}
+                    {service.iconUrl ? (
+                      <>
                         <img
                           src={service.iconUrl}
                           alt={service.title}
-                          className="w-20 h-20 object-contain"
+                          className="absolute inset-0 w-full h-full object-cover opacity-25"
                         />
-                      ) : (
-                        <CloudUploadRoundedIcon sx={{ fontSize: 40, opacity: 0.3 }} />
-                      )}
+                        <div className={`absolute inset-0 ${isDarkMode ? 'bg-linear-to-b from-black/15 via-[#10141f]/55 to-[#10141f]/72' : 'bg-linear-to-b from-white/45 via-white/85 to-white/95'}`}></div>
+                      </>
+                    ) : (
+                      <div className={`absolute inset-0 ${isDarkMode ? 'bg-linear-to-b from-[#242938] to-[#151925]' : 'bg-linear-to-b from-gray-100 to-white'}`}></div>
+                    )}
+
+                    <div className="relative z-10 flex items-start justify-between mb-5">
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-black/35' : 'bg-white/80 border border-gray-200'}`}>
+                        {service.iconUrl ? (
+                          <img
+                            src={service.iconUrl}
+                            alt={service.title}
+                            className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                          />
+                        ) : (
+                          <CloudUploadRoundedIcon sx={{ fontSize: 24, opacity: 0.55 }} />
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                          Starting At
+                        </p>
+                        <p className={`text-2xl sm:text-4xl leading-none font-black italic ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          ₱{service.cost.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Content area */}
-                    <div className="p-6">
-                      <h3 className={`font-bold text-lg mb-2 ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className="relative z-10 space-y-3 drop-shadow">
+                      <h3 className={`font-black text-2xl sm:text-3xl md:text-4xl italic uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {service.title}
                       </h3>
-                      <p className={`text-sm mb-4 line-clamp-2 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                      <p className={`text-sm sm:text-base md:text-lg leading-relaxed line-clamp-2 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                         {service.description}
                       </p>
-                      <p className={`font-bold text-lg ${isSelected ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        ₱{service.cost}
+                      <p className={`pt-2 text-sm font-black uppercase tracking-widest ${isSelected ? 'text-red-400' : isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                        {isSelected ? 'Selected ●' : 'Select Service →'}
                       </p>
                     </div>
                   </button>
@@ -226,7 +238,7 @@ export default function CustomerServicePage({
               <h2 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 Vehicle Information
               </h2>
-              <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+              <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                 Select or enter your vehicle details
               </p>
             </div>
@@ -251,7 +263,7 @@ export default function CustomerServicePage({
                       <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {vehicle.model}
                       </p>
-                      <p className={`text-sm ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                      <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                         {vehicle.year}
                       </p>
                     </button>
@@ -311,7 +323,7 @@ export default function CustomerServicePage({
             <div className={`rounded-2xl p-6 ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
               <div className="grid grid-cols-7 gap-2">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className={`text-center text-xs font-bold ${isDarkMode ? 'text-white/50' : 'text-gray-500'}`}>
+                  <div key={day} className={`text-center text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                     {day}
                   </div>
                 ))}
@@ -370,25 +382,25 @@ export default function CustomerServicePage({
             <div className={`rounded-2xl p-6 border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-white/60' : 'text-gray-600'}>Service:</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Service:</span>
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {serviceOptions.find((s) => s.id === selectedService)?.title}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-white/60' : 'text-gray-600'}>Vehicle:</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Vehicle:</span>
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {vehicleInfo.model} {vehicleInfo.year}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-white/60' : 'text-gray-600'}>Date:</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Date:</span>
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     April {selectedDay}, 2024
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-white/60' : 'text-gray-600'}>Time:</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Time:</span>
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedTime}</span>
                 </div>
                 <div className="border-t border-white/10 pt-3 mt-3 flex justify-between">
@@ -435,46 +447,30 @@ export default function CustomerServicePage({
       <main className="pt-20 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           {/* Steps Navigation - Matching Design */}
-          <div className="mb-12">
-            <h1 className={`text-3xl font-black mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              <span>SERVICE</span>
-              <span className="text-red-600">BOOKING</span>
-            </h1>
-            <div className="flex gap-8 justify-start">
+          <div className="mb-14">
+            <div className="mb-10">
+              <h1 className={`text-3xl sm:text-4xl md:text-5xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>SERVICE</span>
+                <span className="text-red-600">BOOKING</span>
+              </h1>
+            </div>
+            <div className="flex items-center gap-4 sm:gap-6 md:gap-8 lg:gap-10 overflow-x-auto pb-2">
               {bookingSteps.map((step, index) => {
                 const isActive = activeStep === step.id
-                const isCompleted = bookingSteps.findIndex((s) => s.id === activeStep) > index
 
                 return (
-                  <div key={step.id} className="flex flex-col items-start gap-3">
-                    <div
-                      className={`flex items-center justify-center w-14 h-14 rounded-lg font-black text-sm transition ${
-                        isActive
-                          ? 'bg-red-600 text-white'
-                          : isCompleted
-                            ? isDarkMode
-                              ? 'bg-emerald-600/20 text-emerald-400'
-                              : 'bg-emerald-100 text-emerald-700'
-                            : isDarkMode
-                              ? 'bg-white/5 text-white/30'
-                              : 'bg-gray-100 text-gray-400'
-                      }`}
-                    >
-                      {String(index + 1).padStart(2, '0')}
+                  <div key={step.id} className="flex items-center gap-3 sm:gap-5 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className={`text-2xl sm:text-3xl md:text-4xl font-black italic ${isActive ? 'text-red-600' : isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <span className={`text-xs sm:text-sm font-black uppercase tracking-widest whitespace-nowrap ${isActive ? (isDarkMode ? 'text-white' : 'text-gray-900') : isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                        {step.label}
+                      </span>
                     </div>
-                    <span
-                      className={`text-xs font-bold uppercase tracking-widest ${
-                        isActive || isCompleted
-                          ? isDarkMode
-                            ? 'text-red-600'
-                            : 'text-red-600'
-                          : isDarkMode
-                            ? 'text-gray-500'
-                            : 'text-gray-400'
-                      }`}
-                    >
-                      {step.label}
-                    </span>
+                    {index < bookingSteps.length - 1 && (
+                      <span className={`w-6 sm:w-10 md:w-14 h-0.5 ${isActive ? 'bg-red-600' : isDarkMode ? 'bg-white/35' : 'bg-gray-300'}`}></span>
+                    )}
                   </div>
                 )
               })}
@@ -482,111 +478,100 @@ export default function CustomerServicePage({
           </div>
 
           {/* Content Area */}
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <StepContent />
+              {StepContent()}
             </div>
 
             {/* Right Sidebar - ORDER SUMMARY */}
             <div
-              className={`rounded-xl p-8 h-fit sticky top-24 ${
-                isDarkMode ? 'bg-gray-900 border border-gray-800' : 'bg-gray-800 border border-gray-700'
+              className={`rounded-2xl p-4 sm:p-6 lg:p-8 h-fit lg:sticky lg:top-24 border-t-4 border-t-red-600 ${
+                isDarkMode ? 'bg-[#171922] border border-t-4 border-t-red-600 border-white/5' : 'bg-white border border-t-4 border-t-red-600 border-gray-200'
               }`}
             >
-              <h3 className="text-sm font-black mb-8 text-white/80 uppercase tracking-widest">
-                Order Summary
+              <h3 className={`text-base sm:text-lg font-black italic mb-6 sm:mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                ORDER SUMMARY
               </h3>
 
               {/* Service Selection */}
               {selectedService && (
-                <div className="mb-8 pb-8 border-b border-gray-700 space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-                    Service Selection
+                <div className={`mb-4 sm:mb-6 pb-4 sm:pb-6 border-b space-y-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    Service
                   </p>
-                  <p className="text-lg font-bold text-white">
+                  <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {serviceOptions.find((s) => s.id === selectedService)?.title}
                   </p>
                 </div>
               )}
 
-              {/* Schedule Info */}
-              {(activeStep === 'schedule' || activeStep === 'confirm') && (
-                <div className="mb-8 pb-8 border-b border-gray-700 space-y-3">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    Schedule
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} className="text-gray-500" />
-                    <p className="text-sm font-bold text-white">
-                      {selectedDay} Apr, {selectedTime}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Vehicle Info */}
-              {(activeStep === 'vehicle-info' || activeStep === 'confirm') && vehicleInfo.model && (
-                <div className="mb-8 pb-8 border-b border-gray-700 space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    Vehicle
-                  </p>
-                  <p className="text-sm font-bold text-white">
-                    {vehicleInfo.model.toUpperCase()}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {vehicleInfo.year}
-                  </p>
-                </div>
-              )}
-
-              {/* Total Estimation */}
-              <div className="mb-8 pb-8 border-b border-gray-700">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                  Total Estimation
+              {/* Technician Info */}
+              <div className={`mb-4 sm:mb-6 pb-4 sm:pb-6 border-b space-y-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                  Technician
                 </p>
-                <p className="text-5xl font-black text-red-600">
-                  ₱{estimatedCost}
+                <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {activeStep === 'confirm' ? 'Senior Master' : 'To be assigned'}
                 </p>
               </div>
 
-              {/* Continue Button */}
+              {/* Schedule Info */}
+              <div className={`mb-6 sm:mb-8 pb-6 sm:pb-8 border-b space-y-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                  Schedule
+                </p>
+                {activeStep === 'confirm' ? (
+                  <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedDay} Apr, {selectedTime}
+                  </p>
+                ) : (
+                  <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    To be confirmed
+                  </p>
+                )}
+              </div>
+
+              {/* Total Estimation */}
+              <div className={`mb-6 sm:mb-8 pb-6 sm:pb-8 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                  Total Estimation
+                </p>
+                <p className="text-4xl sm:text-5xl lg:text-6xl leading-none font-black italic text-red-600">
+                  ₱{estimatedCost.toFixed(2)}
+                </p>
+              </div>
+
+              {/* Next Step Button */}
               <button
                 onClick={handleContinue}
                 disabled={
                   (activeStep === 'service-type' && !selectedService) ||
                   (activeStep === 'vehicle-info' && !vehicleInfo.model)
                 }
-                className="w-full rounded-lg bg-red-600 px-6 py-3 font-bold text-white hover:bg-red-700 transition mb-4 uppercase text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-red-600 px-6 py-3 sm:py-4 font-black text-white hover:bg-red-700 transition mb-4 sm:mb-6 uppercase text-xs sm:text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {activeStep === 'confirm' ? 'Confirm Booking' : `Continue to ${bookingSteps[Math.min(bookingSteps.findIndex((s) => s.id === activeStep) + 1, bookingSteps.length - 1)].label}`}
+                Next Step →
               </button>
+            </div>
 
-              {/* Forgot Something */}
-              <button
-                className="w-full rounded-lg px-6 py-3 font-bold text-gray-400 hover:text-white transition text-sm"
-              >
-                Forgot Something?
-              </button>
-
-              {/* Current Unit */}
-              {vehicleInfo.model && (
-                <div className={`mt-6 pt-6 border-t border-gray-700 space-y-3`}>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    Current Unit
+            <div className={`lg:col-start-3 rounded-2xl border ${isDarkMode ? 'bg-[#171922] border-white/5' : 'bg-white border-gray-200'} p-4 lg:sticky lg:top-24`}>
+              <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                Current Unit
+              </p>
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
+                <div>
+                  <p className={`text-lg sm:text-2xl font-black italic leading-none ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {vehicleInfo.model ? vehicleInfo.model.toUpperCase() : 'YAMAHA YZF-R1M'}
                   </p>
-                  <div className={`bg-gray-800/50 rounded-lg p-4 flex items-center gap-3`}>
-                    <TwoWheelerRoundedIcon sx={{ fontSize: 32 }} className="text-gray-600" />
-                    <div>
-                      <p className="text-sm font-bold text-white">
-                        {vehicleInfo.model.toUpperCase()}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Reg. {vehicleInfo.year}
-                      </p>
-                    </div>
-                  </div>
+                  <p className={`text-[10px] mt-2 font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    Engine 998cc
+                  </p>
+                  <p className={`text-[10px] mt-1 font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    Power 200hp
+                  </p>
                 </div>
-              )}
+                <TwoWheelerRoundedIcon sx={{ fontSize: 56 }} className={`sm:text-[88px]! ${isDarkMode ? 'text-white' : 'text-gray-700'}`} />
+              </div>
             </div>
           </div>
         </div>

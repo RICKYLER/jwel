@@ -98,7 +98,7 @@ export default function InventoryDeleteArchivedSection({
   }
 
   return (
-    <section className="inventory-delete-archived-shell space-y-6">
+    <section className={`inventory-delete-archived-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="inventory-control-header flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="inventory-control-title font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">

@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
-import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
 import './UserManagementSection.css'
@@ -164,11 +163,17 @@ export default function UserManagementSection({
     const nextUsers = mappedUsers.filter((user) => {
       const roleMatch = roleFilter === 'all' || String(user.role || 'customer') === roleFilter
       const statusMatch = statusFilter === 'all' || user.status.toLowerCase() === statusFilter
-      return roleMatch && statusMatch
+      const searchMatch = searchTerm
+        ? [user.fullName, user.displayName, user.email, user.role, user.status]
+            .join(' ')
+            .toLowerCase()
+            .includes(String(searchTerm || '').trim().toLowerCase())
+        : true
+      return roleMatch && statusMatch && searchMatch
     })
 
     return nextUsers
-  }, [mappedUsers, roleFilter, statusFilter])
+  }, [mappedUsers, roleFilter, statusFilter, searchTerm])
 
   const totalPages = Math.max(1, Math.ceil(visibleUsers.length / pageSize))
   const paginatedUsers = visibleUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize)
@@ -183,13 +188,6 @@ export default function UserManagementSection({
   const newUsersThisWeek = mappedUsers.filter((user) => isRecentDate(user.createdAt || user.updatedAt || user.lastLoginAt)).length
   const activeRoles = filteredAuthorizedAdmins.filter((item) => item.active !== false).length
   const pendingApprovals = mappedUsers.filter((user) => user.status === 'Pending').length
-
-  const handleResetFilters = () => {
-    onSearchChange('')
-    setRoleFilter('all')
-    setStatusFilter('all')
-    setCurrentPage(1)
-  }
 
   const handleConfirmedEdit = (user) => {
     setConfirmAction({
@@ -366,18 +364,10 @@ export default function UserManagementSection({
 
             <button
               type="button"
-              onClick={handleResetFilters}
-              className="user-table-icon-button"
-              aria-label="Reset filters"
-            >
-              <FilterListRoundedIcon sx={{ fontSize: 18 }} />
-            </button>
-
-            <button
-              type="button"
               onClick={handleExportVisibleUsers}
               className="user-table-icon-button"
               aria-label="Export users"
+              title="Export users to CSV"
             >
               <DownloadRoundedIcon sx={{ fontSize: 18 }} />
             </button>
@@ -387,10 +377,26 @@ export default function UserManagementSection({
               onClick={() => setShowArchived(!showArchived)}
               className={`user-table-icon-button user-table-archived-toggle ${showArchived ? 'is-active' : ''}`}
               aria-label="Toggle archived users"
+              title="View archived users"
             >
               <ArchiveRoundedIcon sx={{ fontSize: 18 }} />
             </button>
           </div>
+        </div>
+
+        <div className="user-table-search-bar">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => {
+              onSearchChange(e.target.value)
+              setCurrentPage(1)
+            }}
+          />
         </div>
 
         <div className="user-table-header">
@@ -403,11 +409,39 @@ export default function UserManagementSection({
         </div>
 
         <div className="user-table-body">
-          {paginatedUsers.map((user) => (
+          {paginatedUsers.map((user) => {
+            const getAvatarUrl = () => 
+              user.photoURL ||
+              user.profile_photo_url ||
+              user.profilePhotoURL ||
+              user.photoUrl ||
+              user.profile_photo ||
+              user.profileImage ||
+              user.profile_image ||
+              user.avatarUrl ||
+              user.avatar_url ||
+              user.profilePicture ||
+              user.profile_picture ||
+              user.avatar ||
+              user.profilePictureUrl ||
+              user.profile_picture_url ||
+              user.photo ||
+              user.image ||
+              user.profileUrl ||
+              user.profile_url ||
+              null
+
+            const avatarUrl = getAvatarUrl()
+
+            return (
             <div key={user.id} className="user-table-row">
               <div className="user-avatar-cell">
                 <div className="user-avatar flex h-10 w-10 items-center justify-center rounded-full text-sm font-black text-white">
-                  {(user.fullName || user.displayName || user.email || 'U').charAt(0).toUpperCase()}
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={user.fullName || user.displayName || user.email} className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    (user.fullName || user.displayName || user.email || 'U').charAt(0).toUpperCase()
+                  )}
                 </div>
               </div>
 
@@ -464,7 +498,8 @@ export default function UserManagementSection({
                 </button>
               </div>
             </div>
-          ))}
+            )
+          })}
 
           {!paginatedUsers.length && (
             <div className="rounded-xl px-3 py-8 text-center text-sm text-white/50">

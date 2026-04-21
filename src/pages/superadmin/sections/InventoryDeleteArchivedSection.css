@@ -53,3 +53,65 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Light Mode Support */
+.inventory-delete-archived-shell.light-mode {
+  background: #F5F5F5;
+  color: #2E2E30;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-control-title {
+  background: none;
+  -webkit-text-fill-color: unset;
+  color: #2E2E30;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-control-title span {
+  color: #C51D34;
+}
+
+.inventory-delete-archived-shell.light-mode h2,
+.inventory-delete-archived-shell.light-mode h3,
+.inventory-delete-archived-shell.light-mode p {
+  color: #2E2E30;
+}
+
+.inventory-delete-archived-shell.light-mode .text-white\/45,
+.inventory-delete-archived-shell.light-mode .text-white\/50 {
+  color: #808080;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-delete-archived-summary-card {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-board {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+}
+
+.inventory-delete-archived-shell.light-mode .hidden.grid-cols {
+  color: #555555;
+  border-bottom-color: #D0D0D0;
+}
+
+.inventory-delete-archived-shell.light-mode .divide-y {
+  border-color: #D0D0D0;
+}
+
+.inventory-delete-archived-shell.light-mode .text-xs,
+.inventory-delete-archived-shell.light-mode .text-sm {
+  color: #2E2E30;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-pagination-page {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-delete-archived-shell.light-mode .inventory-pagination-page.is-active {
+  background: #C51D34;
+  color: #FFF;
+}

@@ -194,7 +194,7 @@ export default function InventoryReportsSection({
   }
 
   return (
-    <section className="inventory-reports-shell space-y-6">
+    <section className={`inventory-reports-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="inventory-reports-header flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="inventory-reports-title font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
@@ -305,16 +305,16 @@ export default function InventoryReportsSection({
           </div>
         </div>
 
-        <div className="hidden grid-cols-[0.6fr_1fr_1fr_1.2fr_0.8fr_1fr_1.2fr_1.5fr_0.8fr] gap-3 border-b border-white/5 px-3 py-3 text-[10px] font-black uppercase tracking-[0.24em] text-white/35 md:grid">
-          <span>Image</span>
-          <span>Item Name</span>
-          <span>Model/Variant</span>
-          <span>Category</span>
-          <span>Stock</span>
-          <span>Price</span>
-          <span>Status</span>
-          <span>Added By</span>
-          <span className="text-right">Date</span>
+        <div className="hidden grid-cols-[0.6fr_1fr_1fr_1.2fr_0.8fr_1fr_1.2fr_1.5fr_0.8fr] gap-3 border-b border-white/5 px-3 py-3 md:grid">
+          <span className="inventory-reports-header-badge">Image</span>
+          <span className="inventory-reports-header-badge">Item Name</span>
+          <span className="inventory-reports-header-badge">Model/Variant</span>
+          <span className="inventory-reports-header-badge">Category</span>
+          <span className="inventory-reports-header-badge">Stock</span>
+          <span className="inventory-reports-header-badge">Price</span>
+          <span className="inventory-reports-header-badge">Status</span>
+          <span className="inventory-reports-header-badge">Added By</span>
+          <span className="inventory-reports-header-badge text-right">Date</span>
         </div>
 
         <div className="divide-y divide-white/5">

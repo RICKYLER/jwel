@@ -17,8 +17,37 @@ input[type='number'] {
 .inventory-submit-button {
   border: 0;
   background: var(--primary);
-  box-shadow: 0 16px 28px rgba(197, 29, 52, 0.28);
+  box-shadow: 0 8px 16px rgba(197, 29, 52, 0.3);
   transition: all 0.2s ease;
+  font-weight: 800;
+  color: #FFFFFF !important;
+}
+
+.inventory-add-button:hover,
+.inventory-submit-button:hover {
+  box-shadow: 0 12px 24px rgba(197, 29, 52, 0.4);
+  color: #FFFFFF !important;
+}
+
+.inventory-add-button:disabled,
+.inventory-submit-button:disabled {
+  background: var(--primary);
+  opacity: 0.6;
+  cursor: not-allowed;
+  color: #FFFFFF !important;
+}
+
+.inventory-header-badge {
+  display: inline-block;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.625rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
 }
 
 .inventory-summary-card {
@@ -660,4 +689,353 @@ input[type='number'] {
 .inventory-pagination-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ============================================
+   LIGHT MODE COMPREHENSIVE STYLING
+   ============================================ */
+
+.inventory-control-shell.light-mode {
+  background: #F5F5F5;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-control-title {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-control-title span {
+  color: #C51D34;
+}
+
+.inventory-control-shell.light-mode h2,
+.inventory-control-shell.light-mode h3 {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode p {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .text-white\/45,
+.inventory-control-shell.light-mode .text-white\/40,
+.inventory-control-shell.light-mode .text-white\/50 {
+  color: #808080;
+}
+
+.inventory-control-shell.light-mode .inventory-summary-card {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(46, 46, 48, 0.08);
+}
+
+.inventory-control-shell.light-mode .inventory-summary-card p {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .inventory-summary-card h3 {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-board,
+.inventory-control-shell.light-mode .inventory-empty {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(46, 46, 48, 0.08);
+}
+
+.inventory-control-shell.light-mode .inventory-tab {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .inventory-tab.is-active {
+  color: #2E2E30;
+  background: #FAFAFA;
+  border: 1px solid #D0D0D0;
+}
+
+.inventory-control-shell.light-mode .inventory-tab:hover {
+  color: #2E2E30;
+  background: #FAFAFA;
+}
+
+.inventory-control-shell.light-mode .inventory-filter-button {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-filter-button option {
+  background: #FFFFFF;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-category-pill {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-stock-bar {
+  background: #D0D0D0;
+}
+
+.inventory-control-shell.light-mode .inventory-status-select {
+  background: #FAFAFA;
+  color: #2E2E30;
+  border: 1px solid #D0D0D0;
+}
+
+.inventory-control-shell.light-mode .inventory-action-button {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-action-button:hover {
+  background: #E5E5E5;
+}
+
+.inventory-control-shell.light-mode .inventory-action-button.text-red-400,
+.inventory-control-shell.light-mode .divide-y div:hover .inventory-action-button.text-red-400 {
+  color: #DC2626;
+}
+
+.inventory-control-shell.light-mode .divide-y div {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .divide-y div .text-white {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .divide-y div .text-white\/45 {
+  color: #808080;
+}
+
+.inventory-control-shell.light-mode .divide-y div .text-white\/35 {
+  color: #999999;
+}
+
+.inventory-control-shell.light-mode .divide-y div .text-white\/65 {
+  color: #666666;
+}
+
+.inventory-control-shell.light-mode .inventory-search-box {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+}
+
+.inventory-control-shell.light-mode .inventory-search-box input {
+  color: #2E2E30;
+  background: transparent;
+}
+
+.inventory-control-shell.light-mode .inventory-search-box input::placeholder {
+  color: #999999;
+}
+
+.inventory-control-shell.light-mode .hidden.grid-cols {
+  color: #555555;
+  border-bottom-color: #D0D0D0;
+}
+
+.inventory-control-shell.light-mode > div > div:nth-child(4) {
+  background: #FAFAFA;
+  border-bottom-color: #D0D0D0;
+  color: #2E2E30 !important;
+}
+
+.inventory-control-shell.light-mode > div > div:nth-child(4) span {
+  color: #555555 !important;
+}
+
+.inventory-control-shell.light-mode .inventory-add-button,
+.inventory-control-shell.light-mode .inventory-submit-button {
+  background: #C51D34;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 16px rgba(197, 29, 52, 0.25);
+}
+
+.inventory-control-shell.light-mode .inventory-add-button:hover,
+.inventory-control-shell.light-mode .inventory-submit-button:hover {
+  background: #B01A2E;
+  box-shadow: 0 12px 24px rgba(197, 29, 52, 0.35);
+  color: #FFFFFF !important;
+}
+
+.inventory-control-shell.light-mode .inventory-add-button:disabled,
+.inventory-control-shell.light-mode .inventory-submit-button:disabled {
+  background: #C51D34;
+  opacity: 0.6;
+  color: #FFFFFF !important;
+}
+
+.inventory-control-shell.light-mode .inventory-header-badge {
+  background: transparent;
+  color: #999999;
+  box-shadow: none;
+}
+
+/* Modal styling - Light mode */
+.inventory-control-shell.light-mode .inventory-modal-panel {
+  border: 1px solid #D0D0D0;
+  background: #FFFFFF;
+  box-shadow: 0 10px 25px rgba(46, 46, 48, 0.12);
+}
+
+.inventory-control-shell.light-mode .inventory-modal-header {
+  background: #FFFFFF;
+  border-bottom-color: #D0D0D0;
+}
+
+.inventory-control-shell.light-mode .inventory-modal-title {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-modal-kicker {
+  color: #C51D34;
+}
+
+.inventory-control-shell.light-mode .inventory-modal-copy {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .inventory-field span {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .inventory-field input,
+.inventory-control-shell.light-mode .inventory-field select,
+.inventory-control-shell.light-mode .inventory-field textarea {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-field input:focus,
+.inventory-control-shell.light-mode .inventory-field select:focus,
+.inventory-control-shell.light-mode .inventory-field textarea:focus {
+  border-color: #C51D34;
+  background: #FFFFFF;
+}
+
+.inventory-control-shell.light-mode .inventory-field input::placeholder,
+.inventory-control-shell.light-mode .inventory-field textarea::placeholder {
+  color: #999999;
+}
+
+.inventory-control-shell.light-mode .dropdown-select {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .dropdown-select:focus {
+  border-color: #C51D34;
+  background: #FFFFFF;
+}
+
+.inventory-control-shell.light-mode .dropdown-select option {
+  background: #FFFFFF;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .dropdown-select option:checked {
+  background: linear-gradient(#FFFFFF, #FFFFFF), linear-gradient(#C51D34, #C51D34);
+  background-color: rgb(197, 29, 52) !important;
+  color: #FFFFFF;
+}
+
+.inventory-control-shell.light-mode .inventory-checkbox-row {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+}
+
+.inventory-control-shell.light-mode .inventory-checkbox-row span {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-checkbox-row input {
+  accent-color: #C51D34;
+}
+
+.inventory-control-shell.light-mode .inventory-upload-box {
+  border: 1px dashed #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-upload-icon {
+  background: rgba(197, 29, 52, 0.12);
+  color: #C51D34;
+}
+
+.inventory-control-shell.light-mode .inventory-upload-copy {
+  color: #808080;
+}
+
+.inventory-control-shell.light-mode .inventory-form-message.is-error {
+  border: 1px solid #FECACA;
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.inventory-control-shell.light-mode .inventory-form-message.is-success {
+  border: 1px solid #86EFAC;
+  background: #ECFDF5;
+  color: #059669;
+}
+
+.inventory-control-shell.light-mode .inventory-cancel-button {
+  color: #555555;
+}
+
+/* Pagination - Light mode */
+.inventory-control-shell.light-mode .inventory-pagination-button,
+.inventory-control-shell.light-mode .inventory-pagination-page {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .inventory-pagination-button:hover,
+.inventory-control-shell.light-mode .inventory-pagination-page:hover {
+  background: #FFF5F5;
+  border-color: #C51D34;
+  color: #C51D34;
+}
+
+.inventory-control-shell.light-mode .inventory-pagination-page.is-active {
+  background: #C51D34;
+  border-color: #C51D34;
+  color: #FFF;
+}
+
+/* Table text - Light mode */
+.inventory-control-shell.light-mode .text-xs {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .text-sm {
+  color: #2E2E30;
+}
+
+/* Update Stocks Modal - Light mode */
+.inventory-control-shell.light-mode .update-stocks-right {
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .update-stocks-right .text-xs {
+  color: #555555;
+}
+
+.inventory-control-shell.light-mode .w-16 {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #2E2E30;
+}
+
+.inventory-control-shell.light-mode .w-16:hover {
+  background: #FFFFFF;
 }

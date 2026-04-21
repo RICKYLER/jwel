@@ -298,6 +298,128 @@
   letter-spacing: 0.12em;
   font-size: 10px;
   font-weight: 800;
+}
+
+/* Light Mode Support */
+.financing-applications-section.light-mode {
+  background: #FFFFFF;
+  border: 1px solid #D0D0D0;
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode h2,
+.financing-applications-section.light-mode h3 {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-stat-card {
+  background: #FAFAFA;
+  border: 1px solid #D0D0D0;
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-stat-label {
+  color: #555555;
+}
+
+.financing-applications-section.light-mode .fa-stat-value {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-review-panel {
+  background: #FFFFFF;
+  border: 1px solid #D0D0D0;
+}
+
+.financing-applications-section.light-mode .fa-panel-header {
+  border-bottom: 1px solid #D0D0D0;
+  background: #FAFAFA;
+}
+
+.financing-applications-section.light-mode .fa-panel-header h4 {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-panel-actions button {
+  border: 1px solid #D0D0D0;
+  background: #FAFAFA;
+  color: #555555;
+}
+
+.financing-applications-section.light-mode .fa-table thead th {
+  background: #FAFAFA;
+  color: #555555;
+  border-bottom: 1px solid #D0D0D0;
+}
+
+.financing-applications-section.light-mode .fa-table tbody tr {
+  border-bottom: 1px solid #D0D0D0;
+}
+
+.financing-applications-section.light-mode .fa-table tbody tr:hover {
+  background: #F5F5F5;
+}
+
+.financing-applications-section.light-mode .fa-avatar {
+  background: #FAFAFA;
+  border: 1px solid #D0D0D0;
+  color: #555555;
+}
+
+.financing-applications-section.light-mode .fa-applicant-name {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-applicant-meta {
+  color: #808080;
+}
+
+.financing-applications-section.light-mode .fa-unit-name {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .fa-unit-sub {
+  color: #808080;
+}
+
+.financing-applications-section.light-mode .fa-income-cell p {
+  color: #555555;
+}
+
+.financing-applications-section.light-mode .fa-income-cell p strong {
+  color: #2E2E30;
+}
+
+.financing-applications-section.light-mode .chip-pending-review {
+  color: #D97706;
+  background: #FFFBEB;
+}
+
+.financing-applications-section.light-mode .chip-under-review {
+  color: #2563EB;
+  background: #EFF6FF;
+}
+
+.financing-applications-section.light-mode .chip-qualified {
+  color: #059669;
+  background: #ECFDF5;
+}
+
+.financing-applications-section.light-mode .chip-not-qualified {
+  color: #DC2626;
+  background: #FEE2E2;
+}
+
+.financing-applications-section.light-mode .fa-empty-state {
+  color: #999999;
+}
+
+.financing-applications-section.light-mode .fa-panel-footer {
+  border-top: 1px solid #D0D0D0;
+}
+
+.financing-applications-section.light-mode .fa-panel-footer p {
+  color: #555555;
   color: rgba(255, 255, 255, 0.42);
 }
 
