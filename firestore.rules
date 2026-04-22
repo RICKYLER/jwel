@@ -68,13 +68,13 @@ service cloud.firestore {
     }
 
     match /conversations/{docId} {
-      allow read: if isAdminOrHigher() || isSignedIn();
+      allow read: if isAdminOrHigher() || isSignedIn() || resource.data.isGuest == true;
       allow create: if true;
       allow update: if isAdminOrHigher() || isSignedIn();
       allow delete: if isAdminOrHigher() || (isSignedIn() && request.auth.uid in resource.data.participants);
 
       match /messages/{messageId} {
-        allow read: if isAdminOrHigher() || isSignedIn();
+        allow read: if isAdminOrHigher() || isSignedIn() || get(/databases/$(database)/documents/conversations/$(docId)).data.isGuest == true;
         allow create: if true;
         allow update: if isAdminOrHigher();
         allow delete: if isAdminOrHigher();
@@ -150,6 +150,11 @@ service cloud.firestore {
     match /authorizedPersonnel/{docId} {
       allow read: if isAdminOrHigher();
       allow create, update, delete: if isAdminOrHigher();
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isSuperadmin();
     }
 
     match /users/{userId}/vehicles/{vehicleId} {

@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
+import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import './ProfileSection.css'
 
 export default function ProfileSection({
@@ -11,6 +13,128 @@ export default function ProfileSection({
   formatDate,
   isDarkMode = true,
 }) {
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
+  const searchInputRef = useRef(null)
+  const autocompleteRef = useRef(null)
+
+  // Initialize location map
+  useEffect(() => {
+    if (!mapRef.current || mapInstanceRef.current) return
+
+    const loadGoogleMaps = () => {
+      if (document.getElementById('google-maps-profile-script')) return
+
+      const script = document.createElement('script')
+      script.id = 'google-maps-profile-script'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDSLvek-8Ret8lxbZGp3dgNzWBWfmdqqIE&libraries=places&loading=async'
+      script.async = true
+      script.defer = true
+
+      script.onload = () => {
+        setTimeout(initMap, 200)
+      }
+
+      document.head.appendChild(script)
+    }
+
+    const initMap = () => {
+      if (!window.google?.maps?.Map) return
+
+      const initialLat = parseFloat(profileForm.latitude) || 7.3086
+      const initialLng = parseFloat(profileForm.longitude) || 125.7399
+      const position = { lat: initialLat, lng: initialLng }
+
+      const map = new window.google.maps.Map(mapRef.current, {
+        zoom: 15,
+        center: position,
+        mapTypeId: 'roadmap',
+      })
+
+      let marker = new window.google.maps.Marker({
+        position: position,
+        map: map,
+        draggable: true,
+        title: 'Drag to set Flagship Location',
+      })
+
+      // Update coordinates when marker is dragged
+      marker.addListener('dragend', () => {
+        const pos = marker.getPosition()
+        onProfileFieldChange({
+          target: {
+            name: 'latitude',
+            value: pos.lat().toFixed(6),
+          },
+        })
+        onProfileFieldChange({
+          target: {
+            name: 'longitude',
+            value: pos.lng().toFixed(6),
+          },
+        })
+      })
+
+      // Update marker when map is clicked
+      map.addListener('click', (e) => {
+        marker.setPosition(e.latLng)
+        onProfileFieldChange({
+          target: {
+            name: 'latitude',
+            value: e.latLng.lat().toFixed(6),
+          },
+        })
+        onProfileFieldChange({
+          target: {
+            name: 'longitude',
+            value: e.latLng.lng().toFixed(6),
+          },
+        })
+      })
+
+      // Initialize Places Autocomplete
+      if (searchInputRef.current && window.google?.maps?.places?.Autocomplete) {
+        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
+          fields: ['formatted_address', 'geometry'],
+          types: ['establishment'],
+        })
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace()
+          if (place.geometry && place.geometry.location) {
+            const newLocation = place.geometry.location
+            const newLat = newLocation.lat()
+            const newLng = newLocation.lng()
+
+            // Update map center and marker
+            map.setCenter(newLocation)
+            marker.setPosition(newLocation)
+
+            // Update coordinates
+            onProfileFieldChange({
+              target: {
+                name: 'latitude',
+                value: newLat.toFixed(6),
+              },
+            })
+            onProfileFieldChange({
+              target: {
+                name: 'longitude',
+                value: newLng.toFixed(6),
+              },
+            })
+          }
+        })
+
+        autocompleteRef.current = autocomplete
+      }
+
+      mapInstanceRef.current = map
+    }
+
+    loadGoogleMaps()
+  }, [onProfileFieldChange, profileForm.latitude, profileForm.longitude, searchInputRef])
+
   return (
     <div className={`profile-section-grid grid gap-6 xl:grid-cols-[0.9fr_1.1fr] ${!isDarkMode ? 'light-mode' : ''}`}>
       <section className="profile-card rounded-2xl p-6">
@@ -32,7 +156,8 @@ export default function ProfileSection({
 
         <div className="mt-6 space-y-3 text-sm text-white/70">
           <p><span className="text-white">Profile title:</span> {profileForm.title || 'Operations Lead'}</p>
-          <p><span className="text-white">Location:</span> {profileForm.location || 'Bykelink HQ'}</p>
+          <p className="flex items-center gap-2"><span className="text-white flex items-center gap-1"><LocationOnRoundedIcon sx={{ fontSize: 16 }} /> Location:</span> {profileForm.location || 'Bykelink HQ'}</p>
+          <p className="text-xs text-white/50">Lat: {profileForm.latitude || 'Not set'} | Lng: {profileForm.longitude || 'Not set'}</p>
           <p><span className="text-white">Phone:</span> {profileForm.phone || 'Not set yet'}</p>
           <p><span className="text-white">Last updated:</span> {formatDate(new Date())}</p>
         </div>
@@ -40,10 +165,10 @@ export default function ProfileSection({
 
       <section className="profile-card rounded-2xl p-6">
         <h3 className="font-['Epilogue'] text-lg font-extrabold uppercase italic tracking-tighter text-white">
-          Edit Profile
+          Edit Profile & Flagship Location
         </h3>
         <p className="mt-2 text-sm text-white/50">
-          Update your superadmin profile details stored in Firebase.
+          Update profile details and drag the map pin to set the exact flagship location.
         </p>
 
         <form onSubmit={onProfileSave} className="mt-5 space-y-4">
@@ -84,7 +209,7 @@ export default function ProfileSection({
             </label>
 
             <label className="block text-sm text-white/80">
-              <span className="mb-2 block">Location</span>
+              <span className="mb-2 block">Location Name</span>
               <input
                 type="text"
                 name="location"
@@ -95,11 +220,59 @@ export default function ProfileSection({
             </label>
           </div>
 
+          {/* Location Coordinates */}
+          <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-4">
+            <p className="mb-3 text-sm font-bold uppercase text-white">Flagship Location Coordinates</p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block text-sm text-white/80">
+                <span className="mb-2 block">Latitude</span>
+                <input
+                  type="number"
+                  name="latitude"
+                  step="0.000001"
+                  value={profileForm.latitude || ''}
+                  onChange={onProfileFieldChange}
+                  placeholder="e.g., 7.3086"
+                  className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                />
+              </label>
+              <label className="block text-sm text-white/80">
+                <span className="mb-2 block">Longitude</span>
+                <input
+                  type="number"
+                  name="longitude"
+                  step="0.000001"
+                  value={profileForm.longitude || ''}
+                  onChange={onProfileFieldChange}
+                  placeholder="e.g., 125.7399"
+                  className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                />
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-white/50">Drag the pin on the map below or click on the map to set location</p>
+          </div>
+
+          {/* Location Map */}
+          <div className="rounded-xl border border-white/10 overflow-hidden bg-[#0a0a0a] relative">
+            {/* Search Box */}
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search location..."
+              className="absolute top-3 left-3 right-3 z-10 rounded-lg border border-white/20 bg-[#1a1a1a] px-4 py-2 text-sm text-white placeholder-white/50 outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
+            />
+            <div
+              ref={mapRef}
+              className="h-64 w-full"
+              style={{ minHeight: '16rem' }}
+            />
+          </div>
+
           <label className="block text-sm text-white/80">
             <span className="mb-2 block">Short bio</span>
             <textarea
               name="bio"
-              rows="4"
+              rows="3"
               value={profileForm.bio}
               onChange={onProfileFieldChange}
               className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
@@ -109,9 +282,9 @@ export default function ProfileSection({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="rounded-full bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70"
+            className="w-full rounded-full bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70 hover:bg-red-700 transition"
           >
-            {isSubmitting ? 'Saving Profile...' : 'Save Profile'}
+            {isSubmitting ? 'Saving...' : 'Save Profile & Location'}
           </button>
         </form>
       </section>

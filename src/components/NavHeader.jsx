@@ -7,7 +7,6 @@ import bykelinkLogo from '../assets/bykelinklogo.png'
 export default function NavHeader({
   currentUser,
   customerName,
-  activeNav,
   navLinks,
   onLogoClick,
   onNavigateClick,
@@ -50,18 +49,12 @@ export default function NavHeader({
         {/* Desktop Nav */}
         <nav className="hidden items-center gap-7 md:flex">
           {navLinks.map((link) => {
-            const isActive = activeNav === link.label
-
             return (
               <a
                 key={link.label}
                 href={link.href}
                 onClick={(event) => handleNavClick(event, link)}
-                className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 ${
-                  isActive
-                    ? 'border-red-600 text-red-600'
-                    : 'border-transparent text-neutral-400 hover:text-neutral-100'
-                }`}
+                className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 border-transparent text-neutral-400 hover:text-neutral-100`}
               >
                 {link.label}
               </a>

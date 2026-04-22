@@ -1360,7 +1360,6 @@ function App() {
       <GlobalLoadingScreen
         role={requiredDashboardRole ? roleLabels[requiredDashboardRole] : 'Dashboard'}
         delay={300}
-        onComplete={() => setIsLoadingScreenComplete(true)}
       />
     )
   }

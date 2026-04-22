@@ -11,7 +11,6 @@ export default function FinancingApplicationDetailSection({
   formatCurrency,
   formatDate,
   onBack,
-  _isDarkMode = false,
 }) {
   const [replyMessage, setReplyMessage] = useState('')
   const [isSaving, setIsSaving] = useState(false)

@@ -177,6 +177,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     title: '',
     phone: '',
     location: '',
+    latitude: '',
+    longitude: '',
     bio: '',
   })
 
@@ -945,6 +947,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       })
     }
 
+    // Save profile information
     await setDoc(
       profileDocRef,
       {
@@ -961,6 +964,22 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       },
       { merge: true },
     )
+
+    // Save flagship location to settings if coordinates are provided
+    if (profileForm.latitude && profileForm.longitude) {
+      const flagshipLocationRef = doc(db, 'settings', 'flagshipLocation')
+      await setDoc(
+        flagshipLocationRef,
+        {
+          latitude: parseFloat(profileForm.latitude),
+          longitude: parseFloat(profileForm.longitude),
+          location: profileForm.location.trim() || 'Bykelink Flagship Location',
+          updatedAt: serverTimestamp(),
+          updatedBy: currentUser.email || currentUser.uid,
+        },
+        { merge: true },
+      )
+    }
   }
 
   const handleProfileFieldChange = (event) => {

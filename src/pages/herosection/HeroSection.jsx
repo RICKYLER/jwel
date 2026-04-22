@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { db } from '../../firebase'
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
+import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore'
+import bykelinkLogo from '../../assets/bykelinklogo.png'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded'
@@ -67,6 +68,8 @@ export default function HeroSection({
   const [isModelsLoading, setIsModelsLoading] = useState(true)
   const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const mapRef = useRef(null)
+  const mapInstanceRef = useRef(null)
 
   // Generate SVG placeholder image
   const getPlaceholderImage = (text, width = 400, height = 300) => {
@@ -266,6 +269,121 @@ export default function HeroSection({
 
     return () => clearInterval(interval)
   }, [liveModels.length])
+
+  // Initialize Google Map with custom marker
+  useEffect(() => {
+    if (!mapRef.current) return
+
+    // Prevent multiple initializations
+    if (mapInstanceRef.current) return
+
+    // Fetch flagship location from Firestore
+    const fetchFlagshipLocation = async () => {
+      try {
+        const settingsRef = doc(db, 'settings', 'flagshipLocation')
+        const settingsSnap = await getDoc(settingsRef)
+        
+        let coordinates = { lat: 7.3086, lng: 125.7399 } // Default fallback
+        
+        if (settingsSnap.exists()) {
+          const data = settingsSnap.data()
+          if (data.latitude && data.longitude) {
+            coordinates = { lat: data.latitude, lng: data.longitude }
+          }
+        }
+        
+        initializeMap(coordinates)
+      } catch (error) {
+        console.error('Failed to fetch flagship location:', error)
+        initializeMap({ lat: 7.3086, lng: 125.7399 })
+      }
+    }
+
+    const scriptId = 'google-maps-script'
+    const existingScript = document.getElementById(scriptId)
+
+    const initializeMap = (coordinates) => {
+      // Wait for Google Maps to be ready
+      if (!window.google?.maps?.Map) {
+        setTimeout(() => initializeMap(coordinates), 100)
+        return
+      }
+
+      const map = new window.google.maps.Map(mapRef.current, {
+        zoom: 15,
+        center: coordinates,
+        disableDefaultUI: false,
+        mapTypeId: 'roadmap',
+      })
+
+      const marker = new window.google.maps.Marker({
+        position: coordinates,
+        map: map,
+        title: 'Bykelink Flagship Location',
+        icon: {
+          url: bykelinkLogo,
+          scaledSize: new window.google.maps.Size(50, 50),
+          origin: new window.google.maps.Point(0, 0),
+          anchor: new window.google.maps.Point(25, 50),
+        },
+      })
+
+      const infoWindow = new window.google.maps.InfoWindow({
+        content: `<div style="color: #000; font-weight: bold; font-size: 14px; padding: 8px;">
+          <p style="margin: 5px 0; font-size: 14px;">Bykelink Flagship Location</p>
+          <p style="margin: 5px 0; font-size: 12px;">National Highway, Visayan Village, Tagum, Davao del Norte</p>
+          <p style="margin: 5px 0; font-size: 12px;">Mon-Sat: 9AM - 6PM | Sun: 10AM - 3PM</p>
+        </div>`,
+      })
+
+      marker.addListener('click', () => {
+        infoWindow.open(map, marker)
+      })
+
+      mapInstanceRef.current = map
+    }
+
+    if (existingScript) {
+      // Script already in DOM
+      fetchFlagshipLocation()
+      return
+    }
+
+    // Create and load the script
+    const script = document.createElement('script')
+    script.id = scriptId
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDSLvek-8Ret8lxbZGp3dgNzWBWfmdqqIE&loading=async'
+    script.async = true
+    script.defer = true
+
+    script.onload = () => {
+      setTimeout(fetchFlagshipLocation, 200)
+    }
+
+    script.onerror = () => {
+      console.error('Failed to load Google Maps')
+      initializeFallbackMap()
+    }
+
+    document.head.appendChild(script)
+
+    const initializeFallbackMap = () => {
+      if (mapRef.current) {
+        mapRef.current.innerHTML = `
+          <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #1a1a2e; color: #fff; flex-direction: column;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
+            <p style="font-size: 18px; font-weight: bold; margin: 8px 0;">National Highway</p>
+            <p style="font-size: 14px; margin: 4px 0;">Visayan Village, Tagum, Davao del Norte</p>
+            <a href="https://maps.google.com/?q=7.3086,125.7399" target="_blank" rel="noopener noreferrer" style="margin-top: 16px; padding: 10px 20px; background: #dc2626; color: white; text-decoration: none; border-radius: 8px; cursor: pointer;">Open in Google Maps</a>
+          </div>
+        `
+      }
+    }
+
+    return () => {
+      // Cleanup on unmount
+    }
+  }, [])
 
   const handleNavClick = (link) => {
     if (link.id === 'showroom') {
@@ -513,7 +631,7 @@ export default function HeroSection({
                     {liveModels.map((model) => (
                   <article
                     key={model.id || model.name}
-                    className="w-full md:w-1/2 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20"
+                    className="w-full shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20"
                     onClick={() => onNavigateShowroom()}
                   >
                     <div className="relative h-80 overflow-hidden">
@@ -537,7 +655,7 @@ export default function HeroSection({
                         </div>
                       </div>
 
-                      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
                         <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
                             Engine
@@ -693,7 +811,7 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateLogin}
-                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-red-600 to-white px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100 hover:shadow-lg hover:shadow-red-600/30 active:scale-95 font-['Epilogue']"
+                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-red-600 to-red-700 px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-red-800 hover:shadow-lg hover:shadow-red-600/30 active:scale-95 font-['Epilogue']"
               >
                 Schedule Appointment
                 <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />
@@ -750,7 +868,7 @@ export default function HeroSection({
                 <div className="flex flex-wrap gap-3">
                   <a
                     href="tel:+63288889999"
-                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-red-600 to-white px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100"
+                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-red-600 to-red-700 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-red-700 hover:to-red-800"
                     aria-label="Call Bykelink"
                   >
                     <CallRoundedIcon sx={{ fontSize: 16 }} />
@@ -779,25 +897,19 @@ export default function HeroSection({
                 </div>
               </div>
 
-              <div className="relative min-h-96 lg:w-1/2">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQjl57CRTn4SiBdfFwQt3IAIy_Dku3o8FU06jTL7JIYQHZUUsIAu39pUcr3R3-eAemhy9qRXsI0HplUOF9TdhIFm0B2D_6wIKqnf21D_6utwsBBHq2hTua6D2F_NlwFEW2VllBmcSnhn6i9J_ocvHXC8LWsuy5YZxSTqcXq-671UPoJwK6rzT5wVU6sXrtPqnji5PSBACOa-6NtyaWQMYbHYGdxhCL-VEZU9vRr6VcJP7ia762oGGcjck0stn0aS-EzDLoD-JKurM"
-                  alt="Showroom map"
-                  className="h-full w-full object-cover"
+              <div className="relative min-h-96 lg:w-1/2 overflow-hidden rounded-2xl">
+                <div
+                  ref={mapRef}
+                  className="h-full w-full"
+                  style={{ minHeight: '24rem' }}
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-slate-950/55 via-transparent to-red-500/10" />
-                <div className="absolute left-6 top-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md">
+                <div className="absolute left-6 top-6 z-10 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md">
                   <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                     Main Branch
                   </p>
                   <p className="mt-1 text-sm font-semibold text-white">Tagum, Davao del Norte</p>
                 </div>
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div className="flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-900/30">
-                    <LocationOnRoundedIcon sx={{ fontSize: 30 }} />
-                  </div>
-                </div>
-                <div className="absolute bottom-6 right-6 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-right backdrop-blur-md">
+                <div className="absolute bottom-6 right-6 z-10 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-right backdrop-blur-md">
                   <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
                     Showroom Hours
                   </p>
@@ -856,7 +968,7 @@ export default function HeroSection({
                     <button
                       type="button"
                       onClick={onNavigateLogin}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-red-600 to-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-slate-100"
+                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-red-600 to-red-700 px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-red-800"
                     >
                       Book a Service
                       <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />
