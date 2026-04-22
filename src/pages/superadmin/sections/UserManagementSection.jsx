@@ -67,6 +67,7 @@ export default function UserManagementSection({
   searchTerm,
   onSearchChange,
   onOpenNewUserModal,
+  onCleanupDuplicates,
   onEditUser,
   onArchiveUser,
   onDeleteArchivedUser,
@@ -370,6 +371,17 @@ export default function UserManagementSection({
               title="Export users to CSV"
             >
               <DownloadRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+
+            <button
+              type="button"
+              onClick={onCleanupDuplicates}
+              disabled={!canManageAccess || isSubmitting}
+              className="user-table-icon-button"
+              aria-label="Clean up duplicated privileged users"
+              title="Remove stale users records for authorized admin and personnel accounts"
+            >
+              Clean Up
             </button>
 
             <button

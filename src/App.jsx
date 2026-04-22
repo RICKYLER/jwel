@@ -803,9 +803,47 @@ function App() {
     const authorizedAdminProfile =
       authorizedAdminResult.status === 'fulfilled' ? authorizedAdminResult.value : null
     const cloudData = cloudResult.status === 'fulfilled' ? cloudResult.value?.data ?? null : null
+    const resolvedCloudRole = normalizeAccessRole(cloudData?.role || requestedRole)
+    const cloudDashboardPath =
+      normalizeDashboardPath(cloudData?.dashboardPath) ||
+      dashboardByRole[resolvedCloudRole] ||
+      null
 
-    // For customer logins, explicitly handle without depending on cloud function
-    if (requestedRole === 'customer' && !authorizedAdminProfile) {
+    // If admin is found in authorized collections, prioritize that role
+    if (authorizedAdminProfile) {
+      const dashboardPath =
+        authorizedAdminProfile.dashboardPath ||
+        dashboardByRole[authorizedAdminProfile.role] ||
+        null
+
+      return {
+        role: authorizedAdminProfile.role,
+        label: roleLabels[authorizedAdminProfile.role] || 'Admin',
+        dashboardPath,
+        isPrivileged: true,
+        authorized: true,
+        mustChangePassword: Boolean(authorizedAdminProfile.mustChangePassword),
+        firstLoginRequired: Boolean(authorizedAdminProfile.firstLoginRequired || authorizedAdminProfile.mustChangePassword),
+        source: authorizedAdminProfile.source,
+      }
+    }
+
+    // If the Cloud Function resolved a privileged role, trust the server result.
+    if (resolvedCloudRole !== 'customer') {
+      return {
+        role: resolvedCloudRole,
+        label: roleLabels[resolvedCloudRole] || 'User',
+        dashboardPath: cloudDashboardPath,
+        isPrivileged: true,
+        authorized: Boolean(cloudData?.authorized ?? true),
+        mustChangePassword: Boolean(cloudData?.mustChangePassword),
+        firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
+        source: cloudData?.source || 'cloud-function',
+      }
+    }
+
+    // For customer logins without authorized admin profile or privileged server result
+    if (requestedRole === 'customer') {
       return {
         role: 'customer',
         label: roleLabels['customer'] || 'Customer',
@@ -818,32 +856,16 @@ function App() {
       }
     }
 
-    const candidateRoles = [normalizeAccessRole(cloudData?.role), authorizedAdminProfile?.role].filter(Boolean)
-
-    const resolvedRole = candidateRoles.reduce((highestRole, role) => {
-      return canAccessRole(role, highestRole) ? role : highestRole
-    }, 'customer')
-
-    const dashboardPath =
-      authorizedAdminProfile?.dashboardPath ||
-      normalizeDashboardPath(cloudData?.dashboardPath) ||
-      dashboardByRole[resolvedRole] ||
-      null
-
+    // Handle staff/personnel/admin roles from cloud function
     return {
-      role: resolvedRole,
-      label: roleLabels[resolvedRole] || 'Customer',
-      dashboardPath,
-      isPrivileged: resolvedRole !== 'customer',
-      authorized: requestedRole === 'customer' || canAccessRole(resolvedRole, requestedRole),
-      mustChangePassword: Boolean(authorizedAdminProfile?.mustChangePassword || cloudData?.mustChangePassword),
-      firstLoginRequired: Boolean(
-        authorizedAdminProfile?.firstLoginRequired ||
-          cloudData?.firstLoginRequired ||
-          authorizedAdminProfile?.mustChangePassword ||
-          cloudData?.mustChangePassword,
-      ),
-      source: authorizedAdminProfile?.source || cloudData?.source || 'client-fallback',
+      role: resolvedCloudRole,
+      label: roleLabels[resolvedCloudRole] || 'User',
+      dashboardPath: cloudDashboardPath,
+      isPrivileged: resolvedCloudRole !== 'customer',
+      authorized: true,
+      mustChangePassword: Boolean(cloudData?.mustChangePassword),
+      firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
+      source: cloudData?.source || 'cloud-function',
     }
   }
 

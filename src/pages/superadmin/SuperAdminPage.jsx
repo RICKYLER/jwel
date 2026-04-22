@@ -1336,6 +1336,48 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
+  const handleCleanupDuplicatedPrivilegedUsers = async () => {
+    if (!canManageAccess) {
+      setActionMessage({
+        type: 'error',
+        text: 'Only admin or superadmin can clean up duplicated users.',
+      })
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'Remove stale customer records from the users collection for accounts that already exist in authorized admin/personnel collections?',
+      )
+
+      if (!confirmed) {
+        return
+      }
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const cleanupPrivilegedUserDuplicates = httpsCallable(functions, 'cleanupPrivilegedUserDuplicates')
+      const response = await cleanupPrivilegedUserDuplicates({})
+      const deletedCount = Number(response?.data?.deletedCount || 0)
+      const skippedCount = Number(response?.data?.skippedCount || 0)
+
+      setActionMessage({
+        type: 'success',
+        text: `Duplicate cleanup finished. Deleted ${deletedCount} stale user record(s) and skipped ${skippedCount}.`,
+      })
+    } catch (error) {
+      console.error('Unable to clean up duplicated privileged users', error)
+      setActionMessage({
+        type: 'error',
+        text: `Unable to clean up duplicated privileged users. ${error.message}`,
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const loadingMessage = Object.entries(loadingState)
     .filter(([, isLoading]) => isLoading)
     .map(([key]) => key)
@@ -1452,6 +1494,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onOpenNewUserModal={handleOpenNewUserModal}
+            onCleanupDuplicates={handleCleanupDuplicatedPrivilegedUsers}
             onEditUser={handleOpenEditUserModal}
             onArchiveUser={handleArchiveUser}
             onDeleteArchivedUser={handleDeleteArchivedUserPermanently}

@@ -474,6 +474,17 @@ exports.syncUserAccess = onCall(async (request) => {
         structuredData: true,
       })
     }
+  } else if (isPrivileged) {
+    try {
+      await deleteMatchingUserDocs({ uid, email })
+    } catch (error) {
+      logger.warn('Unable to remove stale customer user documents for a privileged account during syncUserAccess.', {
+        uid,
+        email,
+        details: error.message,
+        structuredData: true,
+      })
+    }
   }
 
   logger.info('Bykelink access sync complete', {
@@ -850,6 +861,99 @@ exports.deleteArchivedUserPermanently = onCall(async (request) => {
   }
 })
 
+exports.cleanupPrivilegedUserDuplicates = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to clean up duplicated users.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const requesterAccess = await getRoleFromEmail(requesterEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (!['admin', 'superadmin'].includes(requesterAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only admin or superadmin can clean up duplicated users.')
+  }
+
+  const targetCollections = ['authorizedSuperadmin', 'authorizedAdmin', 'authorizedPersonnel']
+  const normalizedEmails = new Set()
+
+  for (const collectionName of targetCollections) {
+    const snapshot = await admin.firestore().collection(collectionName).get()
+
+    snapshot.forEach((docSnapshot) => {
+      const data = docSnapshot.data() || {}
+      const emailCandidates = [
+        docSnapshot.id,
+        data.email,
+        data.emailAddress,
+        data.authorizedEmail,
+        data.userEmail,
+      ]
+
+      emailCandidates.forEach((value) => {
+        const normalizedEmail = String(value || '').trim().toLowerCase()
+
+        if (normalizedEmail && normalizedEmail.includes('@')) {
+          normalizedEmails.add(normalizedEmail)
+        }
+      })
+    })
+  }
+
+  const deleted = []
+  const skipped = []
+
+  for (const email of normalizedEmails) {
+    try {
+      let authUid = ''
+
+      try {
+        const authUser = await admin.auth().getUserByEmail(email)
+        authUid = authUser.uid || ''
+      } catch (error) {
+        if (error.code !== 'auth/user-not-found') {
+          throw error
+        }
+      }
+
+      const usersSnapshot = await admin
+        .firestore()
+        .collection('users')
+        .where('email', '==', email)
+        .get()
+
+      const directUserDoc =
+        authUid ? await admin.firestore().collection('users').doc(authUid).get().catch(() => null) : null
+      const hasMatchingUserDoc = Boolean((directUserDoc && directUserDoc.exists) || !usersSnapshot.empty)
+
+      if (!hasMatchingUserDoc) {
+        skipped.push(email)
+        continue
+      }
+
+      await deleteMatchingUserDocs({ uid: authUid, email })
+      deleted.push(email)
+    } catch (error) {
+      logger.warn('Unable to clean up a duplicated privileged user.', {
+        email,
+        details: error.message,
+        structuredData: true,
+      })
+    }
+  }
+
+  return {
+    ok: true,
+    scannedCount: normalizedEmails.size,
+    deletedCount: deleted.length,
+    skippedCount: skipped.length,
+    deleted,
+    skipped,
+  }
+})
+
 exports.completeFirstLoginSetup = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'You must be signed in to complete first-time setup.')
@@ -944,6 +1048,10 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
         ),
       ),
     ])
+
+    if (!shouldSyncUsersCollection && role !== 'customer') {
+      await deleteMatchingUserDocs({ uid, email })
+    }
 
     firestoreSyncCompleted = true
   } catch (error) {
