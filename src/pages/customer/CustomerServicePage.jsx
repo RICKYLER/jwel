@@ -96,7 +96,6 @@ export default function CustomerServicePage({
   const cameraInputRef = useRef(null)
   const today = useMemo(() => new Date(), [])
   const [isDarkMode] = useState(true)
-  const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeStep, setActiveStep] = useState('service-type')
   const [selectedServices, setSelectedServices] = useState([])
   const [selectedDay, setSelectedDay] = useState(() => formatDateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)))
@@ -1254,8 +1253,6 @@ export default function CustomerServicePage({
         </div>
       </main>
 
-      {/* Chat Widget */}
-      <ChatBox isOpen={isChatOpen} onToggle={setIsChatOpen} />
     </div>
   )
 }
