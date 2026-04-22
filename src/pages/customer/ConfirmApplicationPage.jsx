@@ -8,7 +8,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat'
 
-export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToService }) {
+export default function ConfirmApplicationPage({ currentUser, applicationData, onNavigateBack, onSignOut, onApplicationSubmitted, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToService, onNavigateToServiceBookings }) {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -30,6 +30,7 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
           onNavigateToFinancingStatus={() => {}}
           onNavigateToMessages={onNavigateToMessages}
           onNavigateToProfile={() => {}}
+          onNavigateToServiceBookings={onNavigateToServiceBookings}
           onSignOut={currentUser ? onSignOut : null}
         />
         <div className="min-h-screen flex items-center justify-center">
@@ -119,6 +120,7 @@ export default function ConfirmApplicationPage({ currentUser, applicationData, o
         onNavigateToFinancingStatus={() => {}}
         onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={() => {}}
+        onNavigateToServiceBookings={onNavigateToServiceBookings}
         onSignOut={currentUser ? handleLogout : null}
       />
 

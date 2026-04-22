@@ -19,6 +19,7 @@ export default function CustomerMessagesPage({
   onNavigateToFinancingStatus,
   onNavigateToMessages,
   onNavigateToProfile,
+  onNavigateToServiceBookings,
   onSignOut,
 }) {
   const [conversations, setConversations] = useState([])
@@ -226,6 +227,7 @@ export default function CustomerMessagesPage({
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
         onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
+        onNavigateToServiceBookings={onNavigateToServiceBookings}
         onSignOut={onSignOut}
         activePage="messages"
         userAvatar={userAvatar}

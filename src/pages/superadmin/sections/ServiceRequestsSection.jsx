@@ -1,15 +1,22 @@
 import './ServiceRequestsSection.css'
+import { useState } from 'react'
+import useMechanicsPersonnel from '../../../hooks/useMechanicsPersonnel'
+import AssignMechanicModal from '../components/AssignMechanicModal'
 
 export default function ServiceRequestsSection({
   requests,
   canEditOperations,
-  serviceStatusOptions,
   handleCollectionUpdate,
   formatCurrency,
   formatDate,
   getStatusClasses,
   isDarkMode = true,
+  mechanics: _mechanics = [], // mechanics can be passed as prop, but default to []
 }) {
+  // Fetch mechanics from Firestore
+  const mechanicsFromFirestore = useMechanicsPersonnel();
+  const mechanics = mechanicsFromFirestore.length ? mechanicsFromFirestore : _mechanics;
+
   // Helper to get conditional text colors
   const getTextClass = (intensity) => {
     if (isDarkMode) {
@@ -19,9 +26,28 @@ export default function ServiceRequestsSection({
   }
 
   const getBgClass = () => isDarkMode ? 'bg-white/5' : 'bg-gray-100'
-  const getBorderClass = () => isDarkMode ? 'border-white/10' : 'border-gray-300'
-  const getSelectBgClass = () => isDarkMode ? 'bg-[#101010]' : 'bg-white'
   
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState(null)
+
+  const handleAcceptRequest = (request) => {
+    setSelectedRequest(request)
+    setAssignModalOpen(true)
+  }
+
+  const handleAssignMechanic = (mechanicId) => {
+    if (selectedRequest && mechanicId) {
+      handleCollectionUpdate('serviceBookings', selectedRequest.id, { status: 'In Progress', assignedTechnician: mechanicId })
+    }
+    setAssignModalOpen(false)
+    setSelectedRequest(null)
+  }
+
+  const handleCloseModal = () => {
+    setAssignModalOpen(false)
+    setSelectedRequest(null)
+  }
+
   return (
     <section className={`service-requests-section rounded-xl p-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -53,19 +79,27 @@ export default function ServiceRequestsSection({
               <p>Cost: <span className={`font-semibold ${getTextClass('main')}`}>{formatCurrency(request.cost ?? 0)}</span></p>
             </div>
             <div className="space-y-2">
-              <select
-                value={request.status || 'Pending'}
-                onChange={(event) => handleCollectionUpdate('serviceBookings', request.id, { status: event.target.value })}
-                disabled={!canEditOperations}
-                className={`w-full rounded-xl border ${getBorderClass()} ${getSelectBgClass()} px-3 py-2 text-sm ${getTextClass('main')} outline-none disabled:opacity-70`}
-              >
-                {serviceStatusOptions.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+              {request.status === 'Pending' && (
+                <button
+                  className="w-full rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-2 text-sm transition"
+                  onClick={() => handleAcceptRequest(request)}
+                  disabled={!canEditOperations}
+                >
+                  Accept & Assign Mechanic
+                </button>
+              )}
               <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase ${getStatusClasses(request.status)}`}>
                 {request.status || 'Pending'}
               </span>
+              {request.status === 'In Progress' && (
+                <button
+                  className="w-full mt-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 text-sm transition"
+                  onClick={() => handleCollectionUpdate('serviceBookings', request.id, { status: 'Services Completed' })}
+                  disabled={!canEditOperations}
+                >
+                  SERVICE COMPLETED
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -76,6 +110,13 @@ export default function ServiceRequestsSection({
           </div>
         )}
       </div>
+      <AssignMechanicModal
+        open={assignModalOpen}
+        onClose={handleCloseModal}
+        onAssign={handleAssignMechanic}
+        mechanics={mechanics}
+        request={selectedRequest}
+      />
     </section>
   )
 }

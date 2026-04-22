@@ -21,6 +21,7 @@ import SparePartsPage from './pages/herosection/SparePartsPage'
 import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import CustomerServicePage from './pages/customer/CustomerServicePage'
 import CustomerMessagesPage from './pages/customer/CustomerMessagesPage'
+import CustomerServiceBookingsPage from './pages/customer/CustomerServiceBookingsPage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
 import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
@@ -1302,8 +1303,9 @@ function App() {
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onNavigateBack={() => goToHomeSection('home', 'Home')}
-      />,
+      />, 
     )
   }
 
@@ -1320,8 +1322,9 @@ function App() {
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onNavigateBack={() => navigateTo('/customer')}
-      />,
+      />, 
     )
   }
 
@@ -1337,10 +1340,30 @@ function App() {
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onSignOut={handleSignOut}
-      />,
+      />, 
     )
   }
+
+  // Customer Service Bookings Page Route
+  if (currentPath === '/customer/service-bookings' && currentUser && accessProfile.role === 'customer') {
+    return withSecurityModal(
+      <CustomerServiceBookingsPage
+        currentUser={currentUser}
+        isDarkMode={true}
+        onNavigateToShowroom={() => navigateTo('/customer')}
+        onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
+        onSignOut={handleSignOut}
+      />, 
+    )
+  }
+
 
   // Product Details Page Route
   const productDetailMatch = currentPath.match(/^\/customer\/product\/(.+)$/)
@@ -1372,8 +1395,9 @@ function App() {
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onSignOut={handleSignOut}
-      />,
+      />, 
     )
   }
 

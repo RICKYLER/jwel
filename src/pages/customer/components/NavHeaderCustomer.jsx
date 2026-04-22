@@ -20,6 +20,7 @@ export default function NavHeaderCustomer({
   onNavigateToFinancingStatus,
   onNavigateToMessages,
   onNavigateToProfile,
+  onNavigateToServiceBookings,
   onSignOut,
   activePage = 'showroom',
   unreadNotifications = [],
@@ -330,7 +331,12 @@ export default function NavHeaderCustomer({
               </button>
 
               <button
-                onClick={() => setIsProfileDrawerOpen(false)}
+                onClick={() => {
+                  if (onNavigateToServiceBookings) {
+                    onNavigateToServiceBookings()
+                    setTimeout(() => setIsProfileDrawerOpen(false), 50)
+                  }
+                }}
                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition ${
                   isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
                 }`}

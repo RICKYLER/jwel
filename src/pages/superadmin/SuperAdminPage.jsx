@@ -330,8 +330,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         setter: setInventory,
       }),
       subscribeToCollection({
-        collectionName: 'technicians',
-        stateKey: 'technicians',
+        collectionName: 'authorizedPersonnel',
+        stateKey: 'technicians', // keep state name for prop compatibility
         setter: setTechnicians,
       }),
       subscribeToCollection({
@@ -638,12 +638,28 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     })
   }, [normalizedSearchTerm, users])
 
+
   const filteredServiceRequests = useMemo(() => {
     return serviceRequests.filter((request) => {
       const haystack = [request.customer, request.customerName, request.model, request.service, request.status].join(' ')
       return haystack.toLowerCase().includes(normalizedSearchTerm)
     })
   }, [normalizedSearchTerm, serviceRequests])
+
+  // Mechanics with activeJobs count
+  const mechanicsWithActiveJobs = useMemo(() => {
+    return technicians.map((tech) => {
+      const isMechanic = (tech.role || tech.personnelRole || '').toLowerCase().includes('mechanic');
+      if (!isMechanic) return tech;
+      const activeJobs = serviceRequests.filter(
+        (req) =>
+          req.status && req.status.toLowerCase() === 'in progress' &&
+          req.assignedTechnician &&
+          (req.assignedTechnician === tech.email || req.assignedTechnician === tech.id)
+      ).length;
+      return { ...tech, activeJobs };
+    });
+  }, [technicians, serviceRequests]);
 
   const filteredFinancingApplications = useMemo(() => {
     return financingApplications.filter((application) => {
@@ -1569,7 +1585,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         return (
           <DashboardSection
             chartBars={chartBars}
-            technicians={filteredTechnicians}
+            technicians={mechanicsWithActiveJobs}
             serviceRequests={filteredServiceRequests}
             setActiveSection={handleSectionChange}
             getStatusClasses={getStatusClasses}

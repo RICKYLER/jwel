@@ -8,7 +8,7 @@ import CheckIcon from '@mui/icons-material/Check'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import './FinancingStatusPage.css'
 
-export default function FinancingStatusPage({ referenceId, currentUser, onNavigateToShowroom, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToProfile, onSignOut }) {
+export default function FinancingStatusPage({ referenceId, currentUser, onNavigateToShowroom, onNavigateToService, onNavigateToFinancing, onNavigateToFinancingStatus, onNavigateToMessages, onNavigateToProfile, onNavigateToServiceBookings, onSignOut }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const [statusData, setStatusData] = useState(null)
@@ -451,6 +451,7 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
         onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
+        onNavigateToServiceBookings={onNavigateToServiceBookings}
         onSignOut={onSignOut}
         userAvatar={userAvatar}
       />

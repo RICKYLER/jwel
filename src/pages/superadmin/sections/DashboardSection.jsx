@@ -62,30 +62,33 @@ export default function DashboardSection({
           </div>
 
           <div className="space-y-6">
-            {technicians.slice(0, 4).map((member) => (
-              <div key={member.id} className="flex items-center gap-4">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-lg border border-[#C51D34]/30 bg-[#C51D34]/10 text-[#C51D34]">
-                  <EngineeringRoundedIcon sx={{ fontSize: 22 }} />
-                  <span
-                    className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#1c1b1b] ${
-                      String(member.status || '').toLowerCase() === 'online' ? 'bg-emerald-500' : 'bg-gray-500'
-                    }`}
-                  />
+            {technicians
+              .filter((member) => (member.role || member.personnelRole || '').toLowerCase().includes('mechanic'))
+              .slice(0, 4)
+              .map((member) => (
+                <div key={member.id} className="flex items-center gap-4">
+                  <div className="relative flex h-12 w-12 items-center justify-center rounded-lg border border-[#C51D34]/30 bg-[#C51D34]/10 text-[#C51D34]">
+                    <EngineeringRoundedIcon sx={{ fontSize: 22 }} />
+                    <span
+                      className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#1c1b1b] ${
+                        String(member.status || '').toLowerCase() === 'online' ? 'bg-emerald-500' : 'bg-gray-500'
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-white">{member.name || 'Mechanics Personnel'}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-white/40">
+                      {member.specialty || 'General Service'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-[#C51D34]">
+                      {member.activeJobs ?? 0} / {member.capacity ?? 4}
+                    </p>
+                    <p className="text-[10px] text-white/40">Load</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-white">{member.name || 'Technician'}</p>
-                  <p className="text-[10px] uppercase tracking-widest text-white/40">
-                    {member.specialty || 'General Service'}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-[#C51D34]">
-                    {member.activeJobs ?? 0} / {member.capacity ?? 4}
-                  </p>
-                  <p className="text-[10px] text-white/40">Load</p>
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         </aside>
       </div>
