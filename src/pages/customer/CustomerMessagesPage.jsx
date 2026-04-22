@@ -67,8 +67,19 @@ export default function CustomerMessagesPage({
           ...doc.data(),
         }))
         setConversations(convo)
-        if (convo.length > 0 && !selectedConversationId) {
+        
+        // Validate that selectedConversationId exists in the fetched conversations
+        const selectedExists = convo.some(c => c.id === selectedConversationId)
+        
+        if (convo.length === 0) {
+          // No conversations - clear selection
+          setSelectedConversationId(null)
+        } else if (!selectedExists && !selectedConversationId) {
+          // No conversation selected and none exists - select first one
           setSelectedConversationId(convo[0].id)
+        } else if (!selectedExists && selectedConversationId) {
+          // Selected conversation doesn't exist - clear selection
+          setSelectedConversationId(null)
         }
         setIsLoading(false)
       },
@@ -286,44 +297,8 @@ export default function CustomerMessagesPage({
                 </div>
               ))
             ) : (
-              <div className={`p-6 text-center flex flex-col items-center gap-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                <div className={`inline-block rounded-2xl px-6 py-4 shadow-lg ${isDarkMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-900'}`}>
-                  <p className="text-base font-semibold mb-2">You Need Anything?</p>
-                  <p className="text-sm mb-2">Contact our Admin Chat Support to help you out!</p>
-                  <p className="text-sm mb-4">Just click <span className="font-bold text-red-600">Start Conversation Here!</span></p>
-                  <button
-                    className="mt-2 px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
-                    onClick={async () => {
-                      // Create a new conversation with admin
-                      if (!currentUser?.uid) return;
-                      try {
-                        // Check if a conversation with admin already exists
-                        const adminId = 'admin'; // Change this to your actual admin UID
-                        const existing = conversations.find(c => c.participants?.includes(adminId));
-                        if (existing) {
-                          setSelectedConversationId(existing.id);
-                          return;
-                        }
-                        const docRef = await addDoc(collection(db, 'conversations'), {
-                          participants: [currentUser.uid, adminId],
-                          userId: currentUser.uid,
-                          title: 'Admin Support',
-                          otherUserAvatar: null, // Optionally set admin avatar
-                          lastMessage: '',
-                          lastMessageTime: serverTimestamp(),
-                          createdAt: serverTimestamp(),
-                          updatedAt: serverTimestamp(),
-                          isGuest: false,
-                        });
-                        setSelectedConversationId(docRef.id);
-                      } catch {
-                        alert('Failed to start conversation.');
-                      }
-                    }}
-                  >
-                    Start Conversation Here!
-                  </button>
-                </div>
+              <div className={`p-6 text-center ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                <p className="text-sm">No conversations yet</p>
               </div>
             )}
           </div>
@@ -349,7 +324,6 @@ export default function CustomerMessagesPage({
                   )}
                   <div>
                     <p className="text-sm font-semibold text-white">{selectedConversation.title}</p>
-                    <p className="text-xs text-slate-400">Support Team</p>
                   </div>
                 </div>
                 <button
@@ -444,8 +418,44 @@ export default function CustomerMessagesPage({
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-slate-400 text-lg">Select a conversation to start messaging</p>
+              <div className="text-center flex flex-col items-center gap-4">
+                <div className={`inline-block rounded-2xl px-8 py-6 shadow-lg ${isDarkMode ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-900'}`}>
+                  <p className="text-xl font-semibold mb-3">You Need Anything?</p>
+                  <p className="text-sm mb-2">Contact our Admin Chat Support to help you out!</p>
+                  <p className="text-sm mb-5">Just click <span className="font-bold text-red-600">Start Conversation Here!</span></p>
+                  <button
+                    className="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition"
+                    onClick={async () => {
+                      // Create a new conversation with admin
+                      if (!currentUser?.uid) return;
+                      try {
+                        // Check if a conversation with admin already exists
+                        const adminId = 'admin'; // Change this to your actual admin UID
+                        const existing = conversations.find(c => c.participants?.includes(adminId));
+                        if (existing) {
+                          setSelectedConversationId(existing.id);
+                          return;
+                        }
+                        const docRef = await addDoc(collection(db, 'conversations'), {
+                          participants: [currentUser.uid, adminId],
+                          userId: currentUser.uid,
+                          title: 'Admin Support',
+                          otherUserAvatar: null, // Optionally set admin avatar
+                          lastMessage: '',
+                          lastMessageTime: serverTimestamp(),
+                          createdAt: serverTimestamp(),
+                          updatedAt: serverTimestamp(),
+                          isGuest: false,
+                        });
+                        setSelectedConversationId(docRef.id);
+                      } catch {
+                        alert('Failed to start conversation.');
+                      }
+                    }}
+                  >
+                    Start Conversation Here!
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -30,98 +30,95 @@ export default function ChatBox({ currentUser }) {
     scrollToBottom()
   }, [messages])
 
-  // Initialize or get existing conversation
+  // Lazy initialize conversation - only when user sends first message
   useEffect(() => {
-    const initializeConversation = async () => {
-      setIsInitializing(true)
+    setIsInitializing(false)
+  }, [])
+
+  // Helper function to get or create conversation (called on first message)
+  const getOrCreateConversation = async () => {
+    if (conversationId) return conversationId
+
+    try {
+      const conversationsRef = collection(db, 'conversations')
       
-      try {
-        const conversationsRef = collection(db, 'conversations')
-        
-        // For authenticated users, check for existing open conversation
-        if (currentUser?.uid) {
-          const q = query(
+      // For authenticated users, check for existing open conversation
+      if (currentUser?.uid) {
+        const q = query(
+          conversationsRef,
+          where('userId', '==', currentUser.uid),
+          where('status', '==', 'open')
+        )
+        const querySnapshot = await getDocs(q)
+
+        if (querySnapshot.docs.length > 0) {
+          const existingConv = querySnapshot.docs[0]
+          setConversationId(existingConv.id)
+          return existingConv.id
+        }
+
+        // Create new conversation for authenticated user
+        const newConvRef = await addDoc(conversationsRef, {
+          userId: currentUser.uid,
+          userEmail: currentUser.email || 'anonymous@bykelink.com',
+          userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Guest',
+          isGuest: false,
+          status: 'open',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastMessageTime: serverTimestamp(),
+          messageCount: 0,
+          participants: [currentUser.uid],
+        })
+        setConversationId(newConvRef.id)
+        return newConvRef.id
+      } else {
+        // For guests, check localStorage for existing guest conversation ID
+        const storedGuestUserId = localStorage.getItem('bykelink_guest_user_id')
+
+        if (storedGuestUserId) {
+          const guestConversationQuery = query(
             conversationsRef,
-            where('userId', '==', currentUser.uid),
+            where('userId', '==', storedGuestUserId),
+            where('isGuest', '==', true),
             where('status', '==', 'open')
           )
-          const querySnapshot = await getDocs(q)
+          const guestConversationSnapshot = await getDocs(guestConversationQuery)
 
-          if (querySnapshot.docs.length > 0) {
-            // Use existing conversation
-            const existingConv = querySnapshot.docs[0]
-            setConversationId(existingConv.id)
-            setIsInitializing(false)
-            return
+          if (guestConversationSnapshot.docs.length > 0) {
+            const existingGuestConversation = guestConversationSnapshot.docs[0]
+            localStorage.setItem('bykelink_guest_conversation_id', existingGuestConversation.id)
+            setConversationId(existingGuestConversation.id)
+            return existingGuestConversation.id
           }
-
-          // Create new conversation for authenticated user
-          const newConvRef = await addDoc(conversationsRef, {
-            userId: currentUser.uid,
-            userEmail: currentUser.email || 'anonymous@bykelink.com',
-            userName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Guest',
-            isGuest: false,
-            status: 'open',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastMessageTime: serverTimestamp(),
-            messageCount: 0,
-            participants: [currentUser.uid],
-          })
-          setConversationId(newConvRef.id)
-        } else {
-          // For guests, check localStorage for existing guest conversation ID
-          const storedGuestUserId = localStorage.getItem('bykelink_guest_user_id')
-
-          if (storedGuestUserId) {
-            // Restore using a query scoped to guest user id instead of direct doc reads.
-            const guestConversationQuery = query(
-              conversationsRef,
-              where('userId', '==', storedGuestUserId),
-              where('isGuest', '==', true),
-              where('status', '==', 'open')
-            )
-            const guestConversationSnapshot = await getDocs(guestConversationQuery)
-
-            if (guestConversationSnapshot.docs.length > 0) {
-              const existingGuestConversation = guestConversationSnapshot.docs[0]
-              localStorage.setItem('bykelink_guest_conversation_id', existingGuestConversation.id)
-              setConversationId(existingGuestConversation.id)
-              setIsInitializing(false)
-              return
-            }
-          }
-
-          // Create new guest conversation
-          const guestUserId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          const newConvRef = await addDoc(conversationsRef, {
-            userId: guestUserId,
-            userEmail: 'guest@bykelink.com',
-            userName: 'Guest User',
-            isGuest: true,
-            status: 'open',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            lastMessageTime: serverTimestamp(),
-            messageCount: 0,
-            participants: [guestUserId],
-          })
-          
-          // Store guest conversation in localStorage
-          localStorage.setItem('bykelink_guest_conversation_id', newConvRef.id)
-          localStorage.setItem('bykelink_guest_user_id', guestUserId)
-          
-          setConversationId(newConvRef.id)
         }
-      } catch (error) {
-        console.error('Error initializing conversation:', error)
-      } finally {
-        setIsInitializing(false)
-      }
-    }
 
-    initializeConversation()
-  }, [currentUser?.uid, currentUser?.email, currentUser?.displayName])
+        // Create new guest conversation
+        const guestUserId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        const newConvRef = await addDoc(conversationsRef, {
+          userId: guestUserId,
+          userEmail: 'guest@bykelink.com',
+          userName: 'Guest User',
+          isGuest: true,
+          status: 'open',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastMessageTime: serverTimestamp(),
+          messageCount: 0,
+          participants: [guestUserId],
+        })
+        
+        localStorage.setItem('bykelink_guest_conversation_id', newConvRef.id)
+        localStorage.setItem('bykelink_guest_user_id', guestUserId)
+        
+        setConversationId(newConvRef.id)
+        return newConvRef.id
+      }
+    } catch (error) {
+      console.error('Error getting or creating conversation:', error)
+      return null
+    }
+  }
 
   // Listen for messages from admin/bot in real-time
   useEffect(() => {
@@ -155,9 +152,15 @@ export default function ChatBox({ currentUser }) {
   const handleSendMessage = async (e) => {
     e.preventDefault()
     if (!inputValue.trim()) return
-    if (!conversationId || isInitializing) {
-      console.warn('Conversation still initializing or not available')
-      return
+    
+    // Lazily create or get conversation on first message
+    let convId = conversationId
+    if (!convId) {
+      convId = await getOrCreateConversation()
+      if (!convId) {
+        console.error('Failed to create conversation')
+        return
+      }
     }
 
     // Add user message to local state
@@ -176,7 +179,7 @@ export default function ChatBox({ currentUser }) {
 
     try {
       // Save user message to Firestore (works for both authenticated and guest users)
-      await addDoc(collection(db, `conversations/${conversationId}/messages`), {
+      await addDoc(collection(db, `conversations/${convId}/messages`), {
         type: 'user',
         text: messageText,
         sender: currentUser?.email || 'guest@bykelink.com',
