@@ -466,9 +466,9 @@ export default function ServiceTypeSection({ isDarkMode }) {
             <div className="flex gap-3 pt-4 border-t border-white/10">
               <button
                 type="submit"
-                disabled={uploading || !iconFile}
+                disabled={uploading || (!iconFile && !editingId)}
                 className={`flex-1 bg-red-600 text-white px-4 py-2 rounded-lg transition font-bold text-sm uppercase tracking-widest disabled:opacity-50 ${
-                  !uploading && iconFile ? 'hover:bg-red-700' : ''
+                  !uploading && (iconFile || editingId) ? 'hover:bg-red-700' : ''
                 }`}
               >
                 {uploading ? 'Uploading...' : editingId ? 'Update Service' : 'Add Service'}
