@@ -161,7 +161,7 @@ export default function CustomerServiceBookingsPage({
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        activePage="messages"
+        activePage="service"
         unreadNotifications={[]}
         onNavigateToShowroom={onNavigateToShowroom}
         onNavigateToService={onNavigateToService}

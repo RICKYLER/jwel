@@ -1277,6 +1277,7 @@ function App() {
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onNavigateToConfirmApplication={(applicationData) => {
           setPendingApplicationData(applicationData)
           navigateTo('/financing/confirm')
@@ -1284,7 +1285,7 @@ function App() {
         onApplicationSubmitted={(referenceId) =>
           navigateTo(`/financing/submitted/${encodeURIComponent(referenceId)}`)
         }
-      />,
+      />, 
     )
   }
 
