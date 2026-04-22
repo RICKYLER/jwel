@@ -23,6 +23,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
     title: '',
     description: '',
     cost: '',
+    duration: { hours: 0, minutes: 30 },
     iconUrl: '',
   })
 
@@ -67,10 +68,12 @@ export default function ServiceTypeSection({ isDarkMode }) {
       const iconUrl = await getDownloadURL(iconRef)
 
       const servicesRef = collection(db, 'services')
+      const durationMinutes = formData.duration.hours * 60 + formData.duration.minutes
       const newService = await addDoc(servicesRef, {
         title: formData.title,
         description: formData.description,
         cost: parseFloat(formData.cost),
+        durationMinutes: durationMinutes,
         iconUrl: iconUrl,
         createdAt: new Date(),
       })
@@ -82,11 +85,12 @@ export default function ServiceTypeSection({ isDarkMode }) {
           title: formData.title,
           description: formData.description,
           cost: parseFloat(formData.cost),
+          durationMinutes: durationMinutes,
           iconUrl: iconUrl,
         },
       ])
 
-      setFormData({ title: '', description: '', cost: '', iconUrl: '' })
+      setFormData({ title: '', description: '', cost: '', duration: { hours: 0, minutes: 30 }, iconUrl: '' })
       setIconFile(null)
       setIconPreview(null)
     } catch (error) {
@@ -116,10 +120,12 @@ export default function ServiceTypeSection({ isDarkMode }) {
       }
 
       const serviceRef = doc(db, 'services', editingId)
+      const durationMinutes = formData.duration.hours * 60 + formData.duration.minutes
       await updateDoc(serviceRef, {
         title: formData.title,
         description: formData.description,
         cost: parseFloat(formData.cost),
+        durationMinutes: durationMinutes,
         iconUrl: iconUrl,
         updatedAt: new Date(),
       })
@@ -132,13 +138,14 @@ export default function ServiceTypeSection({ isDarkMode }) {
                 title: formData.title,
                 description: formData.description,
                 cost: parseFloat(formData.cost),
+                durationMinutes: durationMinutes,
                 iconUrl: iconUrl,
               }
             : s,
         ),
       )
 
-      setFormData({ title: '', description: '', cost: '', iconUrl: '' })
+      setFormData({ title: '', description: '', cost: '', duration: { hours: 0, minutes: 30 }, iconUrl: '' })
       setIconFile(null)
       setIconPreview(null)
       setEditingId(null)
@@ -164,10 +171,13 @@ export default function ServiceTypeSection({ isDarkMode }) {
   }
 
   const handleEditService = (service) => {
+    const hours = Math.floor((service.durationMinutes || 30) / 60)
+    const minutes = (service.durationMinutes || 30) % 60
     setFormData({
       title: service.title,
       description: service.description,
       cost: service.cost,
+      duration: { hours, minutes },
       iconUrl: service.iconUrl || '',
     })
     setIconPreview(service.iconUrl)
@@ -175,7 +185,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
   }
 
   const handleCancel = () => {
-    setFormData({ title: '', description: '', cost: '', iconUrl: '' })
+    setFormData({ title: '', description: '', cost: '', duration: { hours: 0, minutes: 30 }, iconUrl: '' })
     setIconFile(null)
     setIconPreview(null)
     setEditingId(null)
@@ -303,9 +313,24 @@ export default function ServiceTypeSection({ isDarkMode }) {
                 <span className={`text-sm font-bold ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>₱</span>
                 <input
                   type="number"
+                  min="0"
                   step="0.01"
                   value={formData.cost}
-                  onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                  onChange={(e) => {
+                    let value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setFormData({ ...formData, cost: value })
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === '+') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onWheel={(e) => {
+                    e.currentTarget.blur()
+                    e.preventDefault()
+                  }}
                   placeholder="0.00"
                   className={`flex-1 px-4 py-2 rounded-lg border text-sm ${
                     isDarkMode
@@ -313,6 +338,127 @@ export default function ServiceTypeSection({ isDarkMode }) {
                       : 'border-gray-300 bg-white text-gray-900'
                   }`}
                 />
+              </div>
+            </div>
+
+            {/* Duration Time Picker */}
+            <div>
+              <label className={`text-xs font-bold uppercase tracking-widest mb-3 block ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                Service Duration
+              </label>
+              <div className={`rounded-lg border p-4 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-300 bg-gray-50'}`}>
+                <div className="flex items-center justify-center gap-4">
+                  {/* Hours */}
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            hours: Math.min(formData.duration.hours + 1, 12),
+                          },
+                        })
+                      }
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                    >
+                      +
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="12"
+                      value={String(formData.duration.hours).padStart(2, '0')}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            hours: Math.max(0, Math.min(parseInt(e.target.value) || 0, 12)),
+                          },
+                        })
+                      }
+                      className={`w-16 text-center px-2 py-1 rounded border text-lg font-bold ${isDarkMode ? 'border-white/10 bg-white/5 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            hours: Math.max(formData.duration.hours - 1, 0),
+                          },
+                        })
+                      }
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                    >
+                      -
+                    </button>
+                    <p className={`text-xs font-bold uppercase ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                      Hours
+                    </p>
+                  </div>
+
+                  {/* Colon Separator */}
+                  <div className={`text-2xl font-black ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                    :
+                  </div>
+
+                  {/* Minutes */}
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            minutes: Math.min(formData.duration.minutes + 5, 59),
+                          },
+                        })
+                      }
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                    >
+                      +
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={String(formData.duration.minutes).padStart(2, '0')}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            minutes: Math.max(0, Math.min(parseInt(e.target.value) || 0, 59)),
+                          },
+                        })
+                      }
+                      className={`w-16 text-center px-2 py-1 rounded border text-lg font-bold ${isDarkMode ? 'border-white/10 bg-white/5 text-white' : 'border-gray-300 bg-white text-gray-900'}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          duration: {
+                            ...formData.duration,
+                            minutes: Math.max(formData.duration.minutes - 5, 0),
+                          },
+                        })
+                      }
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                    >
+                      -
+                    </button>
+                    <p className={`text-xs font-bold uppercase ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>
+                      Minutes
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -402,6 +548,16 @@ export default function ServiceTypeSection({ isDarkMode }) {
                       </h4>
                       <p className={`text-xs mt-1 line-clamp-2 ${isDarkMode ? 'text-white/50' : 'text-gray-600'}`}>
                         {service.description}
+                      </p>
+                    </div>
+
+                    {/* Duration - Center Left */}
+                    <div className="shrink-0 text-center mr-2">
+                      <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>
+                        Duration
+                      </p>
+                      <p className={`text-sm font-black ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                        {Math.floor((service.durationMinutes || 30) / 60)}h {(service.durationMinutes || 30) % 60}m
                       </p>
                     </div>
 

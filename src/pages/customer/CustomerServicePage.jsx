@@ -37,7 +37,7 @@ export default function CustomerServicePage({
   const [isDarkMode] = useState(true)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeStep, setActiveStep] = useState('service-type')
-  const [selectedService, setSelectedService] = useState(null)
+  const [selectedServices, setSelectedServices] = useState([])
   const [selectedDay, setSelectedDay] = useState(String(new Date().getDate() + 1))
   const [selectedTime, setSelectedTime] = useState('10:30 AM')
   const [serviceOptions, setServiceOptions] = useState([])
@@ -69,10 +69,7 @@ export default function CustomerServicePage({
             }
           })
           setServiceOptions(services)
-          // Set first service as selected
-          if (services.length > 0) {
-            setSelectedService(services[0].id)
-          }
+          // Don't auto-select any service - let user choose
         }
       } catch (error) {
         console.error('Error fetching services:', error)
@@ -108,16 +105,28 @@ export default function CustomerServicePage({
     fetchUserVehicles()
   }, [currentUser])
 
-  const estimatedCost = serviceOptions.find((service) => service.id === selectedService)?.cost ?? 0
+  const estimatedCost = selectedServices.reduce((total, serviceId) => {
+    const service = serviceOptions.find((s) => s.id === serviceId)
+    return total + (service?.cost ?? 0)
+  }, 0)
 
   const handleServiceSelect = (serviceId) => {
-    setSelectedService(serviceId)
+    setSelectedServices((prev) =>
+      prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId]
+    )
+  }
+
+  const handleBack = () => {
+    const stepIndex = bookingSteps.findIndex((step) => step.id === activeStep)
+    if (stepIndex > 0) {
+      setActiveStep(bookingSteps[stepIndex - 1].id)
+    }
   }
 
   const handleContinue = () => {
     // Validate current step before moving forward
-    if (activeStep === 'service-type' && !selectedService) {
-      alert('Please select a service')
+    if (activeStep === 'service-type' && selectedServices.length === 0) {
+      alert('Please select at least one service')
       return
     }
     if (activeStep === 'vehicle-info' && !vehicleInfo.model) {
@@ -137,7 +146,7 @@ export default function CustomerServicePage({
 
   const handleScheduleService = () => {
     console.log('Scheduling service:', {
-      service: selectedService,
+      services: selectedServices,
       vehicle: vehicleInfo,
       date: selectedDay,
       time: selectedTime,
@@ -162,7 +171,7 @@ export default function CustomerServicePage({
             {/* Service Grid */}
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2">
               {serviceOptions.map((service) => {
-                const isSelected = selectedService === service.id
+                const isSelected = selectedServices.includes(service.id)
                 return (
                   <button
                     key={service.id}
@@ -222,7 +231,7 @@ export default function CustomerServicePage({
                         {service.description}
                       </p>
                       <p className={`pt-2 text-sm font-black uppercase tracking-widest ${isSelected ? 'text-red-400' : isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                        {isSelected ? 'Selected ●' : 'Select Service →'}
+                        {isSelected ? 'Selected ✓' : '+ Add Service'}
                       </p>
                     </div>
                   </button>
@@ -383,9 +392,11 @@ export default function CustomerServicePage({
             <div className={`rounded-2xl p-6 border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Service:</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Services:</span>
                   <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {serviceOptions.find((s) => s.id === selectedService)?.title}
+                    {selectedServices.length > 0 
+                      ? selectedServices.map(id => serviceOptions.find((s) => s.id === id)?.title).join(', ')
+                      : 'No services selected'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -484,25 +495,33 @@ export default function CustomerServicePage({
               {StepContent()}
             </div>
 
-            {/* Right Sidebar - ORDER SUMMARY */}
+            {/* Right Sidebar - SERVICE SUMMARY */}
             <div
               className={`rounded-2xl p-4 sm:p-6 lg:p-8 h-fit lg:sticky lg:top-24 border-t-4 border-t-red-600 ${
                 isDarkMode ? 'bg-[#171922] border border-t-4 border-t-red-600 border-white/5' : 'bg-white border border-t-4 border-t-red-600 border-gray-200'
               }`}
             >
               <h3 className={`text-base sm:text-lg font-black italic mb-6 sm:mb-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                ORDER SUMMARY
+                SERVICE SUMMARY
               </h3>
 
-              {/* Service Selection */}
-              {selectedService && (
-                <div className={`mb-4 sm:mb-6 pb-4 sm:pb-6 border-b space-y-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                    Service
+              {/* Selected Services */}
+              {selectedServices.length > 0 && (
+                <div className={`mb-4 sm:mb-6 pb-4 sm:pb-6 border-b space-y-3 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                    Services ({selectedServices.length})
                   </p>
-                  <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {serviceOptions.find((s) => s.id === selectedService)?.title}
-                  </p>
+                  {selectedServices.map((serviceId) => {
+                    const service = serviceOptions.find((s) => s.id === serviceId)
+                    return (
+                      <div key={serviceId} className="flex items-center justify-between">
+                        <p className={`text-base font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {service?.title}
+                        </p>
+                        <p className="text-red-600 font-black">₱{service?.cost.toFixed(2)}</p>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
@@ -542,36 +561,26 @@ export default function CustomerServicePage({
                 </p>
               </div>
 
-              {/* Next Step Button */}
-              <button
-                onClick={handleContinue}
-                disabled={
-                  (activeStep === 'service-type' && !selectedService) ||
-                  (activeStep === 'vehicle-info' && !vehicleInfo.model)
-                }
-                className="w-full bg-red-600 px-6 py-3 sm:py-4 font-black text-white hover:bg-red-700 transition mb-4 sm:mb-6 uppercase text-xs sm:text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next Step →
-              </button>
-            </div>
-
-            <div className={`lg:col-start-3 rounded-2xl border ${isDarkMode ? 'bg-[#171922] border-white/5' : 'bg-white border-gray-200'} p-4 lg:sticky lg:top-24`}>
-              <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                Current Unit
-              </p>
-              <div className="flex items-center justify-between gap-2 sm:gap-3">
-                <div>
-                  <p className={`text-lg sm:text-2xl font-black italic leading-none ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {vehicleInfo.model ? vehicleInfo.model.toUpperCase() : 'YAMAHA YZF-R1M'}
-                  </p>
-                  <p className={`text-[10px] mt-2 font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                    Engine 998cc
-                  </p>
-                  <p className={`text-[10px] mt-1 font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                    Power 200hp
-                  </p>
-                </div>
-                <TwoWheelerRoundedIcon sx={{ fontSize: 56 }} className={`sm:text-[88px]! ${isDarkMode ? 'text-white' : 'text-gray-700'}`} />
+              {/* Button Group */}
+              <div className="flex gap-3 sm:gap-4">
+                {activeStep !== 'service-type' && (
+                  <button
+                    onClick={handleBack}
+                    className="flex-1 bg-slate-600 px-6 py-3 sm:py-4 font-black text-white hover:bg-slate-700 transition uppercase text-xs sm:text-sm tracking-widest"
+                  >
+                    ← Back
+                  </button>
+                )}
+                <button
+                  onClick={handleContinue}
+                  disabled={
+                    (activeStep === 'service-type' && selectedServices.length === 0) ||
+                    (activeStep === 'vehicle-info' && !vehicleInfo.model)
+                  }
+                  className="flex-1 bg-red-600 px-6 py-3 sm:py-4 font-black text-white hover:bg-red-700 transition mb-4 sm:mb-6 uppercase text-xs sm:text-sm tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next Step →
+                </button>
               </div>
             </div>
           </div>

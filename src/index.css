@@ -1,6 +1,26 @@
 @import 'tailwindcss';
 @import './pages/superadmin/sections/globalThemeOverrides.css';
 
+/* Disable number input spinner buttons and scroll behavior */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Prevent scrolling on number inputs */
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='number']:focus {
+  outline: none;
+}
+
 :root {
   /* Color Palette */
   --red: #C51D34;
