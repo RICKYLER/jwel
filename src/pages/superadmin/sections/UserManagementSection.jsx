@@ -175,8 +175,9 @@ export default function UserManagementSection({
 
     // Sort by creation date (newest first)
     return nextUsers.sort((a, b) => {
-      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0)
-      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0)
+      // Use createdAt, fallback to updatedAt, then to current date for new users
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (a.updatedAt?.toDate ? a.updatedAt.toDate() : new Date(a.createdAt || 0))
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (b.updatedAt?.toDate ? b.updatedAt.toDate() : new Date(b.createdAt || 0))
       return dateB - dateA // Descending order (newest first)
     })
   }, [mappedUsers, roleFilter, statusFilter, searchTerm])
