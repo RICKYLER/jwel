@@ -173,7 +173,12 @@ export default function UserManagementSection({
       return roleMatch && statusMatch && searchMatch
     })
 
-    return nextUsers
+    // Sort by creation date (newest first)
+    return nextUsers.sort((a, b) => {
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0)
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0)
+      return dateB - dateA // Descending order (newest first)
+    })
   }, [mappedUsers, roleFilter, statusFilter, searchTerm])
 
   const totalPages = Math.max(1, Math.ceil(visibleUsers.length / pageSize))
