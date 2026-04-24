@@ -287,15 +287,24 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
                     Technical Specifications
                   </h2>
                   {product.specs && product.specs.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                      {product.specs.map((spec, idx) => (
-                        <div key={idx} className="bg-slate-800/60 p-6 rounded-lg border border-slate-700">
-                          <h3 className="font-black uppercase text-xs tracking-[0.2em] text-slate-300 mb-4">{spec.category || 'Specification'}</h3>
-                          <div className="space-y-3">
-                            <div className="flex justify-between text-sm py-1">
-                              <span className="text-slate-500 uppercase text-[10px] font-bold">{spec.label}</span>
-                              <span className="font-bold text-slate-100">{spec.value}</span>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                      {Object.entries(
+                        (product.specs || []).reduce((acc, spec) => {
+                          if (!spec.category) return acc;
+                          if (!acc[spec.category]) acc[spec.category] = [];
+                          acc[spec.category].push(spec);
+                          return acc;
+                        }, {})
+                      ).map(([category, specs]) => (
+                        <div key={category}>
+                          <h3 className="font-black uppercase text-xs tracking-[0.2em] text-red-600 mb-6">{category}</h3>
+                          <div className="space-y-4">
+                            {specs.map((spec, idx) => (
+                              <div key={idx}>
+                                <p className="text-slate-400 uppercase text-xs font-bold mb-1">{spec.label}</p>
+                                <p className="text-white font-semibold text-sm">{spec.value}</p>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
