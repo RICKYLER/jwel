@@ -33,10 +33,10 @@ html[data-theme="light"] .text-white\/80 {
 }
 
 /* Background color overrides for light mode - Dark backgrounds become light */
-html[data-theme="light"] .bg-\[#1a1a1a\],
-html[data-theme="light"] .bg-\[#161616\],
-html[data-theme="light"] .bg-\[#131313\],
-html[data-theme="light"] .bg-\[#0f0f0f\],
+html[data-theme="light"] .bg-\5b\#1a1a1a\5d,
+html[data-theme="light"] .bg-\5b\#161616\5d,
+html[data-theme="light"] .bg-\5b\#131313\5d,
+html[data-theme="light"] .bg-\5b\#0f0f0f\5d,
 html[data-theme="light"] [class*="bg-black"] {
   background-color: #F5F5F5 !important;
 }
@@ -108,7 +108,7 @@ html[data-theme="light"] .light-mode {
 /* Primary color accent in light mode */
 html[data-theme="light"] .text-red-600,
 html[data-theme="light"] .text-red-500,
-html[data-theme="light"] .text-\[#ff6a63\],
+html[data-theme="light"] .text-\5b\#ff6a63\5d,
 html[data-theme="light"] [class*="text-red"] {
   color: #C51D34 !important;
 }
@@ -254,18 +254,18 @@ html[data-theme="light"] .bg-amber-900\/20 {
 }
 
 /* Red badges (in progress, rejected, out of stock) */
-html[data-theme="light"] .text-\[#ff8d8d\],
+html[data-theme="light"] .text-\5b\#ff8d8d\5d,
 html[data-theme="light"] .text-red-500,
 html[data-theme="light"] .text-red-400 {
   color: #DC2626 !important;
 }
 
-html[data-theme="light"] .bg-\[#e10100\]\/10,
+html[data-theme="light"] .bg-\5b\#e10100\5d\/10,
 html[data-theme="light"] .bg-red-500\/10 {
   background-color: #FEE2E2 !important;
 }
 
-html[data-theme="light"] .border-\[#e10100\]\/20,
+html[data-theme="light"] .border-\5b\#e10100\5d\/20,
 html[data-theme="light"] .border-red-500\/20 {
   border-color: #FECACA !important;
 }
