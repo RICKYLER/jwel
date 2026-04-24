@@ -1,3 +1,4 @@
+
 import { useMemo, useState, useEffect } from 'react'
 import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc, getDocs } from 'firebase/firestore'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
@@ -34,6 +35,10 @@ const inventoryTabs = [
 ]
 
 const defaultItemForm = {
+  // Place inside InventorySection component:
+  //   const [isSpecModalOpen, setIsSpecModalOpen] = useState(false);
+  //   const [specCategory, setSpecCategory] = useState('ENGINE');
+  //   const [specFields, setSpecFields] = useState([{ label: '', value: '' }]);
   name: '',
   model: '',
   category: 'Motorcycle Units',
@@ -45,6 +50,8 @@ const defaultItemForm = {
   status: 'In Stock',
   badge: 'New Arrival',
   showInShowroom: true,
+  specs: [], // Array of {category, label, value}
+  equipment: [], // Array of strings
 }
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase()
@@ -71,6 +78,11 @@ export default function InventorySection({
   const [isCriticalStockModalOpen, setIsCriticalStockModalOpen] = useState(false)
   const [isSavingItem, setIsSavingItem] = useState(false)
   const [itemForm, setItemForm] = useState(defaultItemForm)
+
+  // --- Technical Specification Modal State ---
+  const [isSpecModalOpen, setIsSpecModalOpen] = useState(false);
+  const [specCategory, setSpecCategory] = useState('ENGINE');
+  const [specFields, setSpecFields] = useState([{ label: '', value: '' }]);
   const [sparePartsForm, setSparePartsForm] = useState({ ...defaultItemForm, category: 'Spare Parts' })
   const [editingItem, setEditingItem] = useState(null)
   const [imageFile, setImageFile] = useState(null)
@@ -385,6 +397,8 @@ export default function InventorySection({
         status: itemForm.status,
         badge: itemForm.badge.trim() || 'New Arrival',
         colorVariants: itemForm.colorVariants,
+        specs: itemForm.specs || [],
+        equipment: itemForm.equipment || [],
         imageUrl,
         gallery: imageUrl ? [imageUrl, ...galleryUrls] : galleryUrls,
         showInShowroom: Boolean(itemForm.showInShowroom),
@@ -484,6 +498,8 @@ export default function InventorySection({
         price: Number(sparePartsForm.price || 0),
         status: sparePartsForm.status,
         badge: sparePartsForm.badge.trim() || 'New Stock',
+        specs: sparePartsForm.specs || [],
+        equipment: sparePartsForm.equipment || [],
         imageUrl,
         gallery: imageUrl ? [imageUrl] : [],
         showInShowroom: Boolean(sparePartsForm.showInShowroom),
@@ -729,6 +745,8 @@ export default function InventorySection({
         stock: editTotalStock,
         price: Number(editFormData.price ?? editingItem.price ?? 0),
         colorVariants: colorVariants,
+        specs: editFormData.specs ?? editingItem.specs ?? [],
+        equipment: editFormData.equipment ?? editingItem.equipment ?? [],
         description: editFormData.description ?? editingItem.description ?? '',
         imageUrl,
         gallery: galleryUrls.filter(Boolean),
@@ -1248,12 +1266,203 @@ export default function InventorySection({
                     )}
                   </div>
                 </label>
+
+              {/* Technical Specifications - Vertical Section */}
+              <div className="w-full mb-6">
+                <label className="inventory-field mb-2 block">
+                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Technical Specifications</span>
+                  <button
+                    type="button"
+                    className="inventory-add-btn mb-2"
+                    onClick={() => {
+                      console.log('Add Specification clicked');
+                      setSpecCategory('ENGINE');
+                      setSpecFields([{ label: '', value: '' }]);
+                      setIsSpecModalOpen(true);
+                      setTimeout(() => {
+                        console.log('isSpecModalOpen:', true);
+                      }, 100);
+                    }}
+                  >
+                    + Add Specification
+                  </button>
+                  {/* Technical Specification Modal */}
+                  {isSpecModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg">
+                        <h2 className="text-lg font-bold mb-4">Add Technical Specification</h2>
+                        <label className="block mb-4">
+                          <span className="block text-xs font-bold mb-1">Category</span>
+                          <select
+                            className="w-full p-2 rounded bg-neutral-800 border border-neutral-700 text-white focus:ring-2 focus:ring-red-600 focus:border-red-600 appearance-none"
+                            style={{ colorScheme: 'dark', color: '#fff', backgroundColor: '#232323', borderColor: '#444' }}
+                            value={specCategory}
+                            onChange={e => setSpecCategory(e.target.value)}
+                          >
+
+                            <option value="ENGINE">ENGINE</option>
+                            <option value="FRAMEWORK">FRAMEWORK</option>
+                            <option value="ELECTRICAL">ELECTRICAL</option>
+                            <option value="DIMENSION">DIMENSION</option>
+                            <option value="OTHERS">OTHERS</option>
+                          </select>
+                        </label>
+                        <div className="mb-4">
+                          <span className="block text-xs font-bold mb-2">Fields</span>
+                          {specFields.map((field, idx) => (
+                            <div key={idx} className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                placeholder="Label (e.g. Displacement)"
+                                value={field.label}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setSpecFields(fields => fields.map((f, i) => i === idx ? { ...f, label: val } : f));
+                                }}
+                                className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Value (e.g. 155cc)"
+                                value={field.value}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setSpecFields(fields => fields.map((f, i) => i === idx ? { ...f, value: val } : f));
+                                }}
+                                className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                              />
+                              <button
+                                type="button"
+                                className="text-red-500 font-bold"
+                                onClick={() => setSpecFields(fields => fields.filter((_, i) => i !== idx))}
+                              >Remove</button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="inventory-add-btn mt-2"
+                            onClick={() => setSpecFields(fields => [...fields, { label: '', value: '' }])}
+                          >+ Add Text Field</button>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <button
+                            type="button"
+                            className="inventory-cancel-button"
+                            onClick={() => setIsSpecModalOpen(false)}
+                          >Cancel</button>
+                          <button
+                            type="button"
+                            className="inventory-submit-button"
+                            onClick={() => {
+                              setItemForm(prev => ({
+                                ...prev,
+                                specs: [
+                                  ...(prev.specs || []),
+                                  ...specFields.filter(f => f.label && f.value).map(f => ({
+                                    category: specCategory,
+                                    label: f.label,
+                                    value: f.value
+                                  }))
+                                ]
+                              }));
+                              setIsSpecModalOpen(false);
+                            }}
+                          >Save</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Group and display Technical Specifications by category */}
+                  <div className="space-y-4">
+                    {Object.entries(
+                      (itemForm.specs || []).reduce((acc, spec) => {
+                        if (!spec.category) return acc;
+                        if (!acc[spec.category]) acc[spec.category] = [];
+                        acc[spec.category].push(spec);
+                        return acc;
+                      }, {})
+                    ).map(([category, specs]) => (
+                      <div key={category}>
+                        <div className="font-bold text-xs uppercase tracking-widest mb-1">{category}</div>
+                        <ul className="ml-2 space-y-1">
+                          {specs.map((spec, idx) => (
+                            <li key={idx} className="flex items-center gap-2">
+                              <span className="font-semibold">{spec.label}</span>
+                              <span className="text-white/70">{spec.value}</span>
+                              <button
+                                type="button"
+                                className="text-red-500 font-bold ml-2 text-xs"
+                                onClick={() => setItemForm(prev => ({
+                                  ...prev,
+                                  specs: prev.specs.filter((s, i) => !(s.category === category && s.label === spec.label && s.value === spec.value && i === prev.specs.findIndex(ss => ss === spec)))
+                                }))}
+                              >Remove</button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </label>
               </div>
 
-              <label className="inventory-field">
-                <span>Description</span>
-                <textarea name="description" value={itemForm.description} onChange={(e) => handleFormChange(e, 'unit')} rows="3" placeholder="Add a short description for the showroom and inventory listing." />
-              </label>
+              {/* Standard Equipment - Vertical Section */}
+              <div className="w-full mb-6">
+                <label className="inventory-field mb-2 block">
+                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Standard Equipment</span>
+                  <button
+                    type="button"
+                    className="inventory-add-btn mb-2"
+                    onClick={() => setItemForm((prev) => ({
+                      ...prev,
+                      equipment: [...(prev.equipment || []), ''],
+                    }))}
+                  >
+                    + Add Equipment
+                  </button>
+                  <div className="space-y-2">
+                    {(itemForm.equipment || []).map((eq, idx) => (
+                      <div key={idx} className="flex gap-2 items-end">
+                        <input
+                          type="text"
+                          placeholder="Equipment (e.g. ABS Brakes)"
+                          value={eq}
+                          onChange={e => {
+                            const val = e.target.value
+                            setItemForm(prev => {
+                              const equipment = [...prev.equipment]
+                              equipment[idx] = val
+                              return { ...prev, equipment }
+                            })
+                          }}
+                          className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                        />
+                        <button
+                          type="button"
+                          className="text-red-500 font-bold ml-2"
+                          onClick={() => setItemForm(prev => ({
+                            ...prev,
+                            equipment: prev.equipment.filter((_, i) => i !== idx),
+                          }))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </label>
+              </div>
+
+              {/* Description - Vertical Section */}
+              <div className="w-full mb-6">
+                <label className="inventory-field block">
+                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Description</span>
+                  <textarea name="description" value={itemForm.description} onChange={(e) => handleFormChange(e, 'unit')} rows="3" placeholder="Add a short description for the showroom and inventory listing." className="w-full px-2 py-1 rounded bg-neutral-800 border border-neutral-700" />
+                </label>
+              </div>
+
+              {/* CLOSE main inventory-modal-grid */}
+              </div>
 
               <div className="inventory-modal-grid inventory-modal-grid--secondary">
                 <label className="inventory-field">
@@ -1524,7 +1733,7 @@ export default function InventorySection({
                     {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className={`text-xs text-center font-bold ${!isDarkMode ? 'text-gray-400' : 'text-white/30'}`}>No Image</div>
+                      <div className={`h-full w-full flex items-center justify-center text-xs font-bold ${!isDarkMode ? 'bg-gray-300 text-gray-600' : 'text-white/30'}`}>No Image</div>
                     )}
                   </div>
                   <div className="flex-1">
@@ -1738,6 +1947,8 @@ export default function InventorySection({
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); setConfirmModal({ open: true, action: 'edit-update', itemId: editingItem.id }) }} className="inventory-modal-form">
+              
+
               <div className="inventory-modal-grid">
                 <label className="inventory-field">
                   <span>Item Name</span>
@@ -1961,6 +2172,217 @@ export default function InventorySection({
                   placeholder="Add item details."
                 />
               </label>
+
+              <div className="w-full mb-6">
+                <label className="inventory-field mb-2 block">
+                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Technical Specifications</span>
+                  <button
+                    type="button"
+                    className="inventory-add-btn mb-2"
+                    onClick={() => {
+                      setSpecCategory('ENGINE');
+                      setSpecFields([{ label: '', value: '' }]);
+                      setIsSpecModalOpen(true);
+                    }}
+                  >
+                    + Add Specification
+                  </button>
+                  {/* Technical Specification Modal for Edit Item */}
+                  {isSpecModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg">
+                        <h2 className="text-lg font-bold mb-4">Add Technical Specification</h2>
+                        <label className="block mb-4">
+                          <span className="block text-xs font-bold mb-1">Category</span>
+                          <div style={{ position: 'relative' }}>
+                            <select
+                              className="w-full p-2 rounded bg-neutral-800 border border-neutral-700 text-white focus:ring-2 focus:ring-red-600 focus:border-red-600 appearance-none pr-8 spec-category-dropdown"
+                              style={{ colorScheme: 'dark', color: '#fff', backgroundColor: '#232323', borderColor: '#444' }}
+                              value={specCategory}
+                              onChange={e => setSpecCategory(e.target.value)}
+                              onFocus={e => {
+                                const arrow = e.target.parentNode.querySelector('.dropdown-arrow');
+                                if (arrow) arrow.classList.add('open');
+                              }}
+                              onBlur={e => {
+                                const arrow = e.target.parentNode.querySelector('.dropdown-arrow');
+                                if (arrow) arrow.classList.remove('open');
+                              }}
+                            >
+                              <option value="ENGINE">ENGINE</option>
+                              <option value="FRAMEWORK">FRAMEWORK</option>
+                              <option value="ELECTRICAL">ELECTRICAL</option>
+                              <option value="DIMENSION">DIMENSION</option>
+                              <option value="OTHERS">OTHERS</option>
+                            </select>
+                            <span
+                              className="dropdown-arrow"
+                              style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                pointerEvents: 'none',
+                                color: '#aaa',
+                                fontSize: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+                              }}
+                            >
+                              ▼
+                            </span>
+                            <style>{`
+                              .dropdown-arrow.open {
+                                transform: translateY(-50%) rotate(180deg);
+                              }
+                            `}</style>
+                          </div>
+                        </label>
+                        <div className="mb-4">
+                          <span className="block text-xs font-bold mb-2">Fields</span>
+                          {specFields.map((field, idx) => (
+                            <div key={idx} className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                placeholder="Label (e.g. Displacement)"
+                                value={field.label}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setSpecFields(fields => fields.map((f, i) => i === idx ? { ...f, label: val } : f));
+                                }}
+                                className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Value (e.g. 155cc)"
+                                value={field.value}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setSpecFields(fields => fields.map((f, i) => i === idx ? { ...f, value: val } : f));
+                                }}
+                                className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                              />
+                              <button
+                                type="button"
+                                className="text-red-500 font-bold"
+                                onClick={() => setSpecFields(fields => fields.filter((_, i) => i !== idx))}
+                              >Remove</button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="inventory-add-btn mt-2"
+                            onClick={() => setSpecFields(fields => [...fields, { label: '', value: '' }])}
+                          >+ Add Text Field</button>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <button
+                            type="button"
+                            className="inventory-cancel-button"
+                            onClick={() => setIsSpecModalOpen(false)}
+                          >Cancel</button>
+                          <button
+                            type="button"
+                            className="inventory-submit-button"
+                            onClick={() => {
+                              setEditFormData(prev => ({
+                                ...prev,
+                                specs: [
+                                  ...((prev.specs ?? editingItem.specs) || []),
+                                  ...specFields.filter(f => f.label && f.value).map(f => ({
+                                    category: specCategory,
+                                    label: f.label,
+                                    value: f.value
+                                  }))
+                                ]
+                              }));
+                              setIsSpecModalOpen(false);
+                            }}
+                          >Save</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Group and display Technical Specifications by category */}
+                  <div className="space-y-4">
+                    {Object.entries(
+                      ((editFormData.specs !== undefined ? editFormData.specs : editingItem.specs) || []).reduce((acc, spec) => {
+                        if (!spec.category) return acc;
+                        if (!acc[spec.category]) acc[spec.category] = [];
+                        acc[spec.category].push(spec);
+                        return acc;
+                      }, {})
+                    ).map(([category, specs]) => (
+                      <div key={category}>
+                        <div className="font-bold text-xs uppercase tracking-widest mb-1">{category}</div>
+                        <ul className="ml-2 space-y-1">
+                          {specs.map((spec, idx) => (
+                            <li key={idx} className="flex items-center gap-2">
+                              <span className="font-semibold">{spec.label}</span>
+                              <span className="text-white/70">{spec.value}</span>
+                              <button
+                                type="button"
+                                className="text-red-500 font-bold ml-2 text-xs"
+                                onClick={() => setEditFormData(current => ({
+                                  ...current,
+                                  specs: (current.specs ?? editingItem.specs ?? []).filter((s, i) => !(s.category === category && s.label === spec.label && s.value === spec.value && i === (current.specs ?? editingItem.specs ?? []).findIndex(ss => ss === spec)))
+                                }))}
+                              >Remove</button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </label>
+              </div>
+
+              <div className="w-full mb-6">
+                <label className="inventory-field mb-2 block">
+                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Standard Equipment</span>
+                  <button
+                    type="button"
+                    className="inventory-add-btn mb-2"
+                    onClick={() => setEditFormData(current => ({
+                      ...current,
+                      equipment: [...(current.equipment ?? editingItem.equipment ?? []), ''],
+                    }))}
+                  >
+                    + Add Equipment
+                  </button>
+                  <div className="space-y-2">
+                    {(editFormData.equipment ?? editingItem.equipment ?? []).map((eq, idx) => (
+                      <div key={idx} className="flex gap-2 items-end">
+                        <input
+                          type="text"
+                          placeholder="Equipment (e.g. ABS Brakes)"
+                          value={eq}
+                          onChange={e => {
+                            const val = e.target.value
+                            setEditFormData(current => {
+                              const equipment = [...(current.equipment ?? editingItem.equipment ?? [])]
+                              equipment[idx] = val
+                              return { ...current, equipment }
+                            })
+                          }}
+                          className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700"
+                        />
+                        <button
+                          type="button"
+                          className="text-red-500 font-bold ml-2"
+                          onClick={() => setEditFormData(current => ({
+                            ...current,
+                            equipment: (current.equipment ?? editingItem.equipment ?? []).filter((_, i) => i !== idx),
+                          }))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </label>
+              </div>
 
               {editingItem.imageUrl || editImagePreview ? (
                 <div className="inventory-image-preview max-w-full">

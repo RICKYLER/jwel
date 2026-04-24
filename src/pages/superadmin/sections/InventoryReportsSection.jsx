@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
@@ -24,7 +24,7 @@ export default function InventoryReportsSection({
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
-  const [searchTerm, setSearchTerm] = useState('')
+    const [searchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
@@ -66,11 +66,20 @@ export default function InventoryReportsSection({
     })
   }, [activeTab, inventoryLogs, searchTerm, normalizedSearchTerm, dateFrom, dateTo])
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+
+  // Handlers to reset currentPage when filters change
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId)
     setCurrentPage(1)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, searchTerm, dateFrom, dateTo])
+  }
+  const handleDateFromChange = (value) => {
+    setDateFrom(value)
+    setCurrentPage(1)
+  }
+  const handleDateToChange = (value) => {
+    setDateTo(value)
+    setCurrentPage(1)
+  }
 
   const totalPages = Math.ceil(filteredLogs.length / reportsPerPage)
   const startIndex = (currentPage - 1) * reportsPerPage
@@ -257,7 +266,7 @@ export default function InventoryReportsSection({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`inventory-reports-tab ${activeTab === tab.id ? 'is-active' : ''}`}
                 >
                   {tab.label}
@@ -273,7 +282,7 @@ export default function InventoryReportsSection({
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={(e) => handleDateFromChange(e.target.value)}
                   className="inventory-reports-date-input rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs text-white"
                 />
               </label>
@@ -283,7 +292,7 @@ export default function InventoryReportsSection({
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
+                  onChange={(e) => handleDateToChange(e.target.value)}
                   className="inventory-reports-date-input rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs text-white"
                 />
               </label>
@@ -292,8 +301,8 @@ export default function InventoryReportsSection({
                 <button
                   type="button"
                   onClick={() => {
-                    setDateFrom('')
-                    setDateTo('')
+                    handleDateFromChange('')
+                    handleDateToChange('')
                   }}
                   className="text-xs font-bold text-[#ff7070] hover:text-red-400 transition-colors"
                 >

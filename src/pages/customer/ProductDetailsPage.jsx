@@ -279,7 +279,7 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
         <section className="bg-slate-950 py-20 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
           <div className="container mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              {/* Technical Specs */}
+              {/* Technical Specs Section */}
               <div className="md:col-span-2 space-y-12">
                 <div>
                   <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-8 flex items-center gap-4">
@@ -307,35 +307,30 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
                     </div>
                   )}
                 </div>
+
               </div>
 
               {/* Side Features */}
               <div className="space-y-8">
                 <div className="bg-slate-900 text-white p-8 rounded-lg">
                   <h3 className="text-xl font-black uppercase italic mb-6">Standard Equipment</h3>
-                  <ul className="space-y-4">
-                    <li className="flex items-start gap-3">
-                      <span className="text-slate-400 font-black text-xl">→</span>
-                      <div>
-                        <span className="block font-bold text-sm uppercase">Premium Build</span>
-                        <span className="text-xs text-slate-400">High-quality construction</span>
-                      </div>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-slate-400 font-black text-xl">→</span>
-                      <div>
-                        <span className="block font-bold text-sm uppercase">Advanced Technology</span>
-                        <span className="text-xs text-slate-400">Modern engineering</span>
-                      </div>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="text-slate-400 font-black text-xl">→</span>
-                      <div>
-                        <span className="block font-bold text-sm uppercase">Expert Support</span>
-                        <span className="text-xs text-slate-400">Professional service</span>
-                      </div>
-                    </li>
-                  </ul>
+                  {product.equipment && product.equipment.length > 0 ? (
+                    <ul className="space-y-4">
+                      {product.equipment.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          <span className="text-slate-400 font-black text-xl">→</span>
+                          <div>
+                            <span className="block font-bold text-sm uppercase">{item}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-slate-300 font-semibold">No equipment details available</p>
+                      <p className="text-xs text-slate-500 mt-2">Contact our sales team for more information</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Trade-in Card */}
