@@ -31,6 +31,7 @@ export default function ProfileSection({
   const searchInputRef = useRef(null)
   const autocompleteRef = useRef(null)
   const fileInputRef = useRef(null)
+  const isProgrammaticUpdateRef = useRef(false)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -42,7 +43,11 @@ export default function ProfileSection({
     if (!mapRef.current || mapInstanceRef.current) return
 
     const loadGoogleMaps = () => {
-      if (document.getElementById('google-maps-profile-script')) return
+      if (document.getElementById('google-maps-profile-script')) {
+        // If the script is already present (navigated back), attempt to initialize the map.
+        setTimeout(initMap, 200)
+        return
+      }
 
       setIsMapLoading(true)
 
@@ -82,6 +87,11 @@ export default function ProfileSection({
 
       // Update coordinates when marker is dragged
       marker.addListener('dragend', () => {
+        // Skip if this is a programmatic update from Firestore
+        if (isProgrammaticUpdateRef.current) {
+          isProgrammaticUpdateRef.current = false
+          return
+        }
         const pos = markerRef.current.getPosition()
         onProfileFieldChange({
           target: {
@@ -99,6 +109,11 @@ export default function ProfileSection({
 
       // Update marker when map is clicked
       map.addListener('click', (e) => {
+        // Skip if this is a programmatic update from Firestore
+        if (isProgrammaticUpdateRef.current) {
+          isProgrammaticUpdateRef.current = false
+          return
+        }
         markerRef.current.setPosition(e.latLng)
         onProfileFieldChange({
           target: {
@@ -156,7 +171,24 @@ export default function ProfileSection({
     }
 
     loadGoogleMaps()
-  }, [onProfileFieldChange, profileForm.latitude, profileForm.longitude, searchInputRef])
+  }, [])
+
+  // Update map center when Firestore coordinates change (without triggering unsaved changes)
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    const marker = markerRef.current
+    if (!map || !marker || !window.google?.maps) return
+
+    const lat = parseFloat(profileForm.latitude)
+    const lng = parseFloat(profileForm.longitude)
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return
+
+    // Set flag so dragend/click listeners skip the change handler
+    isProgrammaticUpdateRef.current = true
+    const newPos = new window.google.maps.LatLng(lat, lng)
+    map.setCenter(newPos)
+    marker.setPosition(newPos)
+  }, [profileForm.latitude, profileForm.longitude])
 
   // Create or recreate the map instance and marker
   const recreateMap = () => {
@@ -514,7 +546,7 @@ export default function ProfileSection({
             </Tooltip>
 
             {isMapLoading && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30">
+              <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center bg-black/30">
                 <CircularProgress size={56} sx={{ color: 'white' }} />
               </div>
             )}

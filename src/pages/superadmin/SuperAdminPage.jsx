@@ -218,27 +218,30 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         const unsubscribe = onSnapshot(profileDocRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data()
-            setProfileForm((current) => ({
-              ...current,
-              fullName: data.fullName || current.fullName,
-              title: data.title || current.title,
-              phone: data.phone || current.phone,
-              location: data.location || current.location,
-              bio: data.bio || current.bio,
-              latitude: data.latitude || current.latitude,
-              longitude: data.longitude || current.longitude,
-              avatarUrl: data.avatarUrl || current.avatarUrl,
-            }))
-            // keep a copy of last saved state for change-detection
-            setSavedProfileSnapshot({
-              fullName: data.fullName || '',
-              title: data.title || '',
-              phone: data.phone || '',
-              location: data.location || '',
-              bio: data.bio || '',
-              latitude: data.latitude || '',
-              longitude: data.longitude || '',
-              avatarUrl: data.avatarUrl || '',
+            setProfileForm((current) => {
+              const updated = {
+                ...current,
+                fullName: data.fullName || current.fullName,
+                title: data.title || current.title,
+                phone: data.phone || current.phone,
+                location: data.location || current.location,
+                bio: data.bio || current.bio,
+                latitude: data.latitude || current.latitude,
+                longitude: data.longitude || current.longitude,
+                avatarUrl: data.avatarUrl || current.avatarUrl,
+              }
+              // Update saved snapshot with the same values to prevent false unsaved-change detection
+              setSavedProfileSnapshot({
+                fullName: updated.fullName || '',
+                title: updated.title || '',
+                phone: updated.phone || '',
+                location: updated.location || '',
+                bio: updated.bio || '',
+                latitude: updated.latitude || '',
+                longitude: updated.longitude || '',
+                avatarUrl: updated.avatarUrl || '',
+              })
+              return updated
             })
           }
         })
@@ -265,12 +268,22 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     const unsubscribe = onSnapshot(settingsRef, (snap) => {
       if (snap.exists()) {
         const data = snap.data()
-        setProfileForm((current) => ({
-          ...current,
-          latitude: data.latitude || current.latitude,
-          longitude: data.longitude || current.longitude,
-          location: data.location || current.location,
-        }))
+        setProfileForm((current) => {
+          const updated = {
+            ...current,
+            latitude: data.latitude || current.latitude,
+            longitude: data.longitude || current.longitude,
+            location: data.location || current.location,
+          }
+          // Update saved snapshot to match
+          setSavedProfileSnapshot((current) => ({
+            ...current,
+            latitude: updated.latitude || '',
+            longitude: updated.longitude || '',
+            location: updated.location || '',
+          }))
+          return updated
+        })
       }
     })
 
@@ -1142,8 +1155,27 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     // If navigating away from profile and there are unsaved changes, confirm
     const hasUnsaved = (() => {
       if (!savedProfileSnapshot) return false
-      const keys = ['fullName', 'title', 'phone', 'location', 'bio', 'latitude', 'longitude', 'avatarUrl']
-      return keys.some((k) => String(profileForm[k] || '') !== String(savedProfileSnapshot[k] || ''))
+
+      const normalizePhone = (p) => String(p || '').replace(/\D/g, '')
+      const numEqual = (a, b) => {
+        const na = parseFloat(a)
+        const nb = parseFloat(b)
+        if (Number.isNaN(na) && Number.isNaN(nb)) return true
+        if (Number.isNaN(na) || Number.isNaN(nb)) return false
+        return Math.abs(na - nb) < 0.000001
+      }
+
+      // Compare relevant keys with normalization for phone and numeric tolerance for coords
+      if (String(profileForm.fullName || '') !== String(savedProfileSnapshot.fullName || '')) return true
+      if (String(profileForm.title || '') !== String(savedProfileSnapshot.title || '')) return true
+      if (normalizePhone(profileForm.phone) !== normalizePhone(savedProfileSnapshot.phone)) return true
+      if (String(profileForm.location || '') !== String(savedProfileSnapshot.location || '')) return true
+      if (String(profileForm.bio || '') !== String(savedProfileSnapshot.bio || '')) return true
+      if (!numEqual(profileForm.latitude, savedProfileSnapshot.latitude)) return true
+      if (!numEqual(profileForm.longitude, savedProfileSnapshot.longitude)) return true
+      if (String(profileForm.avatarUrl || '') !== String(savedProfileSnapshot.avatarUrl || '')) return true
+
+      return false
     })()
 
     if (activeSection === 'profile' && sectionId !== 'profile' && hasUnsaved) {
