@@ -1,4 +1,4 @@
-import { useToast } from '../context/ToastContext'
+import useToast from '../context/useToast'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import ErrorRoundedIcon from '@mui/icons-material/ErrorRounded'
@@ -68,7 +68,7 @@ export default function ToastNotification() {
         return (
           <div
             key={toast.id}
-            className={`${styles.bg} ${styles.border} border rounded-lg shadow-2xl backdrop-blur-md pointer-events-auto animate-slideIn min-w-80 max-w-md overflow-hidden`}
+            className={`${styles.bg} ${styles.border} border rounded-lg shadow-2xl backdrop-blur-md pointer-events-auto min-w-80 max-w-md overflow-hidden ${toast.closing ? 'animate-slideOut' : 'animate-slideIn'}`}
           >
             {/* Progress bar */}
             {toast.duration > 0 && (
@@ -113,6 +113,17 @@ export default function ToastNotification() {
                 }
               }
 
+              @keyframes slideOut {
+                from {
+                  transform: translateX(0);
+                  opacity: 1;
+                }
+                to {
+                  transform: translateX(400px);
+                  opacity: 0;
+                }
+              }
+
               @keyframes progress {
                 from {
                   width: 100%;
@@ -124,6 +135,10 @@ export default function ToastNotification() {
 
               .animate-slideIn {
                 animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+              }
+
+              .animate-slideOut {
+                animation: slideOut 0.28s ease-in;
               }
             `}</style>
           </div>

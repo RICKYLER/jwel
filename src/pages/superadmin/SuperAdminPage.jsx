@@ -130,7 +130,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const hasHydratedUnreadRef = useRef(false)
   const unreadConversationCountsRef = useRef({})
   const unreadListenersRef = useRef(new Map())
-  const [loadingState, setLoadingState] = useState({
+  const [, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
     financingApplications: true,
@@ -1394,10 +1394,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
-  const loadingMessage = Object.entries(loadingState)
-    .filter(([, isLoading]) => isLoading)
-    .map(([key]) => key)
-    .join(', ')
+  
 
   const isDashboardView = activeSection === 'dashboard'
 
@@ -1699,12 +1696,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Signed in as</span>
                   <span className="font-['Epilogue'] text-sm font-bold text-white">{adminEmail}</span>
                 </div>
-                <div className="superadmin-summary-card flex flex-col rounded-lg px-4 py-2">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Firebase Status</span>
-                  <span className="font-['Epilogue'] font-bold text-red-600">
-                    {loadingMessage ? 'Syncing...' : 'Live'}
-                  </span>
-                </div>
+                
               </div>
             </div>
           )}

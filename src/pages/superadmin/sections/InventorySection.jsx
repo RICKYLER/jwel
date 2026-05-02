@@ -14,6 +14,7 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db, storage } from '../../../firebase'
 import ConfirmationModal from '../components/ConfirmationModal'
+import useToast from '../../../context/useToast'
 import './InventorySection.css'
 
 const COLOR_PALETTE = [
@@ -117,6 +118,8 @@ export default function InventorySection({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
+  const { success, error: toastError } = useToast()
+
   // Load archived items for superadmin
   useEffect(() => {
     const loadArchivedItems = async () => {
@@ -145,6 +148,18 @@ export default function InventorySection({
     const maxStock = Math.max(...items.map((item) => Number(item.stock ?? 0)), 100)
     return stockValue === 0 || stockValue < maxStock * 0.2
   }
+
+  // Disable page scroll when modals are open
+  useEffect(() => {
+    if (isAddUnitModalOpen || isAddSparepartsModalOpen || isEditModalOpen || isUpdateStocksModalOpen) {
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.documentElement.style.overflow = ''
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isAddUnitModalOpen, isAddSparepartsModalOpen, isEditModalOpen, isUpdateStocksModalOpen])
 
   const filteredItems = useMemo(() => {
     // Show archived items when on archived tab
@@ -755,6 +770,7 @@ export default function InventorySection({
 
       await updateDoc(itemDocRef, updateData)
       setFormMessage({ type: 'success', text: 'Item updated successfully.' })
+      success('Item updated successfully')
       setIsEditModalOpen(false)
       setEditFormData({})
       setEditingItem(null)
@@ -770,6 +786,7 @@ export default function InventorySection({
     } catch (error) {
       console.error('Error updating item:', error)
       setFormMessage({ type: 'error', text: `Failed to update item. ${error.message}` })
+      toastError(`Failed to update item. ${error.message}`)
     } finally {
       setIsSavingItem(false)
     }
@@ -1032,7 +1049,7 @@ export default function InventorySection({
           <button type="button" className="inventory-modal-backdrop" onClick={handleCloseAddUnitModal} aria-label="Close add unit modal" />
 
           <div className={`inventory-modal-panel scrollable-modal-panel ${!isDarkMode ? 'light-mode' : ''}`}>
-            <div className="inventory-modal-header sticky top-0 bg-inherit z-10 pb-3 border-b border-white/5">
+            <div className="inventory-modal-header">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="inventory-modal-kicker">Live Inventory Entry</p>
@@ -1557,7 +1574,7 @@ export default function InventorySection({
       )}
 
       {isAddSparepartsModalOpen && (
-        <div className="inventory-modal-overlay">
+        <div className="inventory-modal-overlay spareparts-modal-overlay">
           <button type="button" className="inventory-modal-backdrop" onClick={handleCloseAddSparepartsModal} aria-label="Close add spare parts modal" />
 
           <div className={`inventory-modal-panel scrollable-modal-panel ${!isDarkMode ? 'light-mode' : ''}`}>
@@ -1909,7 +1926,7 @@ export default function InventorySection({
       )}
 
       {isEditModalOpen && editingItem && (
-        <div className="inventory-modal-overlay">
+        <div className="inventory-modal-overlay edit-modal-overlay">
           <button type="button" className="inventory-modal-backdrop" onClick={() => {
             const hasChanges = JSON.stringify(editFormData) !== '{}'
             if (hasChanges) {
@@ -1925,8 +1942,10 @@ export default function InventorySection({
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="inventory-modal-kicker">Live Inventory Update</p>
-                  <h3 className="inventory-modal-title">Edit Item</h3>
-                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Update item details. Stock and Status are locked and cannot be changed in edit mode.</p>
+                  <h3 className="inventory-modal-title">
+                    Edit {editingItem?.category === 'Spare Parts' ? 'Spare Part' : editingItem?.itemType === 'Spare Parts' ? 'Spare Part' : editingItem?.category === 'Motorcycle Units' ? 'Motorcycle' : 'Item'}
+                  </h3>
+                  <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Editing: <strong>{editingItem?.name || 'Unknown'}</strong> • Update item details. Stock and Status are locked and cannot be changed in edit mode.</p>
                 </div>
                 <button
                   type="button"
@@ -1948,154 +1967,318 @@ export default function InventorySection({
 
             <form onSubmit={(e) => { e.preventDefault(); setConfirmModal({ open: true, action: 'edit-update', itemId: editingItem.id }) }} className="inventory-modal-form">
               
+              {editingItem?.category === 'Spare Parts' || editingItem?.itemType === 'Spare Parts' ? (
+                // SPARE PARTS FORM
+                <>
+                  <div className="inventory-modal-grid">
+                    <label className="inventory-field">
+                      <span>Spare Part Name</span>
+                      <input 
+                        type="text" 
+                        value={editFormData.name ?? editingItem?.name ?? ''} 
+                        onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
+                        placeholder="Spare part name"
+                      />
+                    </label>
 
-              <div className="inventory-modal-grid">
-                <label className="inventory-field">
-                  <span>Item Name</span>
-                  <input 
-                    type="text" 
-                    value={editFormData.name ?? editingItem?.name ?? ''} 
-                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
-                    placeholder="Item name"
-                  />
-                </label>
+                    <label className="inventory-field">
+                      <span>Category</span>
+                      <select 
+                        value={editSelectedCategory?.id || editingItem?.categoryId || ''}
+                        onChange={(e) => {
+                          const cat = categories.find(c => c.id === e.target.value)
+                          setEditSelectedCategory(cat || null)
+                          setEditFormData({ ...editFormData, categoryId: e.target.value })
+                        }}
+                        className="dropdown-select"
+                      >
+                        <option value="">Select Category...</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </label>
 
-                <label className="inventory-field">
-                  <span>Category</span>
-                  <select 
-                    value={editSelectedCategory?.id || editingItem?.categoryId || ''}
-                    onChange={(e) => {
-                      const cat = categories.find(c => c.id === e.target.value)
-                      setEditSelectedCategory(cat || null)
-                      setEditFormData({ ...editFormData, categoryId: e.target.value })
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">Select Category...</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </label>
+                    <label className="inventory-field">
+                      <span>Unit/Model (Optional)</span>
+                      <select 
+                        value={editSelectedModel?.id || editingItem?.modelId || ''}
+                        onChange={(e) => {
+                          const model = models.find(m => m.id === e.target.value)
+                          setEditSelectedModel(model || null)
+                          setEditFormData({ ...editFormData, modelId: e.target.value })
+                        }}
+                        className="dropdown-select"
+                      >
+                        <option value="">Select Unit/Model...</option>
+                        {models.map((model) => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))}
+                      </select>
+                    </label>
 
-                <label className="inventory-field">
-                  <span>Model</span>
-                  <select 
-                    value={editSelectedModel?.id || editingItem?.modelId || ''}
-                    onChange={(e) => {
-                      const model = models.find(m => m.id === e.target.value)
-                      setEditSelectedModel(model || null)
-                      setEditFormData({ ...editFormData, model: model?.name || '', modelId: e.target.value })
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">Select Model...</option>
-                    {models.map((model) => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
-                </label>
+                    <label className="inventory-field">
+                      <span>Status</span>
+                      <input 
+                        type="text"
+                        value={editingItem?.status ?? ''}
+                        disabled
+                        className="dropdown-select opacity-60 cursor-not-allowed"
+                      />
+                    </label>
 
-                <label className="inventory-field">
-                  <span>Variant (Optional)</span>
-                  <select 
-                    value={editSelectedVariant?.id || editingItem?.variantId || ''}
-                    onChange={(e) => {
-                      const variant = variants.find(v => v.id === e.target.value)
-                      setEditSelectedVariant(variant || null)
-                      setEditFormData({ ...editFormData, variant: variant?.name || '', variantId: e.target.value })
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">Select Variant...</option>
-                    {variants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>{variant.name}</option>
-                    ))}
-                  </select>
-                </label>
+                    <label className="inventory-field">
+                      <span>Stock</span>
+                      <input 
+                        type="number"
+                        value={editingItem?.stock ?? 0}
+                        disabled
+                        className="opacity-60 cursor-not-allowed"
+                      />
+                    </label>
 
-                <label className="inventory-field">
-                  <span>Status</span>
-                  <input 
-                    type="text"
-                    value={editingItem?.status ?? ''}
-                    disabled
-                    className="dropdown-select opacity-60 cursor-not-allowed"
-                  />
-                </label>
+                    <label className="inventory-field">
+                      <span>Price</span>
+                      <input 
+                        type="number"
+                        value={editFormData.price !== undefined ? editFormData.price : (editingItem?.price ?? '')}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                          setEditFormData({ ...editFormData, price: val })
+                        }}
+                        placeholder="0"
+                      />
+                    </label>
+                  </div>
 
-                <label className="inventory-field">
-                  <span>Stock</span>
-                  <input 
-                    type="number"
-                    value={(() => {
-                      const colorVariants = editFormData.colorVariants ?? editingItem?.colorVariants
-                      if (Array.isArray(colorVariants) && colorVariants.length > 0) {
-                        return colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
-                      }
-                      return editingItem?.stock ?? 0
-                    })()}
-                    disabled
-                    className="opacity-60 cursor-not-allowed"
-                  />
-                </label>
+                  <label className="inventory-field">
+                    <span>Description</span>
+                    <textarea 
+                      value={editFormData.description ?? editingItem?.description ?? ''} 
+                      onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })} 
+                      rows="3" 
+                      placeholder="Add a short description for the spare part."
+                    />
+                  </label>
 
-                <label className="inventory-field">
-                  <span>Price</span>
-                  <input 
-                    type="number"
-                    value={editFormData.price !== undefined ? editFormData.price : (editingItem?.price ?? '')}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
-                      setEditFormData({ ...editFormData, price: val })
-                    }}
-                    placeholder="0"
-                  />
-                </label>
+                  <div className="inventory-modal-grid inventory-modal-grid--secondary">
+                    <label className="inventory-field">
+                      <span>Badge</span>
+                      <input 
+                        type="text" 
+                        value={editFormData.badge ?? editingItem?.badge ?? ''} 
+                        onChange={(e) => setEditFormData({ ...editFormData, badge: e.target.value })} 
+                        placeholder="New Stock"
+                      />
+                    </label>
 
-                <label className="inventory-field">
-                  <span>Color Variants with Stock</span>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Select Color</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {COLOR_PALETTE.map((color) => {
-                          const isSelected = editSelectedColorForVariant?.name === color.name
-                          return (
-                            <button
-                              key={color.name}
-                              type="button"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                setEditSelectedColorForVariant(color)
-                              }}
-                              className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
-                                isSelected ? 'border-red-600 ring-2 ring-red-600/20' : 'border-neutral-600 hover:border-neutral-500'
-                              }`}
-                              title={color.name}
-                              aria-label={color.name}
-                            />
-                          )
-                        })}
+                    <label className="inventory-field inventory-checkbox-field">
+                      <span>Showroom Visibility</span>
+                      <label className="inventory-checkbox-row">
+                        <input 
+                          type="checkbox" 
+                          checked={editFormData.showInShowroom !== undefined ? editFormData.showInShowroom : (editingItem?.showInShowroom ?? true)} 
+                          onChange={(e) => setEditFormData({ ...editFormData, showInShowroom: e.target.checked })} 
+                        />
+                        <span>Display this spare part in the public showroom</span>
+                      </label>
+                    </label>
+                  </div>
+
+                  {editingItem.imageUrl || editImagePreview ? (
+                    <div className="inventory-image-preview max-w-full">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Main Image</p>
+                      <div className="relative group inline-block">
+                        <img src={editImagePreview || editingItem.imageUrl} alt={editingItem.name} className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
+                        <label className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                setEditImageFile(file)
+                                setEditImagePreview(URL.createObjectURL(file))
+                                setEditFormData({ ...editFormData, imageFile: file })
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <span className="text-white text-sm font-bold">Replace Image</span>
+                        </label>
                       </div>
                     </div>
+                  ) : (
+                    <label className="inventory-upload-box">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setEditImageFile(file)
+                            setEditImagePreview(URL.createObjectURL(file))
+                            setEditFormData({ ...editFormData, imageFile: file })
+                          }
+                        }}
+                        className="hidden" 
+                      />
+                      <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
+                      <span className="inventory-upload-title">Upload Spare Part Image</span>
+                      <span className="inventory-upload-copy">PNG, JPG, or WEBP</span>
+                    </label>
+                  )}
+                </>
+              ) : (
+                // MOTORCYCLE FORM
+                <>
+                  <div className="inventory-modal-grid">
+                    <label className="inventory-field">
+                      <span>Item Name</span>
+                      <input 
+                        type="text" 
+                        value={editFormData.name ?? editingItem?.name ?? ''} 
+                        onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} 
+                        placeholder="Item name"
+                      />
+                    </label>
 
-                    {editSelectedColorForVariant && (
-                      <div className="flex gap-2 items-end">
-                        <label className="inventory-field flex-1">
-                          <span>Stock for {editSelectedColorForVariant.name}</span>
-                          <div className="flex gap-2">
-                            <input 
-                              type="number" 
-                              value={editColorVariantStock} 
-                              onChange={(e) => setEditColorVariantStock(e.target.value)}
-                              placeholder="Enter stock quantity"
-                              min="0"
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
+                    <label className="inventory-field">
+                      <span>Category</span>
+                      <select 
+                        value={editSelectedCategory?.id || editingItem?.categoryId || ''}
+                        onChange={(e) => {
+                          const cat = categories.find(c => c.id === e.target.value)
+                          setEditSelectedCategory(cat || null)
+                          setEditFormData({ ...editFormData, categoryId: e.target.value })
+                        }}
+                        className="dropdown-select"
+                      >
+                        <option value="">Select Category...</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Model</span>
+                      <select 
+                        value={editSelectedModel?.id || editingItem?.modelId || ''}
+                        onChange={(e) => {
+                          const model = models.find(m => m.id === e.target.value)
+                          setEditSelectedModel(model || null)
+                          setEditFormData({ ...editFormData, model: model?.name || '', modelId: e.target.value })
+                        }}
+                        className="dropdown-select"
+                      >
+                        <option value="">Select Model...</option>
+                        {models.map((model) => (
+                          <option key={model.id} value={model.id}>{model.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Variant (Optional)</span>
+                      <select 
+                        value={editSelectedVariant?.id || editingItem?.variantId || ''}
+                        onChange={(e) => {
+                          const variant = variants.find(v => v.id === e.target.value)
+                          setEditSelectedVariant(variant || null)
+                          setEditFormData({ ...editFormData, variant: variant?.name || '', variantId: e.target.value })
+                        }}
+                        className="dropdown-select"
+                      >
+                        <option value="">Select Variant...</option>
+                        {variants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>{variant.name}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Status</span>
+                      <input 
+                        type="text"
+                        value={editingItem?.status ?? ''}
+                        disabled
+                        className="dropdown-select opacity-60 cursor-not-allowed"
+                      />
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Stock</span>
+                      <input 
+                        type="number"
+                        value={(() => {
+                          const colorVariants = editFormData.colorVariants ?? editingItem?.colorVariants
+                          if (Array.isArray(colorVariants) && colorVariants.length > 0) {
+                            return colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+                          }
+                          return editingItem?.stock ?? 0
+                        })()}
+                        disabled
+                        className="opacity-60 cursor-not-allowed"
+                      />
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Price</span>
+                      <input 
+                        type="number"
+                        value={editFormData.price !== undefined ? editFormData.price : (editingItem?.price ?? '')}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value))
+                          setEditFormData({ ...editFormData, price: val })
+                        }}
+                        placeholder="0"
+                      />
+                    </label>
+
+                    <label className="inventory-field">
+                      <span>Color Variants with Stock</span>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Select Color</p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {COLOR_PALETTE.map((color) => {
+                              const isSelected = editSelectedColorForVariant?.name === color.name
+                              return (
+                                <button
+                                  key={color.name}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    setEditSelectedColorForVariant(color)
+                                  }}
+                                  className={`h-12 rounded-lg border-2 transition-all ${color.swatch} ${
+                                    isSelected ? 'border-red-600 ring-2 ring-red-600/20' : 'border-neutral-600 hover:border-neutral-500'
+                                  }`}
+                                  title={color.name}
+                                  aria-label={color.name}
+                                />
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {editSelectedColorForVariant && (
+                          <div className="flex gap-2 items-end">
+                            <label className="inventory-field flex-1">
+                              <span>Stock for {editSelectedColorForVariant.name}</span>
+                              <div className="flex gap-2">
+                                <input 
+                                  type="number" 
+                                  value={editColorVariantStock} 
+                                  onChange={(e) => setEditColorVariantStock(e.target.value)}
+                                  placeholder="Enter stock quantity"
+                                  min="0"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
                                 e.preventDefault()
                                 if (editColorVariantStock && parseInt(editColorVariantStock) > 0) {
                                   setEditFormData((current) => {
@@ -2173,20 +2356,22 @@ export default function InventorySection({
                 />
               </label>
 
-              <div className="w-full mb-6">
-                <label className="inventory-field mb-2 block">
-                  <span className="font-bold uppercase tracking-widest text-xs mb-1">Technical Specifications</span>
-                  <button
-                    type="button"
-                    className="inventory-add-btn mb-2"
-                    onClick={() => {
-                      setSpecCategory('ENGINE');
-                      setSpecFields([{ label: '', value: '' }]);
-                      setIsSpecModalOpen(true);
-                    }}
-                  >
-                    + Add Specification
-                  </button>
+              {editingItem?.category !== 'Spare Parts' && editingItem?.itemType !== 'Spare Parts' && (
+                <>
+                <div className="w-full mb-6">
+                  <label className="inventory-field mb-2 block">
+                    <span className="font-bold uppercase tracking-widest text-xs mb-1">Technical Specifications</span>
+                    <button
+                      type="button"
+                      className="inventory-add-btn mb-2"
+                      onClick={() => {
+                        setSpecCategory('ENGINE');
+                        setSpecFields([{ label: '', value: '' }]);
+                        setIsSpecModalOpen(true);
+                      }}
+                    >
+                      + Add Specification
+                    </button>
                   {/* Technical Specification Modal for Edit Item */}
                   {isSpecModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -2337,7 +2522,10 @@ export default function InventorySection({
                   </div>
                 </label>
               </div>
+              </>
+              )}
 
+              {editingItem?.category !== 'Spare Parts' && editingItem?.itemType !== 'Spare Parts' && (
               <div className="w-full mb-6">
                 <label className="inventory-field mb-2 block">
                   <span className="font-bold uppercase tracking-widest text-xs mb-1">Standard Equipment</span>
@@ -2383,49 +2571,6 @@ export default function InventorySection({
                   </div>
                 </label>
               </div>
-
-              {editingItem.imageUrl || editImagePreview ? (
-                <div className="inventory-image-preview max-w-full">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/62 mb-3">Main Image</p>
-                  <div className="relative group inline-block">
-                    <img src={editImagePreview || editingItem.imageUrl} alt={editingItem.name} className="max-h-48 w-auto rounded-2xl object-contain mx-auto" />
-                    <label className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setEditImageFile(file)
-                            setEditImagePreview(URL.createObjectURL(file))
-                            setEditFormData({ ...editFormData, imageFile: file })
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <span className="text-white text-sm font-bold">Replace Image</span>
-                    </label>
-                  </div>
-                </div>
-              ) : (
-                <label className="inventory-upload-box">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        setEditImageFile(file)
-                        setEditImagePreview(URL.createObjectURL(file))
-                        setEditFormData({ ...editFormData, imageFile: file })
-                      }
-                    }}
-                    className="hidden" 
-                  />
-                  <span className="inventory-upload-icon"><CloudUploadRoundedIcon sx={{ fontSize: 20 }} /></span>
-                  <span className="inventory-upload-title">Upload Main Image</span>
-                  <span className="inventory-upload-copy">PNG, JPG, or WEBP</span>
-                </label>
               )}
 
               {(editingItem.gallery && editingItem.gallery.length > 0) || editGalleryPreviews.length > 0 ? (
@@ -2540,6 +2685,8 @@ export default function InventorySection({
                     ))}
                   </div>
                 </div>
+              )}
+              </>
               )}
 
               {formMessage && (

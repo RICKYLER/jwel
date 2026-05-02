@@ -1,5 +1,6 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded'
+import { useEffect } from 'react'
 
 export default function ConfirmationModal({
   open,
@@ -12,14 +13,25 @@ export default function ConfirmationModal({
   isDangerous = true,
   isDarkMode = true,
 }) {
+  useEffect(() => {
+    if (open) {
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.documentElement.style.overflow = ''
+        document.body.style.overflow = ''
+      }
+    }
+  }, [open])
+
   if (!open) return null
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 w-screen h-screen bg-black/50 backdrop-blur-sm" onClick={onCancel} style={{ zIndex: 99999 }} />
+      <div className="fixed inset-0 w-screen h-screen flex items-center justify-center p-4 pointer-events-none" style={{ zIndex: 99999 }}>
         <div
-          className={`rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-xl ${
+          className={`rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-xl pointer-events-auto ${
             isDarkMode
               ? 'bg-linear-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/10'
               : 'bg-white border border-gray-200'

@@ -43,7 +43,7 @@ export default function SuperAdminSidebar({
             </span>
             <span>
               <h1 className="superadmin-brand-title font-['Epilogue'] text-sm font-black uppercase tracking-[0.18em]">
-                BYKELINK OPS
+                BYKELINK
               </h1>
               <p className="superadmin-brand-subtitle mt-1 text-[9px] uppercase tracking-[0.24em]">
                 {consoleLabel} Console
