@@ -8,8 +8,11 @@ import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import useToast from '../../../context/useToast'
 import ChangePasswordModal from './ChangePasswordModal'
+import Tooltip from '@mui/material/Tooltip'
+import CircularProgress from '@mui/material/CircularProgress'
 import './ProfileSection.css'
 
 export default function ProfileSection({
@@ -24,11 +27,14 @@ export default function ProfileSection({
 }) {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
+  const markerRef = useRef(null)
   const searchInputRef = useRef(null)
   const autocompleteRef = useRef(null)
   const fileInputRef = useRef(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isMapLoading, setIsMapLoading] = useState(true)
   const { success: toastSuccess, error: toastError } = useToast()
 
   // Initialize location map
@@ -37,6 +43,8 @@ export default function ProfileSection({
 
     const loadGoogleMaps = () => {
       if (document.getElementById('google-maps-profile-script')) return
+
+      setIsMapLoading(true)
 
       const script = document.createElement('script')
       script.id = 'google-maps-profile-script'
@@ -70,10 +78,11 @@ export default function ProfileSection({
         draggable: true,
         title: 'Drag to set Flagship Location',
       })
+      markerRef.current = marker
 
       // Update coordinates when marker is dragged
       marker.addListener('dragend', () => {
-        const pos = marker.getPosition()
+        const pos = markerRef.current.getPosition()
         onProfileFieldChange({
           target: {
             name: 'latitude',
@@ -90,7 +99,7 @@ export default function ProfileSection({
 
       // Update marker when map is clicked
       map.addListener('click', (e) => {
-        marker.setPosition(e.latLng)
+        markerRef.current.setPosition(e.latLng)
         onProfileFieldChange({
           target: {
             name: 'latitude',
@@ -121,7 +130,7 @@ export default function ProfileSection({
 
             // Update map center and marker
             map.setCenter(newLocation)
-            marker.setPosition(newLocation)
+            markerRef.current.setPosition(newLocation)
 
             // Update coordinates
             onProfileFieldChange({
@@ -143,10 +152,129 @@ export default function ProfileSection({
       }
 
       mapInstanceRef.current = map
+      setIsMapLoading(false)
     }
 
     loadGoogleMaps()
   }, [onProfileFieldChange, profileForm.latitude, profileForm.longitude, searchInputRef])
+
+  // Create or recreate the map instance and marker
+  const recreateMap = () => {
+    if (!mapRef.current) return
+
+    setIsMapLoading(true)
+
+    // Clear previous instances
+    try {
+      if (markerRef.current) {
+        markerRef.current.setMap(null)
+        markerRef.current = null
+      }
+      if (mapInstanceRef.current) {
+        // no explicit destroy API; allow garbage collection
+        mapInstanceRef.current = null
+      }
+    } catch {
+      // ignore
+    }
+
+    if (!window.google?.maps?.Map) return
+
+    const initialLat = parseFloat(profileForm.latitude) || 7.3086
+    const initialLng = parseFloat(profileForm.longitude) || 125.7399
+    const position = { lat: initialLat, lng: initialLng }
+
+    const map = new window.google.maps.Map(mapRef.current, {
+      zoom: 15,
+      center: position,
+      mapTypeId: 'roadmap',
+    })
+
+    const marker = new window.google.maps.Marker({
+      position: position,
+      map: map,
+      draggable: true,
+      title: 'Drag to set Flagship Location',
+    })
+
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition()
+      onProfileFieldChange({ target: { name: 'latitude', value: pos.lat().toFixed(6) } })
+      onProfileFieldChange({ target: { name: 'longitude', value: pos.lng().toFixed(6) } })
+    })
+
+    map.addListener('click', (e) => {
+      marker.setPosition(e.latLng)
+      onProfileFieldChange({ target: { name: 'latitude', value: e.latLng.lat().toFixed(6) } })
+      onProfileFieldChange({ target: { name: 'longitude', value: e.latLng.lng().toFixed(6) } })
+    })
+
+    // Initialize Places Autocomplete (attach to search input if available)
+    if (searchInputRef.current && window.google?.maps?.places?.Autocomplete) {
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
+          fields: ['formatted_address', 'geometry'],
+          types: ['establishment'],
+        })
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace()
+          if (place.geometry && place.geometry.location) {
+            const newLocation = place.geometry.location
+            const newLat = newLocation.lat()
+            const newLng = newLocation.lng()
+            map.setCenter(newLocation)
+            marker.setPosition(newLocation)
+            onProfileFieldChange({ target: { name: 'latitude', value: newLat.toFixed(6) } })
+            onProfileFieldChange({ target: { name: 'longitude', value: newLng.toFixed(6) } })
+          }
+        })
+
+        autocompleteRef.current = autocomplete
+      } catch {
+        // ignore
+      }
+    }
+
+    mapInstanceRef.current = map
+    markerRef.current = marker
+    setIsMapLoading(false)
+  }
+
+  const handleRefreshMap = () => {
+    setIsRefreshing(true)
+    // If google is not loaded, reload the script
+    if (!window.google || !window.google.maps) {
+      const existing = document.getElementById('google-maps-profile-script')
+      if (existing) existing.remove()
+
+      const script = document.createElement('script')
+      script.id = 'google-maps-profile-script'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI&libraries=places&loading=async'
+      script.async = true
+      script.defer = true
+      setIsMapLoading(true)
+      script.onload = () => setTimeout(() => {
+        try {
+          recreateMap()
+        } finally {
+          setIsRefreshing(false)
+          setIsMapLoading(false)
+        }
+      }, 200)
+      document.head.appendChild(script)
+      return
+    }
+
+    // Otherwise, recreate the map to ensure it refreshes
+    try {
+      setIsMapLoading(true)
+      recreateMap()
+    } finally {
+      setIsRefreshing(false)
+      setIsMapLoading(false)
+    }
+  }
 
   const handleAvatarUpload = (e) => {
     const file = e.target.files?.[0]
@@ -370,6 +498,26 @@ export default function ProfileSection({
               className="h-64 w-full"
               style={{ minHeight: '16rem' }}
             />
+            <Tooltip title="Refresh map">
+              <button
+                type="button"
+                onClick={handleRefreshMap}
+                aria-label="Refresh map"
+                className={`absolute left-3 bottom-3 z-30 p-2 rounded-md shadow-md transition bg-red-600 text-white hover:bg-red-700`}
+              >
+                {isRefreshing ? (
+                  <CircularProgress size={18} sx={{ color: 'white' }} />
+                ) : (
+                  <RefreshRoundedIcon sx={{ fontSize: 18 }} className={isRefreshing ? 'animate-spin text-white' : 'text-white'} />
+                )}
+              </button>
+            </Tooltip>
+
+            {isMapLoading && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30">
+                <CircularProgress size={56} sx={{ color: 'white' }} />
+              </div>
+            )}
           </div>
 
           {/* Form Buttons */}
@@ -384,6 +532,7 @@ export default function ProfileSection({
           </div>
         </form>
       </section>
+
 
       {/* Change Password Modal */}
       <ChangePasswordModal
