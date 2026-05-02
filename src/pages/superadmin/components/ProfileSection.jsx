@@ -36,7 +36,7 @@ export default function ProfileSection({
 
       const script = document.createElement('script')
       script.id = 'google-maps-profile-script'
-      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDSLvek-8Ret8lxbZGp3dgNzWBWfmdqqIE&libraries=places&loading=async'
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI&libraries=places&loading=async'
       script.async = true
       script.defer = true
 

@@ -355,7 +355,7 @@ export default function HeroSection({
     // Create and load the script
     const script = document.createElement('script')
     script.id = scriptId
-    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDSLvek-8Ret8lxbZGp3dgNzWBWfmdqqIE&loading=async'
+    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI&loading=async'
     script.async = true
     script.defer = true
 

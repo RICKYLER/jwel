@@ -26,6 +26,9 @@ export default defineConfig({
         enabled: false,
       },
       includeAssets: ['favicon.svg', 'icons.svg', 'pwa-icon.svg'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+      },
       manifest: {
         name: 'Bykelink Motor',
         short_name: 'Bykelink',
