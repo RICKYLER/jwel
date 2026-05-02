@@ -12,6 +12,7 @@ const coopHeaders = {
 export default defineConfig({
   server: {
     headers: coopHeaders,
+    host: '0.0.0.0',
   },
   preview: {
     headers: coopHeaders,

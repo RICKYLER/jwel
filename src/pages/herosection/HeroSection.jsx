@@ -612,7 +612,7 @@ export default function HeroSection({
               </button>
             </div>
 
-            <div className="relative overflow-hidden -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" data-reveal="up" data-reveal-delay="180">
+            <div className="relative overflow-hidden" data-reveal="up" data-reveal-delay="180">
               {isModelsLoading ? (
                 <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
                   Loading featured models...
@@ -623,7 +623,7 @@ export default function HeroSection({
                 </div>
               ) : (
                 <>
-                  <div className="flex gap-8 transition-transform duration-700"
+                  <div className="flex gap-8 transition-transform duration-700 w-full"
                     style={{
                       transform: `translateX(calc(-${carouselIndex * 100}% - ${carouselIndex * 2}rem))`,
                     }}
@@ -631,7 +631,7 @@ export default function HeroSection({
                     {liveModels.map((model) => (
                   <article
                     key={model.id || model.name}
-                    className="w-full shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20"
+                    className="shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 min-w-full"
                     onClick={() => onNavigateShowroom()}
                   >
                     <div className="relative h-80 overflow-hidden">

@@ -18,7 +18,7 @@ const formatPrice = (value) => {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
-export default function ProductDetailsPage({ productId, currentUser, onSignOut, onNavigateBack, onNavigateToFinancing }) {
+export default function ProductDetailsPage({ productId, onSignOut, onNavigateBack, onNavigateToFinancing }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [product, setProduct] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -390,9 +390,6 @@ export default function ProductDetailsPage({ productId, currentUser, onSignOut, 
           </div>
         </section>
       </main>
-
-      {/* Chat Box */}
-      <ChatBox currentUser={currentUser} />
 
       {/* Footer */}
       <footer className="border-t border-slate-800 bg-slate-950/60 backdrop-blur-sm py-10 px-4 sm:px-6 lg:px-8">
