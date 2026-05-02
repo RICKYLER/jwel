@@ -658,63 +658,65 @@ export default function HeroSection({
         </section>
 
         {/* Spare Parts Section */}
-        {!isSparePartsLoading && (
-          <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
-            <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-              <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="160">
-                <div>
-                  <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
-                    Genuine Spare Parts
-                  </h2>
-                  <div className="mt-4 h-1 w-20 bg-red-600" />
-                </div>
-                <button
-                  type="button"
-                  onClick={onNavigateSpareParts}
-                  className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
-                >
-                  View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-                </button>
+        <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
+          <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="160">
+              <div>
+                <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
+                  Genuine Spare Parts
+                </h2>
+                <div className="mt-4 h-1 w-20 bg-red-600" />
               </div>
-
-              <div className="grid gap-6 grid-cols-1" data-reveal="up" data-reveal-delay="200">
-                {liveSpareParts.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
-                    No spare parts available right now.
-                  </div>
-                ) : (
-                  liveSpareParts.map((part) => (
-                  <div
-                    key={part.id}
-                    className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer"
-                    onClick={() => onNavigateSpareParts()}
-                  >
-                    <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={part.imageUrl || part.mainImage || part.image || part.partImage || getPlaceholderImage(part.name || 'Spare Part', 300, 200)}
-                        alt={part.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    </div>
-
-                    <div className="p-4 sm:p-5">
-                      <h3 className="text-lg font-black text-white font-['Epilogue'] truncate">
-                        {part.name}
-                      </h3>
-                      <p className="mt-2 text-xs text-neutral-400 line-clamp-2">{part.description || 'Genuine spare part'}</p>
-                      
-                      <div className="mt-4 flex items-center justify-between">
-                        <span className="text-sm font-bold text-blue-400">{part.price || 'Contact'}</span>
-                        <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={onNavigateSpareParts}
+                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
+              >
+                View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+              </button>
             </div>
-          </section>
-        )}
+
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-reveal="up" data-reveal-delay="200">
+              {isSparePartsLoading ? (
+                <div className="col-span-full rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                  Loading spare parts...
+                </div>
+              ) : liveSpareParts.length === 0 ? (
+                <div className="col-span-full rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                  No spare parts available right now.
+                </div>
+              ) : (
+                liveSpareParts.map((part) => (
+                <div
+                  key={part.id}
+                  className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer h-full flex flex-col"
+                  onClick={() => onNavigateSpareParts()}
+                >
+                  <div className="relative h-48 overflow-hidden bg-linear-to-b from-slate-800 to-slate-900 flex items-center justify-center">
+                    <img
+                      src={part.imageUrl || part.mainImage || part.image || part.partImage || getPlaceholderImage(part.name || 'Spare Part', 300, 200)}
+                      alt={part.name}
+                      className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
+                    />
+                  </div>
+
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col">
+                    <h3 className="text-lg font-black text-white font-['Epilogue'] truncate">
+                      {part.name}
+                    </h3>
+                    <p className="mt-2 text-xs text-neutral-400 line-clamp-2 flex-1">{part.description || 'Genuine spare part'}</p>
+                    
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-sm font-bold text-blue-400">{part.price || 'Contact'}</span>
+                      <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+              )}
+            </div>
+          </div>
+        </section>
 
         <section id="service" className="py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
           <div className="mx-auto grid max-w-screen-2xl items-center gap-12 px-4 sm:px-6 md:grid-cols-2 lg:gap-16 lg:px-8">
