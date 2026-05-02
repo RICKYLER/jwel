@@ -8,6 +8,8 @@ import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
 import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
+import useToast from '../../../context/useToast'
+import ChangePasswordModal from './ChangePasswordModal'
 import './ProfileSection.css'
 
 export default function ProfileSection({
@@ -26,6 +28,8 @@ export default function ProfileSection({
   const autocompleteRef = useRef(null)
   const fileInputRef = useRef(null)
   const [avatarPreview, setAvatarPreview] = useState(null)
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const { success: toastSuccess, error: toastError } = useToast()
 
   // Initialize location map
   useEffect(() => {
@@ -259,22 +263,22 @@ export default function ProfileSection({
           {/* Security Overview */}
           <div>
             <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white/60' : 'text-gray-700'}`}>Security Overview</p>
-            <div className="space-y-2">
-              <div className={`flex items-center gap-3 p-3 rounded-lg ${isDarkMode ? 'bg-white/2' : 'bg-gray-50'}`}>
-                <VpnKeyRoundedIcon sx={{ fontSize: 18 }} className={isDarkMode ? 'text-red-400' : 'text-red-600'} />
-                <div className="flex-1">
-                  <p className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Biometric Login</p>
-                  <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Enabled</p>
-                </div>
+            <button
+              type="button"
+              onClick={() => setIsPasswordModalOpen(true)}
+              className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-all ${
+                isDarkMode
+                  ? 'bg-white/2 border-white/10 hover:bg-white/4 hover:border-blue-600/30'
+                  : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-blue-600/30'
+              }`}
+            >
+              <VpnKeyRoundedIcon sx={{ fontSize: 18 }} className={isDarkMode ? 'text-blue-400' : 'text-blue-600'} />
+              <div className="flex-1 text-left">
+                <p className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Password Security</p>
+                <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Update your password</p>
               </div>
-              <div className={`flex items-center gap-3 p-3 rounded-lg ${isDarkMode ? 'bg-white/2' : 'bg-gray-50'}`}>
-                <SecurityRoundedIcon sx={{ fontSize: 18 }} className={isDarkMode ? 'text-red-400' : 'text-red-600'} />
-                <div className="flex-1">
-                  <p className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Encrypted Vault</p>
-                  <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Protected</p>
-                </div>
-              </div>
-            </div>
+              <EditRoundedIcon sx={{ fontSize: 16 }} className={isDarkMode ? 'text-white/40' : 'text-gray-400'} />
+            </button>
           </div>
         </div>
       </section>
@@ -380,6 +384,16 @@ export default function ProfileSection({
           </div>
         </form>
       </section>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        open={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        currentUser={currentUser}
+        onSuccess={toastSuccess}
+        onError={toastError}
+        isDarkMode={isDarkMode}
+      />
     </div>
   )
 }
