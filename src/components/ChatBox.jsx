@@ -196,11 +196,33 @@ export default function ChatBox({ currentUser }) {
 
   return (
     <>
+      <style>{`
+        @media (max-width: 768px) {
+          .chat-button {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 50;
+          }
+          
+          .chat-window {
+            position: fixed;
+            bottom: 5rem;
+            right: 1rem;
+            left: 1rem;
+            width: auto !important;
+            max-width: calc(100vw - 2rem) !important;
+            max-height: calc(100vh - 8rem);
+            z-index: 40;
+          }
+        }
+      `}</style>
+
       {/* Chat Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-110 hover:shadow-red-600/50 md:bottom-8 md:right-8"
+        className="chat-button fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-110 hover:shadow-red-600/50"
         aria-label="Open chat"
       >
         {isOpen ? (
@@ -212,7 +234,7 @@ export default function ChatBox({ currentUser }) {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-40 flex w-[calc(100vw-32px)] max-w-sm flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1c1b1b] shadow-2xl md:bottom-24 md:right-8 md:w-full animate-in fade-in slide-in-from-bottom-2" style={{ height: 'min(500px, calc(100vh - 200px))' }}>
+        <div className="chat-window fixed bottom-24 right-8 z-40 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1c1b1b] shadow-2xl animate-in fade-in slide-in-from-bottom-2" style={{ height: '500px' }}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-linear-to-r from-red-600/10 to-red-500/5 px-4 py-4">
             <div className="flex items-center gap-3">
