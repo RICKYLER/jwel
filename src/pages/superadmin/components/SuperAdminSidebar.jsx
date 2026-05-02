@@ -3,6 +3,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import bykelinkLogo from '../../../assets/bykelinklogo.png'
 
 export default function SuperAdminSidebar({
   sidebarItems,
@@ -38,9 +39,7 @@ export default function SuperAdminSidebar({
       <aside className={`superadmin-sidebar fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-white/5 py-8 shadow-[40px_0_60px_-15px_rgba(0,0,0,0.5)] ${isSidebarOpen ? 'is-open' : ''}`}>
         <div className="mb-10 flex items-start justify-between gap-3 px-4">
           <button type="button" onClick={onNavigateHome} className="superadmin-brand-block flex items-start gap-3 text-left">
-            <span className="superadmin-brand-mark flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black text-white">
-              B
-            </span>
+            <img src={bykelinkLogo} alt="Bykelink Logo" className="h-8 w-8 object-contain" />
             <span>
               <h1 className="superadmin-brand-title font-['Epilogue'] text-sm font-black uppercase tracking-[0.18em]">
                 BYKELINK

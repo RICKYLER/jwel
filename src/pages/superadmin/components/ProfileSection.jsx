@@ -1,6 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import VerifiedRoundedIcon from '@mui/icons-material/VerifiedRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
+import SecurityRoundedIcon from '@mui/icons-material/SecurityRounded'
+import VpnKeyRoundedIcon from '@mui/icons-material/VpnKeyRounded'
+import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded'
 import './ProfileSection.css'
 
 export default function ProfileSection({
@@ -17,6 +24,8 @@ export default function ProfileSection({
   const mapInstanceRef = useRef(null)
   const searchInputRef = useRef(null)
   const autocompleteRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const [avatarPreview, setAvatarPreview] = useState(null)
 
   // Initialize location map
   useEffect(() => {
@@ -135,132 +144,257 @@ export default function ProfileSection({
     loadGoogleMaps()
   }, [onProfileFieldChange, profileForm.latitude, profileForm.longitude, searchInputRef])
 
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Preview
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setAvatarPreview(event.target?.result)
+      }
+      reader.readAsDataURL(file)
+      
+      // Store file for upload
+      onProfileFieldChange({
+        target: { name: 'avatarFile', value: file },
+      })
+    }
+  }
+
+  const formatPhoneInput = (value) => {
+    // Remove all non-digits
+    let digits = value.replace(/\D/g, '')
+    
+    // If it doesn't start with 63, add it
+    if (digits.length > 0 && !digits.startsWith('63')) {
+      if (digits.startsWith('9')) {
+        digits = '63' + digits
+      }
+    }
+    
+    // Format: +63 9XX XXXX XXX
+    if (digits.length <= 2) return '+' + digits
+    if (digits.length <= 5) return '+' + digits.slice(0, 2) + ' ' + digits.slice(2)
+    if (digits.length <= 9) return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5)
+    return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 5) + ' ' + digits.slice(5, 9) + ' ' + digits.slice(9, 12)
+  }
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneInput(e.target.value)
+    onProfileFieldChange({
+      target: { name: 'phone', value: formatted },
+    })
+  }
+
   return (
-    <div className={`profile-section-grid grid gap-6 xl:grid-cols-[0.9fr_1.1fr] ${!isDarkMode ? 'light-mode' : ''}`}>
-      <section className="profile-card rounded-2xl p-6">
-        <div className="flex items-center gap-4">
-          <div className="profile-avatar flex h-20 w-20 items-center justify-center rounded-full text-2xl font-black text-white">
-            {(profileForm.fullName || currentUser?.displayName || currentUser?.email || 'S').charAt(0).toUpperCase()}
+    <div className={`profile-section-grid grid gap-8 xl:grid-cols-[0.85fr_1.15fr] ${!isDarkMode ? 'light-mode' : ''}`}>
+      {/* Left: Profile Card */}
+      <section className={`profile-card rounded-xl p-6 shadow-md border ${isDarkMode ? 'border-white/10 bg-[#0f0f0f] shadow-black/50' : 'border-gray-200 bg-white shadow-gray-200/30'}`}>
+        {/* Avatar & Name */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="relative mb-4">
+            <div className={`profile-avatar flex h-24 w-24 items-center justify-center rounded-full text-3xl font-black shadow-md ${isDarkMode ? 'bg-red-700 text-white' : 'bg-red-600 text-white'}`}>
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar" className="h-24 w-24 rounded-full object-cover" />
+              ) : profileForm.avatarUrl ? (
+                <img src={profileForm.avatarUrl} alt="Avatar" className="h-24 w-24 rounded-full object-cover" />
+              ) : (
+                (profileForm.fullName || currentUser?.displayName || currentUser?.email || 'S').charAt(0).toUpperCase()
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`absolute bottom-0 right-0 p-2 rounded-full shadow-md transition ${isDarkMode ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
+            >
+              <CameraAltRoundedIcon sx={{ fontSize: 16 }} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
           </div>
+          <h3 className={`font-['Epilogue'] text-xl font-extrabold uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            {profileForm.fullName || currentUser?.displayName || 'Profile'}
+          </h3>
+          <p className={`text-xs mt-1 ${isDarkMode ? 'text-white/50' : 'text-gray-600'}`}>{currentUser?.email || 'No email'}</p>
+          <div className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] ${isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-emerald-600/30 bg-emerald-50 text-emerald-700'}`}>
+            <VerifiedRoundedIcon sx={{ fontSize: 12 }} />
+            {accessProfile?.label || 'Superadmin'} Verified
+          </div>
+        </div>
+
+        {/* Profile Details Sections */}
+        <div className="space-y-5">
+          {/* Profile Title */}
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-white/2 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Profile Title</p>
+            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>{profileForm.title || 'Operations Lead'}</p>
+          </div>
+
+          {/* Location */}
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-white/2 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Location</p>
+            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>{profileForm.location || 'Bykelink HQ'}</p>
+          </div>
+
+          {/* Last Updated */}
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-white/2 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Last Updated</p>
+            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>{formatDate(new Date())}</p>
+          </div>
+
+          {/* Phone */}
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-white/2 border-white/5' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Phone</p>
+            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>{profileForm.phone || '+63 9XX XXXX XXX'}</p>
+          </div>
+
+          {/* Divider */}
+          <div className={`h-px ${isDarkMode ? 'bg-white/5' : 'bg-gray-200'}`} />
+
+          {/* Security Overview */}
           <div>
-            <h3 className="font-['Epilogue'] text-2xl font-extrabold uppercase italic tracking-tighter text-white">
-              {profileForm.fullName || currentUser?.displayName || 'Profile'}
-            </h3>
-            <p className="text-sm text-white/50">{currentUser?.email || 'No email'}</p>
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300">
-              <VerifiedRoundedIcon sx={{ fontSize: 14 }} />
-              {accessProfile?.label || 'Superadmin'} Verified
+            <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white/60' : 'text-gray-700'}`}>Security Overview</p>
+            <div className="space-y-2">
+              <div className={`flex items-center gap-3 p-3 rounded-lg ${isDarkMode ? 'bg-white/2' : 'bg-gray-50'}`}>
+                <VpnKeyRoundedIcon sx={{ fontSize: 18 }} className={isDarkMode ? 'text-red-400' : 'text-red-600'} />
+                <div className="flex-1">
+                  <p className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Biometric Login</p>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Enabled</p>
+                </div>
+              </div>
+              <div className={`flex items-center gap-3 p-3 rounded-lg ${isDarkMode ? 'bg-white/2' : 'bg-gray-50'}`}>
+                <SecurityRoundedIcon sx={{ fontSize: 18 }} className={isDarkMode ? 'text-red-400' : 'text-red-600'} />
+                <div className="flex-1">
+                  <p className={`text-xs font-bold ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Encrypted Vault</p>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>Protected</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="mt-6 space-y-3 text-sm text-white/70">
-          <p><span className="text-white">Profile title:</span> {profileForm.title || 'Operations Lead'}</p>
-          <p className="flex items-center gap-2"><span className="text-white flex items-center gap-1"><LocationOnRoundedIcon sx={{ fontSize: 16 }} /> Location:</span> {profileForm.location || 'Bykelink HQ'}</p>
-          <p className="text-xs text-white/50">Lat: {profileForm.latitude || 'Not set'} | Lng: {profileForm.longitude || 'Not set'}</p>
-          <p><span className="text-white">Phone:</span> {profileForm.phone || 'Not set yet'}</p>
-          <p><span className="text-white">Last updated:</span> {formatDate(new Date())}</p>
-        </div>
       </section>
 
-      <section className="profile-card rounded-2xl p-6">
-        <h3 className="font-['Epilogue'] text-lg font-extrabold uppercase italic tracking-tighter text-white">
-          Edit Profile & Flagship Location
+      {/* Right: Edit Profile Card */}
+      <section className={`profile-card rounded-xl p-6 shadow-md border ${isDarkMode ? 'border-white/10 bg-[#0f0f0f] shadow-black/50' : 'border-gray-200 bg-white shadow-gray-200/30'}`}>
+        <h3 className={`text-lg font-bold uppercase tracking-wide mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          Edit Profile Details
         </h3>
-        <p className="mt-2 text-sm text-white/50">
-          Update profile details and drag the map pin to set the exact flagship location.
-        </p>
 
-        <form onSubmit={onProfileSave} className="mt-5 space-y-4">
+        <form onSubmit={onProfileSave} className="space-y-4">
+          {/* Full Name & Title */}
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm text-white/80">
-              <span className="mb-2 block">Full name</span>
+            <label className={`block text-sm ${isDarkMode ? 'text-white/80' : 'text-gray-700'}`}>
+              <span className="text-xs font-bold uppercase tracking-wider mb-2 block">Full Name</span>
               <input
                 type="text"
                 name="fullName"
                 value={profileForm.fullName}
                 onChange={onProfileFieldChange}
-                className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
               />
             </label>
 
-            <label className="block text-sm text-white/80">
-              <span className="mb-2 block">Title</span>
+            <label className={`block text-sm ${isDarkMode ? 'text-white/80' : 'text-gray-700'}`}>
+              <span className="text-xs font-bold uppercase tracking-wider mb-2 block">Title</span>
               <input
                 type="text"
                 name="title"
                 value={profileForm.title}
                 onChange={onProfileFieldChange}
-                className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
               />
             </label>
           </div>
 
+          {/* Phone & Location */}
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block text-sm text-white/80">
-              <span className="mb-2 block">Phone</span>
+            <label className={`block text-sm ${isDarkMode ? 'text-white/80' : 'text-gray-700'}`}>
+              <span className="text-xs font-bold uppercase tracking-wider mb-2 block">Phone</span>
               <input
-                type="text"
+                type="tel"
                 name="phone"
                 value={profileForm.phone}
-                onChange={onProfileFieldChange}
-                className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                onChange={handlePhoneChange}
+                placeholder="+63 9XX XXXX XXX"
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
               />
             </label>
 
-            <label className="block text-sm text-white/80">
-              <span className="mb-2 block">Location Name</span>
+            <label className={`block text-sm ${isDarkMode ? 'text-white/80' : 'text-gray-700'}`}>
+              <span className="text-xs font-bold uppercase tracking-wider mb-2 block">Location Name</span>
               <input
                 type="text"
                 name="location"
                 value={profileForm.location}
                 onChange={onProfileFieldChange}
-                className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
               />
             </label>
           </div>
 
-          {/* Location Coordinates */}
-          <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-4">
-            <p className="mb-3 text-sm font-bold uppercase text-white">Flagship Location Coordinates</p>
-            <div className="grid gap-3 md:grid-cols-2">
-              <label className="block text-sm text-white/80">
-                <span className="mb-2 block">Latitude</span>
+          {/* Short Bio */}
+          <label className={`block text-sm ${isDarkMode ? 'text-white/80' : 'text-gray-700'}`}>
+            <span className="text-xs font-bold uppercase tracking-wider mb-2 block">Short Bio</span>
+            <textarea
+              name="bio"
+              rows="3"
+              value={profileForm.bio}
+              onChange={onProfileFieldChange}
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm resize-none transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-gray-50 text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
+            />
+          </label>
+
+          {/* Location Coordinates Section */}
+          <div>
+            <p className={`text-sm font-bold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Flagship Location Coordinates</p>
+            <div className="grid gap-4 md:grid-cols-2 mb-3">
+              <div>
+                <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Latitude</label>
                 <input
                   type="number"
                   name="latitude"
                   step="0.000001"
                   value={profileForm.latitude || ''}
                   onChange={onProfileFieldChange}
-                  placeholder="e.g., 7.3086"
-                  className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
                 />
-              </label>
-              <label className="block text-sm text-white/80">
-                <span className="mb-2 block">Longitude</span>
+              </div>
+              <div>
+                <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Longitude</label>
                 <input
                   type="number"
                   name="longitude"
                   step="0.000001"
                   value={profileForm.longitude || ''}
                   onChange={onProfileFieldChange}
-                  placeholder="e.g., 125.7399"
-                  className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
                 />
-              </label>
+              </div>
             </div>
-            <p className="mt-3 text-xs text-white/50">Drag the pin on the map below or click on the map to set location</p>
           </div>
 
-          {/* Location Map */}
-          <div className="rounded-xl border border-white/10 overflow-hidden bg-[#0a0a0a] relative">
-            {/* Search Box */}
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search location..."
-              className="absolute top-3 left-3 right-3 z-10 rounded-lg border border-white/20 bg-[#1a1a1a] px-4 py-2 text-sm text-white placeholder-white/50 outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
-            />
+          {/* Map Section */}
+          <div className={`rounded-lg border overflow-hidden relative shadow-sm ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
+            <div className="absolute top-3 left-3 right-3 z-20 flex gap-2">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search for a specific address..."
+                className={`flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1 transition-all ${isDarkMode ? 'border-white/20 bg-white/5 text-white placeholder-white/50 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:border-red-600 focus:ring-red-100'}`}
+              />
+              <button
+                type="button"
+                onClick={() => alert('Get PIN functionality would go here')}
+                className={`get-pin-btn px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition whitespace-nowrap ${isDarkMode ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-900 text-white hover:bg-gray-800'}`}
+              >
+                Get PIN
+              </button>
+            </div>
             <div
               ref={mapRef}
               className="h-64 w-full"
@@ -268,24 +402,16 @@ export default function ProfileSection({
             />
           </div>
 
-          <label className="block text-sm text-white/80">
-            <span className="mb-2 block">Short bio</span>
-            <textarea
-              name="bio"
-              rows="3"
-              value={profileForm.bio}
-              onChange={onProfileFieldChange}
-              className="w-full rounded-xl border border-white/10 bg-[#101010] px-4 py-3 text-white outline-none"
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-full bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white disabled:opacity-70 hover:bg-red-700 transition"
-          >
-            {isSubmitting ? 'Saving...' : 'Save Profile & Location'}
-          </button>
+          {/* Form Buttons */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`save-btn flex-1 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-wide transition disabled:opacity-60 text-white! ${isDarkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'}`}
+            >
+              {isSubmitting ? 'Saving...' : 'SAVE PROFILE & LOCATION'}
+            </button>
+          </div>
         </form>
       </section>
     </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
 import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded'
@@ -13,8 +14,9 @@ import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded'
-import { db, functions } from '../../firebase'
+import { db, functions, storage } from '../../firebase'
 import { useTheme } from '../../context/ThemeContext'
+import useToast from '../../context/useToast'
 import ConfirmationModal from './components/ConfirmationModal'
 import EditUserModal from './components/EditUserModal'
 import NewUserModal from './components/NewUserModal'
@@ -172,6 +174,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   })
   const [chatFocusRequest, setChatFocusRequest] = useState(null)
   const { isDarkMode, toggleTheme } = useTheme()
+  const { success: toastSuccess, error: toastError } = useToast()
   const [profileForm, setProfileForm] = useState({
     fullName: '',
     title: '',
@@ -181,11 +184,98 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     longitude: '',
     bio: '',
   })
+  const [savedProfileSnapshot, setSavedProfileSnapshot] = useState(null)
+  const [isSaveConfirmOpen, setIsSaveConfirmOpen] = useState(false)
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
+  const [pendingSection, setPendingSection] = useState(null)
 
   const sectionTitle = useMemo(() => {
     if (activeSection === 'financing-application-detail') return 'Financing Application Detail'
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
+
+  // Load profile data from Firestore
+  useEffect(() => {
+    if (!currentUser?.uid) return
+
+    const loadProfile = async () => {
+      try {
+        const normalizedRole = normalizeText(accessProfile?.role || 'superadmin')
+        const privilegedCollectionName =
+          normalizedRole === 'superadmin'
+            ? 'authorizedSuperadmin'
+            : normalizedRole === 'admin'
+              ? 'authorizedAdmin'
+              : personnelInviteRoles.includes(normalizedRole) || normalizedRole === 'staff'
+                ? 'authorizedPersonnel'
+                : null
+        const profileDocRef =
+          privilegedCollectionName && currentUser.email
+            ? doc(db, privilegedCollectionName, String(currentUser.email || '').trim().toLowerCase())
+            : doc(db, 'users', currentUser.uid)
+
+        // Use real-time listener to keep profile in sync and capture saved snapshot
+        const unsubscribe = onSnapshot(profileDocRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data()
+            setProfileForm((current) => ({
+              ...current,
+              fullName: data.fullName || current.fullName,
+              title: data.title || current.title,
+              phone: data.phone || current.phone,
+              location: data.location || current.location,
+              bio: data.bio || current.bio,
+              latitude: data.latitude || current.latitude,
+              longitude: data.longitude || current.longitude,
+              avatarUrl: data.avatarUrl || current.avatarUrl,
+            }))
+            // keep a copy of last saved state for change-detection
+            setSavedProfileSnapshot({
+              fullName: data.fullName || '',
+              title: data.title || '',
+              phone: data.phone || '',
+              location: data.location || '',
+              bio: data.bio || '',
+              latitude: data.latitude || '',
+              longitude: data.longitude || '',
+              avatarUrl: data.avatarUrl || '',
+            })
+          }
+        })
+
+        return unsubscribe
+      } catch (error) {
+        console.error('Failed to load profile:', error)
+      }
+    }
+
+    let unsubscribe
+    loadProfile().then((unsub) => {
+      unsubscribe = unsub
+    })
+
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [currentUser?.uid, currentUser?.email, accessProfile?.role])
+
+  // Load flagship location from settings
+  useEffect(() => {
+    const settingsRef = doc(db, 'settings', 'flagshipLocation')
+    const unsubscribe = onSnapshot(settingsRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        setProfileForm((current) => ({
+          ...current,
+          latitude: data.latitude || current.latitude,
+          longitude: data.longitude || current.longitude,
+          location: data.location || current.location,
+        }))
+      }
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     if (initialFinancingApplicationId) {
@@ -963,21 +1053,33 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       })
     }
 
+    let avatarUrl = null
+    // Upload avatar to Storage if file exists
+    if (profileForm.avatarFile instanceof File) {
+      const avatarPath = `users/${currentUser.uid}/avatar.${profileForm.avatarFile.name.split('.').pop()}`
+      const avatarRef = ref(storage, avatarPath)
+      await uploadBytes(avatarRef, profileForm.avatarFile)
+      avatarUrl = await getDownloadURL(avatarRef)
+    }
+
     // Save profile information
+    const profileData = {
+      fullName,
+      phone: profileForm.phone.trim(),
+      title: profileForm.title.trim(),
+      location: profileForm.location.trim(),
+      bio: profileForm.bio.trim(),
+      role: accessProfile?.role || 'superadmin',
+      email: currentUser.email || '',
+      active: true,
+      status: 'active',
+      updatedAt: serverTimestamp(),
+    }
+    if (avatarUrl) profileData.avatarUrl = avatarUrl
+
     await setDoc(
       profileDocRef,
-      {
-        fullName,
-        phone: profileForm.phone.trim(),
-        title: profileForm.title.trim(),
-        location: profileForm.location.trim(),
-        bio: profileForm.bio.trim(),
-        role: accessProfile?.role || 'superadmin',
-        email: currentUser.email || '',
-        active: true,
-        status: 'active',
-        updatedAt: serverTimestamp(),
-      },
+      profileData,
       { merge: true },
     )
 
@@ -1009,26 +1111,47 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
   const handleProfileSave = async (event) => {
     event.preventDefault()
-    setIsSubmitting(true)
+    setIsSaveConfirmOpen(true)
+  }
 
+  const doSaveProfile = async () => {
+    setIsSaveConfirmOpen(false)
+    setIsSubmitting(true)
     try {
       await saveProfileToFirebase()
-      setActionMessage({
-        type: 'success',
-        text: 'Profile updated successfully in Firebase.',
+      toastSuccess('Profile updated successfully!')
+      setSavedProfileSnapshot({
+        fullName: profileForm.fullName || '',
+        title: profileForm.title || '',
+        phone: profileForm.phone || '',
+        location: profileForm.location || '',
+        bio: profileForm.bio || '',
+        latitude: profileForm.latitude || '',
+        longitude: profileForm.longitude || '',
+        avatarUrl: profileForm.avatarUrl || '',
       })
     } catch (error) {
       console.error('Unable to save profile', error)
-      setActionMessage({
-        type: 'error',
-        text: `Unable to save the profile. ${error.message}`,
-      })
+      toastError(`Unable to save profile: ${error.message}`)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleSectionChange = (sectionId) => {
+    // If navigating away from profile and there are unsaved changes, confirm
+    const hasUnsaved = (() => {
+      if (!savedProfileSnapshot) return false
+      const keys = ['fullName', 'title', 'phone', 'location', 'bio', 'latitude', 'longitude', 'avatarUrl']
+      return keys.some((k) => String(profileForm[k] || '') !== String(savedProfileSnapshot[k] || ''))
+    })()
+
+    if (activeSection === 'profile' && sectionId !== 'profile' && hasUnsaved) {
+      setPendingSection(sectionId)
+      setIsLeaveConfirmOpen(true)
+      return
+    }
+
     setActiveSection(sectionId)
 
     // Update URL based on section type
@@ -1677,6 +1800,40 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           adminName={adminName}
           consoleLabel={consoleLabel}
           onOpenProfile={() => handleSectionChange('profile')}
+          avatarUrl={profileForm.avatarUrl}
+        />
+
+        {/* Confirmation modals for save and unsaved-navigation */}
+        <ConfirmationModal
+          open={isSaveConfirmOpen}
+          title="Save Profile & Location"
+          message="Do you want to save the profile and location now?"
+          confirmText="Save"
+          cancelText="Cancel"
+          onConfirm={doSaveProfile}
+          onCancel={() => setIsSaveConfirmOpen(false)}
+          isDangerous={false}
+          isDarkMode={isDarkMode}
+        />
+
+        <ConfirmationModal
+          open={isLeaveConfirmOpen}
+          title="Unsaved Changes"
+          message="You have unsaved changes. Leave without saving?"
+          confirmText="Leave"
+          cancelText="Stay"
+          onConfirm={() => {
+            // discard changes and navigate
+            if (savedProfileSnapshot) {
+              setProfileForm((_) => ({ ...savedProfileSnapshot }))
+            }
+            setIsLeaveConfirmOpen(false)
+            if (pendingSection) setActiveSection(pendingSection)
+            setPendingSection(null)
+          }}
+          onCancel={() => setIsLeaveConfirmOpen(false)}
+          isDangerous={true}
+          isDarkMode={isDarkMode}
         />
 
         <main className="superadmin-main ml-64 px-4 pb-12 pt-24 sm:px-6 lg:px-8">

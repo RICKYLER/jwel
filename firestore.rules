@@ -53,18 +53,23 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
       allow delete: if isSuperadmin();
     }
 
     match /authorizedAdmin/{docId} {
-      allow read: if isAdminOrHigher();
-      allow create, update, delete: if isSuperadmin();
+      allow read: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
+      allow create, update, delete: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
     }
 
     match /authorizedSuperadmin/{docId} {
-      allow read: if isSuperadmin();
-      allow create, update, delete: if isSuperadmin();
+      allow read: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
+      allow create, update, delete: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
+    }
+
+    match /authorizedPersonnel/{docId} {
+      allow read: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
+      allow create, update, delete: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
     }
 
     match /conversations/{docId} {
@@ -149,12 +154,12 @@ service cloud.firestore {
 
     match /authorizedPersonnel/{docId} {
       allow read: if isAdminOrHigher();
-      allow create, update, delete: if isAdminOrHigher();
+      allow create, update, delete: if isAdminOrHigher() || (isSignedIn() && request.auth.token.email == docId);
     }
 
     match /settings/{docId} {
       allow read: if true;
-      allow create, update, delete: if isSuperadmin();
+      allow create, update, delete: if isAdminOrHigher();
     }
 
     match /users/{userId}/vehicles/{vehicleId} {

@@ -17,6 +17,7 @@ export default function SuperAdminHeader({
   adminName,
   consoleLabel,
   onOpenProfile,
+  avatarUrl,
 }) {
   return (
     <header className="superadmin-topbar fixed right-0 top-0 z-40 flex h-16 w-[calc(100%-16rem)] items-center justify-end px-4 sm:px-6 lg:px-8">
@@ -79,8 +80,12 @@ export default function SuperAdminHeader({
             <p className="text-xs font-bold text-white">{adminName}</p>
             <p className="text-[10px] text-white/40">{consoleLabel}</p>
           </div>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-red-600/20 bg-[#1f1f1f] text-red-300">
-            <PersonRoundedIcon sx={{ fontSize: 20 }} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-red-600/20 bg-[#1f1f1f] overflow-hidden">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={adminName} className="h-10 w-10 rounded-full object-cover" />
+            ) : (
+              <PersonRoundedIcon sx={{ fontSize: 20 }} className="text-red-300" />
+            )}
           </div>
         </button>
       </div>

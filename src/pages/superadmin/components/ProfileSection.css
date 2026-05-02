@@ -31,3 +31,98 @@
   background: var(--card);
   color: var(--text);
 }
+
+/* Support light-mode toggle class used in component */
+.light-mode .profile-section-grid .profile-card {
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.light-mode .profile-section-grid h3,
+.light-mode .profile-section-grid h4 {
+  color: var(--text);
+}
+
+.light-mode .profile-section-grid p {
+  color: var(--text-muted, rgba(46, 46, 48, 0.72));
+}
+
+.light-mode .profile-section-grid input,
+.light-mode .profile-section-grid textarea {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+}
+
+/* Ensure save button text stays white in light mode */
+.light-mode .profile-section-grid .save-btn,
+.light-mode .save-btn {
+  color: #ffffff !important;
+}
+
+/* Override any potential hover state in light mode */
+.light-mode .profile-section-grid .save-btn:hover,
+.light-mode .save-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Force white text in light-mode for profile section to improve contrast */
+.light-mode .profile-section-grid,
+.light-mode .profile-section-grid p,
+.light-mode .profile-section-grid label,
+.light-mode .profile-section-grid span,
+.light-mode .profile-section-grid h1,
+.light-mode .profile-section-grid h2,
+.light-mode .profile-section-grid h3,
+.light-mode .profile-section-grid h4,
+.light-mode .profile-section-grid li,
+.light-mode .profile-section-grid td,
+.light-mode .profile-section-grid th,
+.light-mode .profile-section-grid button {
+  color: #ffffff !important;
+}
+
+/* Inputs, textareas and their placeholders */
+.light-mode .profile-section-grid input,
+.light-mode .profile-section-grid textarea,
+.light-mode .profile-section-grid select {
+  color: #ffffff !important;
+  background: var(--card) !important;
+}
+
+.light-mode .profile-section-grid input::placeholder,
+.light-mode .profile-section-grid textarea::placeholder {
+  color: rgba(255,255,255,0.7) !important;
+}
+
+/* Ensure small UI elements also stay readable */
+.light-mode .profile-section-grid .text-xs,
+.light-mode .profile-section-grid .text-sm {
+  color: #ffffff !important;
+}
+
+/* Ensure Get PIN button text is white in light-mode */
+.light-mode .profile-section-grid .get-pin-btn,
+.get-pin-btn {
+  color: #ffffff !important;
+}
+
+.light-mode .profile-section-grid .get-pin-btn:hover,
+.get-pin-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Force color down to child nodes and handle browser-specific text fill */
+.light-mode .profile-section-grid .get-pin-btn,
+.light-mode .profile-section-grid .get-pin-btn *,
+.get-pin-btn,
+.get-pin-btn * {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* In case opacity is applied, explicitly set it to fully opaque for the button text */
+.light-mode .profile-section-grid .get-pin-btn,
+.get-pin-btn {
+  opacity: 1 !important;
+}
