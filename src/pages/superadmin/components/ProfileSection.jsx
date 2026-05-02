@@ -349,51 +349,17 @@ export default function ProfileSection({
             />
           </label>
 
-          {/* Location Coordinates Section */}
-          <div>
-            <p className={`text-sm font-bold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-white/80' : 'text-gray-900'}`}>Flagship Location Coordinates</p>
-            <div className="grid gap-4 md:grid-cols-2 mb-3">
-              <div>
-                <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Latitude</label>
-                <input
-                  type="number"
-                  name="latitude"
-                  step="0.000001"
-                  value={profileForm.latitude || ''}
-                  onChange={onProfileFieldChange}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
-                />
-              </div>
-              <div>
-                <label className={`block text-xs font-bold uppercase tracking-wider mb-1 ${isDarkMode ? 'text-white/60' : 'text-gray-600'}`}>Longitude</label>
-                <input
-                  type="number"
-                  name="longitude"
-                  step="0.000001"
-                  value={profileForm.longitude || ''}
-                  onChange={onProfileFieldChange}
-                  className={`w-full rounded-lg border px-3 py-2 text-sm transition-all focus:outline-none focus:ring-1 ${isDarkMode ? 'border-white/10 bg-[#1a1a1a] text-white placeholder-white/30 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:border-red-600 focus:ring-red-100'}`}
-                />
-              </div>
-            </div>
-          </div>
+          {/* Latitude/Longitude inputs removed (coordinates are still set via the map) */}
 
           {/* Map Section */}
           <div className={`rounded-lg border overflow-hidden relative shadow-sm ${isDarkMode ? 'border-white/10' : 'border-gray-200'}`}>
-            <div className="absolute top-3 left-3 right-3 z-20 flex gap-2">
+            <div className="absolute top-3 left-3 right-3 z-20">
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search for a specific address..."
-                className={`flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1 transition-all ${isDarkMode ? 'border-white/20 bg-white/5 text-white placeholder-white/50 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:border-red-600 focus:ring-red-100'}`}
+                className={`w-full rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1 transition-all ${isDarkMode ? 'border-white/20 bg-white/5 text-white placeholder-white/50 focus:border-red-600 focus:ring-red-600/30' : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:border-red-600 focus:ring-red-100'}`}
               />
-              <button
-                type="button"
-                onClick={() => alert('Get PIN functionality would go here')}
-                className={`get-pin-btn px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition whitespace-nowrap ${isDarkMode ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-900 text-white hover:bg-gray-800'}`}
-              >
-                Get PIN
-              </button>
             </div>
             <div
               ref={mapRef}

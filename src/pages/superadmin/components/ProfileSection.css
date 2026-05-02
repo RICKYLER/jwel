@@ -101,28 +101,3 @@
   color: #ffffff !important;
 }
 
-/* Ensure Get PIN button text is white in light-mode */
-.light-mode .profile-section-grid .get-pin-btn,
-.get-pin-btn {
-  color: #ffffff !important;
-}
-
-.light-mode .profile-section-grid .get-pin-btn:hover,
-.get-pin-btn:hover {
-  color: #ffffff !important;
-}
-
-/* Force color down to child nodes and handle browser-specific text fill */
-.light-mode .profile-section-grid .get-pin-btn,
-.light-mode .profile-section-grid .get-pin-btn *,
-.get-pin-btn,
-.get-pin-btn * {
-  color: #ffffff !important;
-  -webkit-text-fill-color: #ffffff !important;
-}
-
-/* In case opacity is applied, explicitly set it to fully opaque for the button text */
-.light-mode .profile-section-grid .get-pin-btn,
-.get-pin-btn {
-  opacity: 1 !important;
-}
