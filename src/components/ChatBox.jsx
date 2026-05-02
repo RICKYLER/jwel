@@ -212,7 +212,7 @@ export default function ChatBox({ currentUser }) {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1c1b1b] shadow-2xl md:bottom-24 md:right-8 animate-in fade-in slide-in-from-bottom-2" style={{ height: '500px' }}>
+        <div className="fixed bottom-20 right-4 z-40 flex w-[calc(100vw-32px)] max-w-sm flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1c1b1b] shadow-2xl md:bottom-24 md:right-8 md:w-full animate-in fade-in slide-in-from-bottom-2" style={{ height: 'min(500px, calc(100vh - 200px))' }}>
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-linear-to-r from-red-600/10 to-red-500/5 px-4 py-4">
             <div className="flex items-center gap-3">
