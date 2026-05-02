@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { db } from '../../firebase'
-import { collection, query, onSnapshot, orderBy, doc, getDoc } from 'firebase/firestore'
+import { collection, query, onSnapshot, orderBy, doc, getDoc, where } from 'firebase/firestore'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
@@ -58,13 +58,11 @@ export default function HeroSection({
   onSignOut,
 }) {
   const [isLoadingComplete, setIsLoadingComplete] = useState(false)
-  const [unitsReady, setUnitsReady] = useState(0)
-  const [happyRiders, setHappyRiders] = useState(0)
+  const [financingApplications, setFinancingApplications] = useState(0)
+  const [servicesCompleted, setServicesCompleted] = useState(0)
   const [serviceRating, setServiceRating] = useState(0)
-  const [liveCategories, setLiveCategories] = useState([])
   const [liveModels, setLiveModels] = useState([])
   const [liveSpareParts, setLiveSpareParts] = useState([])
-  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true)
   const [isModelsLoading, setIsModelsLoading] = useState(true)
   const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
   const [carouselIndex, setCarouselIndex] = useState(0)
@@ -138,9 +136,7 @@ export default function HeroSection({
         const elapsed = Date.now() - startTime
         const progress = Math.min(elapsed / duration, 1)
         
-        if (target === 1200) {
-          setter(Math.floor(progress * target))
-        } else if (target === 4.9) {
+        if (target === 4.9) {
           setter(Math.round(progress * target * 10) / 10)
         } else {
           setter(Math.floor(progress * target))
@@ -154,47 +150,12 @@ export default function HeroSection({
       animate()
     }
 
-    animateCounter(40, setUnitsReady)
-    animateCounter(1200, setHappyRiders)
-    animateCounter(4.9, setServiceRating)
-  }, [isLoadingComplete])
+    animateCounter(financingApplications, setFinancingApplications, 2000)
+    animateCounter(servicesCompleted, setServicesCompleted, 2000)
+    animateCounter(4.9, setServiceRating, 2000)
+  }, [isLoadingComplete, financingApplications, servicesCompleted])
 
-  // Fetch popular categories with highest stock items
-  useEffect(() => {
-    const q = query(
-      collection(db, 'inventory'),
-      orderBy('stockQuantity', 'desc')
-    )
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const inventoryItems = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-
-        const categoryMap = new Map()
-        inventoryItems.forEach((item) => {
-          const categoryName = item.category || item.name || 'Unknown'
-          if (!categoryMap.has(categoryName) || (item.stockQuantity || 0) > (categoryMap.get(categoryName).stockQuantity || 0)) {
-            categoryMap.set(categoryName, item)
-          }
-        })
-
-        const categoriesWithHighestStock = Array.from(categoryMap.values()).slice(0, 6)
-        setLiveCategories(categoriesWithHighestStock)
-        setIsCategoriesLoading(false)
-      },
-      (error) => {
-        console.error('Unable to load hero categories', error)
-        setLiveCategories([])
-        setIsCategoriesLoading(false)
-      },
-    )
-
-    return () => unsubscribe()
-  }, [])
+  // (Removed) Fetch popular categories — showroom was removed so categories not used
 
   // Fetch featured models (motorcycle units only) from Firestore
   useEffect(() => {
@@ -253,6 +214,48 @@ export default function HeroSection({
         console.error('Unable to load hero spare parts', error)
         setLiveSpareParts([])
         setIsSparePartsLoading(false)
+      },
+    )
+
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch completed financing applications count from Firestore
+  useEffect(() => {
+    const q = query(
+      collection(db, 'financingApplications'),
+      where('status', '==', 'completed')
+    )
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setFinancingApplications(snapshot.docs.length)
+      },
+      (error) => {
+        console.error('Unable to load financing applications count', error)
+        setFinancingApplications(0)
+      },
+    )
+
+    return () => unsubscribe()
+  }, [])
+
+  // Fetch completed services count from Firestore
+  useEffect(() => {
+    const q = query(
+      collection(db, 'services'),
+      where('status', '==', 'completed')
+    )
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setServicesCompleted(snapshot.docs.length)
+      },
+      (error) => {
+        console.error('Unable to load services completed count', error)
+        setServicesCompleted(0)
       },
     )
 
@@ -515,15 +518,15 @@ export default function HeroSection({
 
             <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-3 lg:max-w-4xl">
               <div className="px-5 py-4 text-center">
-                <div className="text-3xl font-black text-white font-['Epilogue']">{unitsReady}+</div>
+                <div className="text-3xl font-black text-white font-['Epilogue']">{financingApplications}+</div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white">
-                  Units Ready
+                  Financing Applications
                 </div>
               </div>
               <div className="px-5 py-4 text-center">
-                <div className="text-3xl font-black text-white font-['Epilogue']">{happyRiders.toLocaleString()}+</div>
+                <div className="text-3xl font-black text-white font-['Epilogue']">{servicesCompleted.toLocaleString()}+</div>
                 <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-white">
-                  Happy Riders
+                  Services Completed
                 </div>
               </div>
               <div className="px-5 py-4 text-center">
@@ -537,62 +540,7 @@ export default function HeroSection({
           </div>
         </section>
 
-        <section id="showroom" className="mx-auto max-w-screen-2xl px-4 py-20 sm:px-6 lg:px-8 lg:py-24" data-reveal="up" data-reveal-delay="80">
-          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="120">
-            <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.28em] text-white font-['Epilogue']">
-                Curated For Riders
-              </p>
-              <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
-                Popular Categories
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={onNavigateShowroom}
-              className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
-            >
-              Browse Showroom <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
-            </button>
-          </div>
-
-          <div className="rounded-[28px] border border-white/10 bg-slate-900/40 p-4 backdrop-blur-md sm:p-6" data-reveal="up" data-reveal-delay="160">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:auto-rows-[290px]">
-            {isCategoriesLoading ? (
-              <div className="md:col-span-3 rounded-2xl border border-white/10 bg-slate-900 p-8 text-center text-white/70">
-                Loading live categories...
-              </div>
-            ) : liveCategories.length === 0 ? (
-              <div className="md:col-span-3 rounded-2xl border border-white/10 bg-slate-900 p-8 text-center text-white/70">
-                No live categories available right now.
-              </div>
-            ) : liveCategories.map((category, index) => (
-              <article
-                key={category.id || category.title || category.name}
-                className={`group relative overflow-hidden rounded-2xl cursor-pointer ${
-                  category.featured || index === 0 ? 'md:col-span-2 md:row-span-2' : ''
-                }`}
-                onClick={() => onNavigateShowroom()}
-              >
-                <img
-                  src={category.imageUrl || category.image || category.mainImage || category.categoryImage || getPlaceholderImage(category.category || category.name || category.title, 500, 400)}
-                  alt={category.category || category.name || category.title}
-                  className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent" />
-                <div className="absolute bottom-6 left-6">
-                  <h3 className="text-2xl font-black uppercase text-white font-['Epilogue'] sm:text-3xl">
-                    {category.category || category.name || category.title}
-                  </h3>
-                  <p className="text-xs font-bold uppercase tracking-[0.28em] text-[#bee9ff] sm:text-sm">
-                    {category.name || category.description || category.subtitle || 'Premium Selection'}
-                  </p>
-                </div>
-              </article>
-            ))}
-            </div>
-          </div>
-        </section>
+        {/* Showroom section removed */}
 
         <section className="bg-linear-to-b from-slate-900/80 to-slate-900/20 py-20 lg:py-24" data-reveal="up" data-reveal-delay="100">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
@@ -612,7 +560,7 @@ export default function HeroSection({
               </button>
             </div>
 
-            <div className="relative overflow-hidden" data-reveal="up" data-reveal-delay="180">
+            <div className="relative w-full overflow-x-hidden" data-reveal="up" data-reveal-delay="180">
               {isModelsLoading ? (
                 <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
                   Loading featured models...
@@ -623,22 +571,18 @@ export default function HeroSection({
                 </div>
               ) : (
                 <>
-                  <div className="flex gap-8 transition-transform duration-700 w-full"
-                    style={{
-                      transform: `translateX(calc(-${carouselIndex * 100}% - ${carouselIndex * 2}rem))`,
-                    }}
-                  >
-                    {liveModels.map((model) => (
+                  <div className="flex transition-transform duration-700" style={{ transform: `translateX(calc(-${carouselIndex * 100}%))`, width: '100%' }}>
+                    {liveModels.map((model, index) => (
+                      <div key={model.id || model.name} style={{ flex: '0 0 100%', paddingRight: index === liveModels.length - 1 ? '0' : '1rem' }}>
                   <article
-                    key={model.id || model.name}
-                    className="shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 min-w-full"
+                    className="shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 h-full"
                     onClick={() => onNavigateShowroom()}
                   >
-                    <div className="relative h-80 overflow-hidden">
+                    <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden bg-linear-to-b from-slate-800 to-slate-900 flex items-center justify-center">
                       <img
                         src={model.imageUrl || model.mainImage || model.image || model.motorcycleImage || getPlaceholderImage(model.modelName || model.name, 400, 300)}
                         alt={model.modelName || model.name}
-                        className="h-full w-full object-cover transition duration-500 hover:scale-105"
+                        className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
                       />
                       <div className="absolute right-4 top-4 rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black uppercase tracking-tight text-white font-['Epilogue']">
                         {model.series || 'Premium'}
@@ -671,6 +615,7 @@ export default function HeroSection({
                       </div>
                     </div>
                   </article>
+                      </div>
                     ))}
                   </div>
 
@@ -713,7 +658,7 @@ export default function HeroSection({
         </section>
 
         {/* Spare Parts Section */}
-        {!isSparePartsLoading && liveSpareParts.length > 0 && (
+        {!isSparePartsLoading && (
           <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
             <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
               <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="160">
@@ -732,8 +677,13 @@ export default function HeroSection({
                 </button>
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4" data-reveal="up" data-reveal-delay="200">
-                {liveSpareParts.map((part) => (
+              <div className="grid gap-6 grid-cols-1" data-reveal="up" data-reveal-delay="200">
+                {liveSpareParts.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                    No spare parts available right now.
+                  </div>
+                ) : (
+                  liveSpareParts.map((part) => (
                   <div
                     key={part.id}
                     className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer"
@@ -759,7 +709,8 @@ export default function HeroSection({
                       </div>
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
             </div>
           </section>
