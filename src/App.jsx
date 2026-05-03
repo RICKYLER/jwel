@@ -10,6 +10,7 @@ import {
   signOut,
   updatePassword,
   updateProfile,
+  checkActionCode,
 } from 'firebase/auth'
 import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
@@ -17,6 +18,8 @@ import HeroSection from './pages/herosection/HeroSection'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage'
+import EmailPasswordResetPage from './pages/EmailPasswordResetPage'
+import EmailVerificationPage from './pages/EmailVerificationPage'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
@@ -390,6 +393,8 @@ function App() {
     password: '',
     confirmPassword: '',
   })
+  const [emailPasswordResetCode, setEmailPasswordResetCode] = useState(null)
+  const [emailVerificationCode, setEmailVerificationCode] = useState(null)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -471,6 +476,38 @@ function App() {
     window.addEventListener('popstate', handlePopState)
 
     return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  // Detect Firebase action codes from email links (password reset, email verification, etc.)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const oobCode = urlParams.get('oobCode')
+
+    if (!oobCode) return
+
+    // Determine the action type by checking the code
+    const detectActionType = async () => {
+      try {
+        console.log('[AUTH ACTION] Detecting action type for code:', oobCode.substring(0, 20) + '...')
+        const actionInfo = await checkActionCode(auth, oobCode)
+        console.log('[AUTH ACTION] Detected operation:', actionInfo?.operation)
+
+        if (actionInfo?.operation === 'VERIFY_EMAIL') {
+          console.log('[EMAIL VERIFY] Setting verification code')
+          setEmailVerificationCode(oobCode)
+        } else if (actionInfo?.operation === 'PASSWORD_RESET') {
+          console.log('[PASSWORD RESET] Setting reset code')
+          setEmailPasswordResetCode(oobCode)
+        }
+
+        // Clean up URL to remove the query parameters
+        window.history.replaceState({}, document.title, window.location.pathname)
+      } catch (error) {
+        console.error('[AUTH ACTION] Failed to detect action type:', error?.code, error?.message)
+      }
+    }
+
+    detectActionType()
   }, [])
 
   useEffect(() => {
@@ -780,7 +817,34 @@ function App() {
       }
     }
 
-    await sendEmailVerification(user)
+    // IMPORTANT: Don't use Firebase's default sendEmailVerification because:
+    // 1. It sends emails from Firebase's domain (firebaseapp.com) which we don't control
+    // 2. The email template in Firebase Console can't be easily overridden
+    // 3. Links go to Firebase's domain first, then redirect to us
+    // Instead, we generate a verification link and show it to the user
+
+    try {
+      // Generate a custom verification link via Cloud Function
+      const sendCustomEmailVerification = httpsCallable(functions, 'sendCustomEmailVerification')
+      const linkResult = await sendCustomEmailVerification({ email: user.email })
+      
+      console.log('[VERIFY EMAIL] Custom verification link generated:', linkResult.data?.verificationLink?.substring(0, 50))
+      
+      // Store the verification link in localStorage for the app to display
+      // This allows users to verify immediately without waiting for email
+      window.localStorage.setItem(`verificationLink_${user.uid}`, linkResult.data?.verificationLink)
+      
+      // Optionally still call Firebase's sendEmailVerification as a backup
+      // but it will go to Firebase's domain (not ideal)
+    } catch (error) {
+      console.warn('[VERIFY EMAIL] Failed to generate custom verification link:', error?.message)
+      // Fall back to Firebase's default email (which will be imperfect but better than nothing)
+      const actionCodeSettings = {
+        url: window.location.origin,
+        handleCodeInApp: true,
+      }
+      await sendEmailVerification(user, actionCodeSettings)
+    }
 
     try {
       await setDoc(
@@ -1153,6 +1217,32 @@ function App() {
       {passwordChangeModal}
     </>
   )
+
+  // Handle email verification from link in email
+  if (emailVerificationCode) {
+    return withSecurityModal(
+      <EmailVerificationPage
+        verificationCode={emailVerificationCode}
+        onNavigateBack={() => {
+          setEmailVerificationCode(null)
+          navigateTo('/login')
+        }}
+      />
+    )
+  }
+
+  // Handle email password reset from link in email
+  if (emailPasswordResetCode) {
+    return withSecurityModal(
+      <EmailPasswordResetPage
+        resetCode={emailPasswordResetCode}
+        onNavigateBack={() => {
+          setEmailPasswordResetCode(null)
+          navigateTo('/login')
+        }}
+      />
+    )
+  }
 
   if (currentPath === '/forgot-password') {
     return withSecurityModal(

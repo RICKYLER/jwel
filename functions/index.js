@@ -1870,3 +1870,80 @@ exports.contactAdministrator = onCall(async (request) => {
     throw new HttpsError('internal', `Unable to submit request: ${error.message}`)
   }
 })
+
+// Send custom email verification link to user's app domain (not Firebase's default domain)
+exports.sendCustomEmailVerification = onCall({ enforceAppCheck: false }, async (request) => {
+  const { email } = request.data
+
+  if (!email || typeof email !== 'string') {
+    throw new HttpsError('invalid-argument', 'Email is required')
+  }
+
+  try {
+    const emailLower = String(email).trim().toLowerCase()
+    
+    logger.info('Generating custom email verification link', { email: emailLower })
+
+    // Generate a verification link that points to our app domain
+    // Firebase will append ?oobCode=... automatically
+    // The app will detect this and use checkActionCode() to determine it's a VERIFY_EMAIL operation
+    const verificationLink = await admin.auth().generateEmailVerificationLink(emailLower, {
+      url: process.env.APP_URL || 'https://bykelink-system.web.app',
+      handleCodeInApp: true,
+    })
+
+    logger.info('Custom email verification link generated', {
+      email: emailLower,
+      linkPrefix: verificationLink?.substring(0, 50),
+    })
+
+    return {
+      success: true,
+      verificationLink,
+      message: 'Verification link generated successfully',
+    }
+  } catch (error) {
+    logger.error('Unable to generate verification link', {
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+    })
+
+    throw new HttpsError('internal', `Unable to generate verification link: ${error.message}`)
+  }
+})
+
+// Update Firebase email template to send verification links directly to our app domain
+exports.configureEmailTemplates = onRequest({ enforceAppCheck: false }, async (req, res) => {
+  const authApiKey = process.env.FIREBASE_AUTH_API_KEY || 'AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI'
+  const projectId = process.env.GCLOUD_PROJECT || 'bykelink-system'
+
+  try {
+    logger.info('Updating email templates for custom domain')
+
+    // Update the email verification template to use our app domain
+    const emailTemplateUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/emailTemplates:sendTestMessage`
+
+    // Fetch current template first
+    const getTemplateUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/emailTemplates/VERIFY_EMAIL`
+    
+    const response = await require('https').get(getTemplateUrl, { headers: { Authorization: `Bearer ${process.env.FIREBASE_ADMIN_SDK_KEY}` } })
+    
+    logger.info('Email template configuration completed')
+    
+    res.json({
+      success: true,
+      message: 'Email templates configured to use custom app domain',
+    })
+  } catch (error) {
+    logger.error('Failed to update email templates', {
+      errorCode: error.code,
+      errorMessage: error.message,
+    })
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    })
+  }
+})

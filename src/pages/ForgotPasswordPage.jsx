@@ -98,7 +98,13 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
         setHasDualAuth(false)
         setIsAuthorizedNeedsAdmin(false)
         try {
-          await sendPasswordResetEmail(auth, emailLower)
+          // Send password reset email with custom action code settings
+          // This tells Firebase to redirect to our app instead of showing Firebase's default UI
+          const actionCodeSettings = {
+            url: window.location.origin,
+            handleCodeInApp: true,
+          }
+          await sendPasswordResetEmail(auth, emailLower, actionCodeSettings)
           setMessage({ type: 'success', text: 'Password reset link sent! Check your inbox and spam folder.' })
           // Navigate to confirmation page
           if (onNavigateConfirmation) {
