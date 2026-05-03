@@ -159,6 +159,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   )
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [notificationConfirmation, setNotificationConfirmation] = useState(null)
+  const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState(null)
   const [logoutConfirmation, setLogoutConfirmation] = useState(false)
   const [chatNotifications, setChatNotifications] = useState(() => {
     if (typeof window === 'undefined') {
@@ -1227,6 +1228,24 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   }, [])
 
   const handleNotificationClick = useCallback((notification) => {
+    if (!notification) {
+      return
+    }
+
+    // Handle password reset notifications
+    if (notification.type === 'PASSWORD_RESET') {
+      console.log('[SuperAdmin] Password reset notification clicked, navigating to user management')
+      setIsNotificationsOpen(false)
+      setActiveSection('user-management')
+      
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+      
+      return
+    }
+
+    // Handle chat notifications
     if (!notification?.conversationId) {
       return
     }
@@ -1507,7 +1526,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
-  const handleResetPassword = async (user) => {
+  const handleResetPassword = (user) => {
     if (!canManageAccess) {
       setActionMessage({
         type: 'error',
@@ -1526,14 +1545,17 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return
     }
 
-    if (typeof window !== 'undefined') {
-      const confirmed = window.confirm(`Reset password for ${user.fullName || user.email || 'this user'} to default?`)
+    // Show confirmation modal
+    setResetPasswordConfirmation({
+      user,
+    })
+  }
 
-      if (!confirmed) {
-        return
-      }
-    }
+  const handleConfirmResetPassword = async () => {
+    if (!resetPasswordConfirmation?.user) return
 
+    const user = resetPasswordConfirmation.user
+    setResetPasswordConfirmation(null)
     setIsSubmitting(true)
 
     try {
@@ -1878,6 +1900,18 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         cancelText="Cancel"
         onConfirm={confirmLogout}
         onCancel={() => setLogoutConfirmation(false)}
+        isDangerous={true}
+        isDarkMode={isDarkMode}
+      />
+
+      <ConfirmationModal
+        open={!!resetPasswordConfirmation}
+        title="Reset Password?"
+        message={`Reset password for ${resetPasswordConfirmation?.user?.fullName || resetPasswordConfirmation?.user?.email || 'this user'} to default (${DEFAULT_OPERATOR_PASSWORD})?`}
+        confirmText="Reset Password"
+        cancelText="Cancel"
+        onConfirm={handleConfirmResetPassword}
+        onCancel={() => setResetPasswordConfirmation(null)}
         isDangerous={true}
         isDarkMode={isDarkMode}
       />
