@@ -836,16 +836,20 @@ function App() {
       // This allows users to verify immediately without waiting for email
       window.localStorage.setItem(`verificationLink_${user.uid}`, linkResult.data?.verificationLink)
       
-      // Optionally still call Firebase's sendEmailVerification as a backup
-      // but it will go to Firebase's domain (not ideal)
-    } catch (error) {
-      console.warn('[VERIFY EMAIL] Failed to generate custom verification link:', error?.message)
-      // Fall back to Firebase's default email (which will be imperfect but better than nothing)
+      // ALWAYS send the verification email to the user via Firebase
+      // This uses the actionCodeSettings to redirect back to our app domain
       const actionCodeSettings = {
         url: window.location.origin,
         handleCodeInApp: true,
       }
       await sendEmailVerification(user, actionCodeSettings)
+      console.log('[VERIFY EMAIL] Verification email sent to user')
+      
+      return { sent: true, reason: 'email-sent' }
+    } catch (error) {
+      console.warn('[VERIFY EMAIL] Failed to send verification email:', error?.message)
+      // Re-throw so calling code knows it failed
+      throw error
     }
 
     try {
