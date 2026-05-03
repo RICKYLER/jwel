@@ -15,6 +15,8 @@ import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc
 import { httpsCallable } from 'firebase/functions'
 import HeroSection from './pages/herosection/HeroSection'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
@@ -168,6 +170,8 @@ const normalizePath = (path) => {
   if (path?.startsWith('/staff/')) return path
   if (path?.startsWith('/customer/')) return path
   if (path?.startsWith('/login')) return '/login'
+  if (path?.startsWith('/forgot-password')) return '/forgot-password'
+  if (path?.startsWith('/password-reset-confirmation')) return '/password-reset-confirmation'
   if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
@@ -355,6 +359,7 @@ const shouldUseRedirectForGoogleAuth = () => {
 function App() {
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [currentPath, setCurrentPath] = useState(() => normalizePath(window.location.pathname))
+  const [confirmationEmail, setConfirmationEmail] = useState('')
   const [activeSlide, setActiveSlide] = useState(0)
   const [activeNav, setActiveNav] = useState(() =>
     getNavLabelForPath(normalizePath(window.location.pathname), window.location.hash.replace('#', '')),
@@ -1138,6 +1143,29 @@ function App() {
     </>
   )
 
+  if (currentPath === '/forgot-password') {
+    return withSecurityModal(
+      <ForgotPasswordPage
+        onNavigateBack={() => navigateTo('/login')}
+        onGoogleSignIn={handleGoogleSignIn}
+        onNavigateConfirmation={(email) => {
+          setConfirmationEmail(email)
+          navigateTo('/password-reset-confirmation')
+        }}
+      />,
+    )
+  }
+
+  if (currentPath === '/password-reset-confirmation') {
+    return withSecurityModal(
+      <PasswordResetConfirmationPage
+        email={confirmationEmail}
+        onNavigateBack={() => navigateTo('/login')}
+        onResendEmail={(email) => setConfirmationEmail(email)}
+      />,
+    )
+  }
+
   if (currentPath === '/login') {
     return withSecurityModal(
       <LoginPage
@@ -1151,6 +1179,7 @@ function App() {
         authLoading={authLoading || isAccessResolving}
         googleLoading={googleLoading}
         onNavigateBack={() => navigateTo('/')}
+        onNavigateForgotPassword={() => navigateTo('/forgot-password')}
         authMessage={authMessage}
         onClearAuthMessage={() => setAuthMessage(null)}
       />,

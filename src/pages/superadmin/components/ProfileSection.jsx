@@ -32,15 +32,17 @@ export default function ProfileSection({
   const autocompleteRef = useRef(null)
   const fileInputRef = useRef(null)
   const isProgrammaticUpdateRef = useRef(false)
+  const mapInitializedRef = useRef(false)
   const [avatarPreview, setAvatarPreview] = useState(null)
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isMapLoading, setIsMapLoading] = useState(true)
   const { success: toastSuccess, error: toastError } = useToast()
 
-  // Initialize location map
+  // Initialize location map (run once; deps included for linting)
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return
+    if (!mapRef.current || mapInstanceRef.current || mapInitializedRef.current) return
+    mapInitializedRef.current = true
 
     const loadGoogleMaps = () => {
       if (document.getElementById('google-maps-profile-script')) {
@@ -171,7 +173,7 @@ export default function ProfileSection({
     }
 
     loadGoogleMaps()
-  }, [])
+  }, [onProfileFieldChange, profileForm.latitude, profileForm.longitude])
 
   // Update map center when Firestore coordinates change (without triggering unsaved changes)
   useEffect(() => {

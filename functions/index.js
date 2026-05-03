@@ -1581,3 +1581,97 @@ exports.approveFinancingApplication = onCall({ cors: true }, async (request) => 
     throw new HttpsError('internal', `Failed to approve application: ${error.message}`)
   }
 })
+
+exports.checkEmailExists = onCall(async (request) => {
+  // No authentication required - this is for the forgot password page
+  const email = String(request.data?.email || '').trim().toLowerCase()
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid email address is required.')
+  }
+
+  try {
+    // Check if email exists in Firebase Auth
+    let authMethods = []
+    try {
+      authMethods = await admin.auth().fetchSignInMethodsForEmail(email)
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') {
+        logger.warn('Error checking Firebase Auth for email', {
+          email,
+          errorCode: error.code,
+          errorMessage: error.message,
+          structuredData: true,
+        })
+      }
+    }
+
+    // If email exists in Firebase Auth, return immediately
+    if (authMethods && authMethods.length > 0) {
+      logger.info('Email found in Firebase Auth', {
+        email,
+        methods: authMethods,
+        structuredData: true,
+      })
+      return {
+        found: true,
+        collection: 'auth',
+        authMethods: authMethods,
+      }
+    }
+
+    // Check if email exists in any of the Firestore collections
+    const collectionsToCheck = ['users', 'authorizedAdmin', 'authorizedSuperadmin', 'authorizedPersonnel']
+    const db = admin.firestore()
+
+    for (const collectionName of collectionsToCheck) {
+      try {
+        const snapshot = await db
+          .collection(collectionName)
+          .where('email', '==', email)
+          .limit(1)
+          .get()
+
+        if (!snapshot.empty) {
+          logger.info('Email found in Firestore', {
+            email,
+            collection: collectionName,
+            structuredData: true,
+          })
+          return {
+            found: true,
+            collection: collectionName,
+            authMethods: authMethods,
+          }
+        }
+      } catch (error) {
+        logger.warn('Error checking Firestore collection', {
+          email,
+          collection: collectionName,
+          errorCode: error.code,
+          errorMessage: error.message,
+          structuredData: true,
+        })
+      }
+    }
+
+    // Email not found anywhere
+    logger.info('Email not found in any collection', {
+      email,
+      structuredData: true,
+    })
+    return {
+      found: false,
+      collection: null,
+      authMethods: [],
+    }
+  } catch (error) {
+    logger.error('Unexpected error in checkEmailExists', {
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Unable to check email: ${error.message}`)
+  }
+})

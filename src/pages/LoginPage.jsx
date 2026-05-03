@@ -16,6 +16,7 @@ export default function LoginPage({
   authMode,
   onToggleAuthMode,
   onNavigateBack,
+  onNavigateForgotPassword,
   authMessage,
   onClearAuthMessage,
 }) {
@@ -175,10 +176,15 @@ export default function LoginPage({
                 <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400/60">
                   Password
                 </label>
-                {!isSignup && (
-                  <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300 hover:text-red-200 transition-colors">
+                {!isSignup && onNavigateForgotPassword && (
+                  <button
+                    type="button"
+                    onClick={onNavigateForgotPassword}
+                    className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300 hover:text-red-200 transition-colors"
+                    style={{ background: 'none', border: 'none', padding: 0 }}
+                  >
                     Forgot Password?
-                  </a>
+                  </button>
                 )}
               </div>
               <div className="relative">
