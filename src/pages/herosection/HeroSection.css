@@ -205,57 +205,116 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 0;
+  border: 1px solid rgba(255,255,255,0.30);
   border-radius: 16px;
   padding: 12px 18px;
   font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
-  transition: transform 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+  transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: none;
 }
 
 .button:hover {
-  transform: translateY(-2px);
+  color: #ff5540;
 }
 
 .button--primary {
-  background: #dc2626;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08));
   color: #ffffff;
-  box-shadow: 0 14px 28px rgba(185, 28, 28, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: none;
 }
 
 .button--primary:hover {
-  background: #b91c1c;
+  color: #ff5540;
 }
 
 .button--dark {
-  background: #111827;
+  background: linear-gradient(180deg, rgba(17,24,39,0.55), rgba(15,23,42,0.45));
   color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.04);
 }
 
 .button--ghost {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.12);
   color: #ffffff;
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: none;
 }
 
 .button--ghost:hover {
-  background: rgba(255, 255, 255, 0.16);
+  color: #ff5540;
+  background: rgba(255,85,64,0.03);
+  border-color: rgba(255,85,64,0.08);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: none;
 }
 
 .button--white {
-  background: #ffffff;
+  background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75));
   color: #b91c1c;
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
 .button--outline-light {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.18);
   color: #ffffff;
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: none;
 }
 
 .button--outline-light:hover {
-  background: rgba(255, 255, 255, 0.08);
+  color: #ff5540;
+}
+
+/* Ensure icons inside buttons inherit the text color on hover */
+.button svg,
+.button .MuiSvgIcon-root {
+  color: inherit;
+  transition: color 0.18s ease;
+}
+
+/* Left-to-right wipe fill for button text (like nav underline expand) */
+.button .wipe {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff5540 0%, #ff5540 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  -webkit-box-decoration-break: clone;
+  background-size: 0% 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+  transition: background-size 0.36s cubic-bezier(0.22, 1, 0.36, 1), -webkit-text-fill-color 0s ease 0s;
+}
+
+.button:hover .wipe {
+  background-size: 100% 100%;
+  /* delay making the text transparent so the white text remains visible while the wipe runs */
+  transition: background-size 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  transition-delay: 0s, 0.12s;
+}
+
+/* Make icons transition color to red slightly after text wipe starts */
+.button .MuiSvgIcon-root {
+  transition: color 0.26s ease 0.12s;
+}
+.button:hover .MuiSvgIcon-root {
+  color: #ff5540;
 }
 
 .button--full {
@@ -338,6 +397,37 @@
   background:
     radial-gradient(circle at top right, rgba(220, 38, 38, 0.18), transparent 28%),
     radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.05), transparent 25%);
+}
+
+/* Reusable footer/link underline animation (matches ForgotPasswordPage footer links) */
+.link-underline {
+  position: relative;
+  padding-bottom: 2px;
+  color: #94a3b8; /* matches text-slate-400 */
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  transition: color 0.18s ease;
+}
+
+.link-underline::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: #ff5540; /* accent underline */
+  transition: width 0.18s ease;
+}
+
+.link-underline:hover {
+  color: #ffffff;
+}
+
+.link-underline:hover::before {
+  width: 100%;
 }
 
 .hero-banner__grid {

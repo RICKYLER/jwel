@@ -6,6 +6,9 @@ import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import SignupLoadingModal from './LoginPage/SignupLoadingModal'
+import HelpModal from './LoginPage/HelpModal'
+import './LoginPage.css'
+import './LoginPage/HelpModal.css'
 
 export default function LoginPage({
   onGoogleSignIn,
@@ -24,7 +27,80 @@ export default function LoginPage({
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberSession, setRememberSession] = useState(false)
+  const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
+
+  const helpContent = {
+    title: 'Help & Support',
+    sections: [
+      {
+        title: 'Account Creation',
+        text: 'Click "Create Secure Account" to register. You\'ll receive a verification email. Click the link in your email to verify your account before your first login.',
+      },
+      {
+        title: 'Signing In',
+        text: 'Enter your email and password. You can also sign in with your Google account for quick access.',
+      },
+      {
+        title: 'Forgot Your Password?',
+        text: 'Click "Forgot Password?" on the login screen and follow the instructions sent to your email.',
+      },
+      {
+        title: 'Still Need Help?',
+        text: 'Contact our support team at support@bykelink.com or call 1-800-BYKELINK.',
+      },
+    ],
+  }
+
+  const privacyContent = {
+    title: 'Privacy Policy',
+    sections: [
+      {
+        title: 'Data Collection',
+        text: 'We collect information you provide directly, such as name, email, and phone number when creating your account. We also collect information about your interactions with BYKELINK services.',
+      },
+      {
+        title: 'Data Usage',
+        text: 'Your information is used to provide and improve our services, process transactions, send communications, and comply with legal obligations.',
+      },
+      {
+        title: 'Data Security',
+        text: 'We implement industry-standard security measures to protect your personal information. Your passwords are encrypted and never stored in plain text.',
+      },
+      {
+        title: 'Third-Party Sharing',
+        text: 'We do not sell or share your personal data with third parties without your consent, except as required by law.',
+      },
+    ],
+  }
+
+  const termsContent = {
+    title: 'Terms of Service',
+    sections: [
+      {
+        title: 'User Agreement',
+        text: 'By accessing and using BYKELINK, you agree to be bound by these Terms of Service. If you do not agree with any part of these terms, you may not use the service.',
+      },
+      {
+        title: 'Account Responsibility',
+        text: 'You are responsible for maintaining the confidentiality of your account and password. You agree to accept responsibility for all activities that occur under your account.',
+      },
+      {
+        title: 'Prohibited Activities',
+        text: 'You may not use BYKELINK for unlawful purposes, harassment, fraud, or any activity that violates applicable laws.',
+      },
+      {
+        title: 'Limitation of Liability',
+        text: 'BYKELINK is provided on an "as is" basis. We are not liable for any indirect, incidental, or consequential damages arising from your use of the service.',
+      },
+    ],
+  }
+
+  const modalContents = {
+    help: helpContent,
+    privacy: privacyContent,
+    terms: termsContent,
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -335,10 +411,10 @@ export default function LoginPage({
               type="button"
               onClick={onGoogleSignIn}
               disabled={googleLoading || authLoading}
-              className="w-full flex items-center justify-center gap-2 bg-slate-800/70 hover:bg-slate-700/80 disabled:opacity-50 py-3 rounded-xl transition-all border border-slate-700/60"
+              className="w-full flex items-center justify-center gap-3 bg-linear-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 disabled:opacity-50 py-4 rounded-xl transition-all border border-slate-600/60 shadow-lg shadow-black/20 active:scale-[0.98] font-bold uppercase tracking-wider text-sm group"
             >
-              <GoogleIcon sx={{ fontSize: 18 }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">
+              <GoogleIcon sx={{ fontSize: 20 }} className="group-hover:scale-110 transition-transform" />
+              <span>
                 {googleLoading ? 'Connecting...' : 'Continue with Google'}
               </span>
             </button>
@@ -382,22 +458,41 @@ export default function LoginPage({
         {/* Footer Links */}
         <footer className="mt-10 w-full max-w-md border-t border-slate-700/50 pt-6">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2">
-            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveModal('help')}
+              className="login-footer-link"
+            >
               <HelpOutlineRoundedIcon sx={{ fontSize: 16 }} />
               Help
-            </a>
-            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModal('privacy')}
+              className="login-footer-link"
+            >
               Privacy
-            </a>
-            <a href="#" className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-blue-300 transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModal('terms')}
+              className="login-footer-link"
+            >
               Terms
-            </a>
+            </button>
           </div>
         </footer>
       </section>
 
       {/* Show loading modal during signup */}
       {isSignup && authLoading && <SignupLoadingModal />}
+
+      {/* Help/Privacy/Terms Modal */}
+      <HelpModal
+        isOpen={activeModal !== null}
+        onClose={() => setActiveModal(null)}
+        content={activeModal ? modalContents[activeModal] : null}
+      />
     </div>
   )
 }

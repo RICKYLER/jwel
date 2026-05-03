@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { db } from '../../firebase'
 import { collection, query, onSnapshot, orderBy, doc, getDoc, where } from 'firebase/firestore'
+import './HeroSection.css'
 import bykelinkLogo from '../../assets/bykelinklogo.png'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
@@ -487,17 +488,21 @@ export default function HeroSection({
                   <button
                     type="button"
                     onClick={onNavigateShowroom}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 hover:bg-red-700 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-[1.02] active:scale-95 font-['Epilogue']"
+                    className="button button--primary inline-flex items-center justify-center gap-3 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] font-['Epilogue']"
                   >
-                    Explore Showroom
-                    <ArrowForwardRoundedIcon sx={{ fontSize: 16 }} />
+                    <StorefrontRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
+                    <span className="wipe">Explore Showroom</span>
+                    <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
                   </button>
+
                   <button
                     type="button"
                     onClick={onNavigateLogin}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-white/50 bg-transparent px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] text-white transition duration-300 hover:border-white hover:bg-white/10 font-['Epilogue']"
+                    className="button button--outline-light inline-flex items-center justify-center gap-3 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] font-['Epilogue']"
                   >
-                    Book Appointment
+                    <CalendarMonthRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
+                    <span className="wipe">Book Appointment</span>
+                    <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
                   </button>
                 </div>
 
@@ -554,9 +559,10 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateShowroom}
-                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
+                className="button button--ghost inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
               >
-                View All Models <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+                <span className="link-underline">View All Models</span>
+                <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
               </button>
             </div>
 
@@ -624,10 +630,10 @@ export default function HeroSection({
                     <button
                       type="button"
                       onClick={() => setCarouselIndex((prev) => Math.max(0, prev - 1))}
-                      className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                      className="button button--outline-light rounded-full p-2 text-white"
                       aria-label="Previous model"
                     >
-                      <ArrowForwardRoundedIcon sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
+                      <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
                     </button>
 
                     {liveModels.map((_, index) => (
@@ -645,10 +651,10 @@ export default function HeroSection({
                     <button
                       type="button"
                       onClick={() => setCarouselIndex((prev) => (prev + 1) % Math.max(1, liveModels.length))}
-                      className="rounded-full border border-white/20 p-2 text-white transition duration-300 hover:border-blue-600 hover:text-blue-600"
+                      className="button button--outline-light rounded-full p-2 text-white"
                       aria-label="Next model"
                     >
-                      <ArrowForwardRoundedIcon sx={{ fontSize: 20 }} />
+                      <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20 }} />
                     </button>
                   </div>
                 </>
@@ -670,9 +676,10 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateSpareParts}
-                className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-cyan-300 font-['Epilogue']"
+                className="button button--ghost inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
               >
-                View All Parts <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+                <span className="link-underline">View All Parts</span>
+                <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
               </button>
             </div>
 
@@ -764,10 +771,10 @@ export default function HeroSection({
               <button
                 type="button"
                 onClick={onNavigateLogin}
-                className="inline-flex items-center gap-3 rounded-full bg-linear-to-r from-red-600 to-red-700 px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-red-800 hover:shadow-lg hover:shadow-red-600/30 active:scale-95 font-['Epilogue']"
+                className="button button--primary inline-flex items-center gap-3 rounded-full px-7 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition duration-300 active:scale-95 font-['Epilogue']"
               >
-                Schedule Appointment
-                <CalendarMonthRoundedIcon sx={{ fontSize: 18 }} />
+                <span className="link-underline">Schedule Appointment</span>
+                <CalendarMonthRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
               </button>
             </div>
           </div>
@@ -821,19 +828,19 @@ export default function HeroSection({
                 <div className="flex flex-wrap gap-3">
                   <a
                     href="tel:+63288889999"
-                    className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-red-600 to-red-700 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:from-red-700 hover:to-red-800"
+                    className="button button--primary inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300"
                     aria-label="Call Bykelink"
                   >
-                    <CallRoundedIcon sx={{ fontSize: 16 }} />
-                    Call Now
+                    <CallRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
+                    <span className="link-underline">Call Now</span>
                   </a>
                   <a
                     href="mailto:sales@bykelink.com"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-red-600 hover:text-red-300"
+                    className="button button--outline-light inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300"
                     aria-label="Email Bykelink"
                   >
-                    <MailRoundedIcon sx={{ fontSize: 16 }} />
-                    Send Email
+                    <MailRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
+                    <span className="link-underline">Send Email</span>
                   </a>
                   <a
                     href="#about"
@@ -841,11 +848,11 @@ export default function HeroSection({
                       event.preventDefault()
                       onNavigateSection('about', 'About')
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300 hover:border-red-600 hover:text-red-300"
+                    className="button button--outline-light inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-black uppercase tracking-[0.2em] text-white transition duration-300"
                     aria-label="About Bykelink"
                   >
-                    <InfoRoundedIcon sx={{ fontSize: 16 }} />
-                    Learn More
+                    <InfoRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
+                    <span className="link-underline">Learn More</span>
                   </a>
                 </div>
               </div>
@@ -921,10 +928,10 @@ export default function HeroSection({
                     <button
                       type="button"
                       onClick={onNavigateLogin}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-linear-to-r from-red-600 to-red-700 px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300 hover:from-red-700 hover:to-red-800"
+                      className="button button--primary mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-white transition duration-300"
                     >
-                      Book a Service
-                      <CalendarMonthRoundedIcon sx={{ fontSize: 16 }} />
+                      <span className="link-underline">Book a Service</span>
+                      <CalendarMonthRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
                     </button>
                   </div>
                 </aside>
@@ -941,7 +948,7 @@ export default function HeroSection({
               <p className="text-xs font-bold uppercase tracking-[0.3em] text-white font-['Epilogue']">Stay Connected</p>
               <p className="mt-2 text-sm text-slate-300">Get updates on new models, promos, and service advisories.</p>
             </div>
-            <div className="flex w-full max-w-md gap-2">
+              <div className="flex w-full max-w-md gap-2">
               <input
                 type="email"
                 placeholder="Your Email"
@@ -949,10 +956,10 @@ export default function HeroSection({
               />
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 text-white transition hover:bg-red-700"
+                className="button button--primary inline-flex items-center justify-center rounded-xl px-4 text-white"
                 aria-label="Send newsletter email"
               >
-                <SendRoundedIcon sx={{ fontSize: 18 }} />
+                <SendRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
               </button>
             </div>
           </div>
@@ -970,11 +977,11 @@ export default function HeroSection({
             <h4 className="mb-5 text-sm font-bold uppercase tracking-wider text-neutral-100">
               Models
             </h4>
-            <ul className="space-y-3 text-sm text-slate-400">
-              <li><a href="#" className="transition hover:text-white">Supersport</a></li>
-              <li><a href="#" className="transition hover:text-white">Hyper Naked</a></li>
-              <li><a href="#" className="transition hover:text-white">Sport Touring</a></li>
-              <li><a href="#" className="transition hover:text-white">Off-Road</a></li>
+            <ul className="space-y-3 text-sm">
+              <li><a href="#" className="link-underline">Supersport</a></li>
+              <li><a href="#" className="link-underline">Hyper Naked</a></li>
+              <li><a href="#" className="link-underline">Sport Touring</a></li>
+              <li><a href="#" className="link-underline">Off-Road</a></li>
             </ul>
           </div>
 
@@ -982,11 +989,11 @@ export default function HeroSection({
             <h4 className="mb-5 text-sm font-bold uppercase tracking-wider text-neutral-100">
               Dealer Info
             </h4>
-            <ul className="space-y-3 text-sm text-slate-400">
-              <li><a href="#" className="transition hover:text-white">Dealer Careers</a></li>
-              <li><a href="#" className="transition hover:text-white">Yamaha Racing</a></li>
-              <li><a href="#" className="transition hover:text-white">Find a Store</a></li>
-              <li><a href="#" className="transition hover:text-white">News & Events</a></li>
+            <ul className="space-y-3 text-sm">
+              <li><a href="#" className="link-underline">Dealer Careers</a></li>
+              <li><a href="#" className="link-underline">Yamaha Racing</a></li>
+              <li><a href="#" className="link-underline">Find a Store</a></li>
+              <li><a href="#" className="link-underline">News & Events</a></li>
             </ul>
           </div>
 
@@ -1004,9 +1011,9 @@ export default function HeroSection({
           <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
             © 2026 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </p>
-          <div className="flex gap-6 text-xs uppercase tracking-[0.24em] text-slate-400">
-            <a href="#" className="transition hover:text-white">Privacy Policy</a>
-            <a href="#" className="transition hover:text-white">Terms of Service</a>
+          <div className="flex gap-6 text-xs uppercase tracking-[0.24em]">
+            <a href="#" className="link-underline">Privacy Policy</a>
+            <a href="#" className="link-underline">Terms of Service</a>
           </div>
         </div>
       </footer>

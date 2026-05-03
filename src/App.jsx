@@ -397,6 +397,8 @@ function App() {
   const [emailPasswordResetCode, setEmailPasswordResetCode] = useState(null)
   const [emailVerificationCode, setEmailVerificationCode] = useState(null)
   const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
+  const [signupSuccessUser, setSignupSuccessUser] = useState(null)
+  const [resendingEmail, setResendingEmail] = useState(false)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -836,38 +838,106 @@ function App() {
       // This allows users to verify immediately without waiting for email
       window.localStorage.setItem(`verificationLink_${user.uid}`, linkResult.data?.verificationLink)
       
-      // ALWAYS send the verification email to the user via Firebase
+      let emailSent = false
+      // Try to send the verification email to the user via Firebase
       // This uses the actionCodeSettings to redirect back to our app domain
-      const actionCodeSettings = {
-        url: window.location.origin,
-        handleCodeInApp: true,
+      try {
+        const actionCodeSettings = {
+          url: window.location.origin,
+          handleCodeInApp: true,
+        }
+        await sendEmailVerification(user, actionCodeSettings)
+        console.log('[VERIFY EMAIL] Verification email sent to user')
+        emailSent = true
+      } catch (emailError) {
+        // Don't fail signup if email sending has rate limit issues
+        // Log the error but allow signup to continue
+        if (emailError?.code === 'auth/too-many-requests') {
+          console.warn('[VERIFY EMAIL] Rate limited by Firebase, will retry later:', emailError?.message)
+          // Email will arrive in a few minutes when rate limit resets
+          emailSent = false
+        } else {
+          console.warn('[VERIFY EMAIL] Failed to send verification email:', emailError?.message)
+          emailSent = false
+        }
       }
-      await sendEmailVerification(user, actionCodeSettings)
-      console.log('[VERIFY EMAIL] Verification email sent to user')
-      
-      return { sent: true, reason: 'email-sent' }
-    } catch (error) {
-      console.warn('[VERIFY EMAIL] Failed to send verification email:', error?.message)
-      // Re-throw so calling code knows it failed
-      throw error
-    }
 
+      // Record the verification email send timestamp regardless of whether email was actually sent
+      // This ensures cooldown is applied for future attempts
+      try {
+        await setDoc(
+          verificationDocRef,
+          {
+            email: user.email?.trim().toLowerCase() || '',
+            emailVerified: Boolean(user.emailVerified),
+            verificationEmailSentAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      } catch (firestoreError) {
+        console.warn('Unable to store the verification email timestamp.', firestoreError)
+      }
+
+      return { sent: emailSent, reason: emailSent ? 'email-sent' : 'rate-limited' }
+    } catch (error) {
+      console.warn('[VERIFY EMAIL] Failed to generate verification link:', error?.message)
+      // Record timestamp but return sent: false since we couldn't send
+      try {
+        await setDoc(
+          verificationDocRef,
+          {
+            email: user.email?.trim().toLowerCase() || '',
+            emailVerified: Boolean(user.emailVerified),
+            verificationEmailSentAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        )
+      } catch (firestoreError) {
+        console.warn('Unable to store the verification email timestamp.', firestoreError)
+      }
+      return { sent: false, reason: 'link-generation-failed' }
+    }
+  }
+
+  const handleResendSignupEmail = async () => {
+    if (!signupSuccessUser) return
+    setResendingEmail(true)
     try {
-      await setDoc(
-        verificationDocRef,
-        {
-          email: user.email?.trim().toLowerCase() || '',
-          emailVerified: Boolean(user.emailVerified),
-          verificationEmailSentAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      )
+      const result = await sendVerificationEmailWithCooldown(signupSuccessUser, { force: true })
+      if (result.sent) {
+        setAuthMessage({
+          type: 'success',
+          text: 'Verification email sent! Check your inbox.',
+        })
+      } else {
+        setAuthMessage({
+          type: 'error',
+          text: 'Email sending is temporarily limited. Please try again in a moment.',
+        })
+      }
     } catch (error) {
-      console.warn('Unable to store the verification email timestamp.', error)
+      console.error('Error resending email:', error)
+      setAuthMessage({
+        type: 'error',
+        text: 'Unable to resend email. Please try again.',
+      })
+    } finally {
+      setResendingEmail(false)
     }
+  }
 
-    return { sent: true, reason: force ? 'forced' : 'fresh' }
+  const handleDismissSignupSuccess = async () => {
+    // Sign out user after they dismiss the success screen
+    try {
+      await signOut(auth)
+    } catch (error) {
+      console.warn('Error signing out after signup:', error)
+    }
+    setAccessProfile(defaultAccessProfile)
+    setSignupSuccessEmail(null)
+    setSignupSuccessUser(null)
   }
 
   const resolveRoleAfterLogin = async (user, requestedRole) => {
@@ -1020,10 +1090,10 @@ function App() {
           source: 'customer-signup',
         })
         await sendVerificationEmailWithCooldown(credentials.user, { force: true })
-        await signOut(auth)
-        setAccessProfile(defaultAccessProfile)
-        // Show success screen instead of inline message
+        // Store user and show success screen, but DON'T sign out yet
+        // This allows user to retry resending email if rate-limited
         setSignupSuccessEmail(authForm.email.trim().toLowerCase())
+        setSignupSuccessUser(credentials.user)
         setAuthForm({
           fullName: '',
           phone: '',
@@ -1261,10 +1331,9 @@ function App() {
     return withSecurityModal(
       <SignupSuccessScreen
         email={signupSuccessEmail}
-        onContinue={() => {
-          setSignupSuccessEmail(null)
-          navigateTo('/login')
-        }}
+        onContinue={handleDismissSignupSuccess}
+        onResendEmail={handleResendSignupEmail}
+        isResending={resendingEmail}
       />
     )
   }

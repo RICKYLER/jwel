@@ -3,6 +3,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, onSnapshot,
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SmartToyRoundedIcon from '@mui/icons-material/SmartToyRounded'
+import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded'
 import { db } from '../firebase'
 
 export default function ChatBox({ currentUser }) {
@@ -197,23 +198,57 @@ export default function ChatBox({ currentUser }) {
   return (
     <>
       <style>{`
+        /* Chat button: fixed small circular glass button that won't expand
+           This overrides any global .button padding/width collisions */
+        .chat-button {
+          position: fixed;
+          bottom: 2rem;
+          right: 2rem;
+          z-index: 60;
+          width: 56px;
+          height: 56px;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px !important;
+          background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04));
+          border: 1px solid rgba(255,255,255,0.12);
+          backdrop-filter: blur(12px) saturate(140%);
+          -webkit-backdrop-filter: blur(12px) saturate(140%);
+          box-shadow: none !important;
+          transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .chat-button:hover {
+          transform: scale(1.06);
+        }
+
+        .chat-button .MuiSvgIcon-root,
+        .chat-button .icon-replace {
+          color: inherit;
+          transition: color 0.18s ease;
+        }
+
+        /* Chat window positioning adjustments for small screens */
         @media (max-width: 768px) {
           .chat-button {
-            position: fixed;
             bottom: 1rem;
             right: 1rem;
-            z-index: 50;
+            width: 52px;
+            height: 52px;
           }
-          
+
           .chat-window {
             position: fixed;
-            bottom: 5rem;
+            bottom: 5.5rem; /* leave space above the chat button */
             right: 1rem;
             left: 1rem;
             width: auto !important;
             max-width: calc(100vw - 2rem) !important;
             max-height: calc(100vh - 8rem);
-            z-index: 40;
+            z-index: 50;
           }
         }
       `}</style>
@@ -222,13 +257,13 @@ export default function ChatBox({ currentUser }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="chat-button fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 transition duration-300 hover:scale-110 hover:shadow-red-600/50"
+        className="chat-button fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full button button--primary text-white transition duration-300 hover:scale-110"
         aria-label="Open chat"
       >
         {isOpen ? (
-          <CloseRoundedIcon sx={{ fontSize: 24 }} />
+          <CloseRoundedIcon sx={{ fontSize: 24 }} className="icon-replace" />
         ) : (
-          <SmartToyRoundedIcon sx={{ fontSize: 24 }} />
+          <ChatBubbleRoundedIcon sx={{ fontSize: 24 }} className="icon-replace" />
         )}
       </button>
 
@@ -238,8 +273,8 @@ export default function ChatBox({ currentUser }) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-linear-to-r from-red-600/10 to-red-500/5 px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600">
-                <SmartToyRoundedIcon sx={{ fontSize: 20 }} className="text-white" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full button button--primary">
+                <ChatBubbleRoundedIcon sx={{ fontSize: 20 }} className="icon-replace text-white" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white font-['Epilogue']">BYKELINK Chat</h3>
