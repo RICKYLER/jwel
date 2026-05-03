@@ -11,6 +11,7 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
   const [emailExists, setEmailExists] = useState(null) // null = unknown, true/false = known
+  const [isGoogleOnly, setIsGoogleOnly] = useState(false) // Track if account is Google-only
 
   // Check if email exists using Cloud Function
   const checkEmailWithCloudFunction = async (emailLower) => {
@@ -114,9 +115,12 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
         setEmailExists(true)
         console.log('[ForgotPassword] Email found!')
         // Show info if it's a Google-only account
-        if (result.authMethods?.includes('google.com') && !result.authMethods?.includes('password')) {
+        const isGoogleOnlyAccount = result.authMethods?.includes('google.com') && !result.authMethods?.includes('password')
+        if (isGoogleOnlyAccount) {
+          setIsGoogleOnly(true)
           setMessage({ type: 'info', text: 'This account uses Google Sign-In. Please sign in with Google instead.' })
         } else {
+          setIsGoogleOnly(false)
           setMessage(null)
         }
         return true
@@ -124,10 +128,12 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
       
       // Not found anywhere
       setEmailExists(false)
+      setIsGoogleOnly(false)
       setMessage({ type: 'error', text: 'No account found for that email.' })
       return false
     } catch (err) {
       console.error('[ForgotPassword] Error checking email:', err?.code, err?.message)
+      setIsGoogleOnly(false)
       setMessage({ type: 'error', text: err?.message || 'Unable to check email.' })
       return null
     }
@@ -187,7 +193,7 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailExists(null) }}
+                  onChange={(e) => { setEmail(e.target.value); setEmailExists(null); setIsGoogleOnly(false) }}
                   required
                   placeholder="rider@bykelink.com"
                   className="forgot-password-input"
@@ -199,7 +205,7 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
               </div>
             </div>
 
-            <button type="submit" disabled={loading || !email || emailExists === false} className="forgot-password-submit-btn">
+            <button type="submit" disabled={loading || !email || emailExists === false || isGoogleOnly} className="forgot-password-submit-btn">
               {loading ? 'SENDING…' : 'SEND RESET LINK'}
             </button>
           </form>

@@ -1633,15 +1633,23 @@ exports.checkEmailExists = onCall(async (request) => {
           .get()
 
         if (!snapshot.empty) {
+          const userData = snapshot.docs[0].data()
+          // If authMethods is empty (no Firebase Auth entry), get providers from Firestore document
+          let resolvedAuthMethods = authMethods
+          if (!authMethods || authMethods.length === 0) {
+            resolvedAuthMethods = userData.providers || []
+          }
+          
           logger.info('Email found in Firestore', {
             email,
             collection: collectionName,
+            providersFromDoc: userData.providers || [],
             structuredData: true,
           })
           return {
             found: true,
             collection: collectionName,
-            authMethods: authMethods,
+            authMethods: resolvedAuthMethods,
           }
         }
       } catch (error) {
