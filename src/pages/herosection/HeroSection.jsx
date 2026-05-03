@@ -23,6 +23,8 @@ import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import GlobalLoadingScreen from '../../components/GlobalLoadingScreen'
 import ChatBox from '../../components/ChatBox'
 import NavHeader from '../../components/NavHeader'
+import HelpModal from '../LoginPage/HelpModal'
+import { useState as useLocalState } from 'react'
 
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
@@ -58,6 +60,30 @@ export default function HeroSection({
   onNavigateSection,
   onSignOut,
 }) {
+  const [helpModalOpen, setHelpModalOpen] = useLocalState(false)
+  const [helpModalType, setHelpModalType] = useLocalState(null) // 'privacy' | 'terms'
+
+  const privacyContent = {
+    title: 'Privacy Policy',
+    sections: [
+      { title: 'Data Collection', text: 'We collect information you provide directly, such as name, email, and phone number when creating your account. We also collect information about your interactions with BYKELINK services.' },
+      { title: 'Data Usage', text: 'Your information is used to provide and improve our services, process transactions, send communications, and comply with legal obligations.' },
+      { title: 'Data Security', text: 'We implement industry-standard security measures to protect your personal information.' },
+      { title: 'Third-Party Sharing', text: 'We do not sell or share your personal data with third parties without your consent, except as required by law.' },
+    ],
+  }
+
+  const termsContent = {
+    title: 'Terms of Service',
+    sections: [
+      { title: 'User Agreement', text: 'By accessing and using BYKELINK, you agree to be bound by these Terms of Service.' },
+      { title: 'Account Responsibility', text: 'You are responsible for maintaining the confidentiality of your account and password.' },
+      { title: 'Prohibited Activities', text: 'You may not use BYKELINK for unlawful purposes, harassment, fraud, or any activity that violates applicable laws.' },
+      { title: 'Limitation of Liability', text: 'BYKELINK is provided on an "as is" basis. We are not liable for indirect or consequential damages.' },
+    ],
+  }
+
+  const modalContents = { privacy: privacyContent, terms: termsContent }
   const [isLoadingComplete, setIsLoadingComplete] = useState(false)
   const [financingApplications, setFinancingApplications] = useState(0)
   const [servicesCompleted, setServicesCompleted] = useState(0)
@@ -1012,13 +1038,26 @@ export default function HeroSection({
             © 2026 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </p>
           <div className="flex gap-6 text-xs uppercase tracking-[0.24em]">
-            <a href="#" className="link-underline">Privacy Policy</a>
-            <a href="#" className="link-underline">Terms of Service</a>
+            <a
+              href="#"
+              className="link-underline"
+              onClick={(e) => { e.preventDefault(); setHelpModalType('privacy'); setHelpModalOpen(true); }}
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="#"
+              className="link-underline"
+              onClick={(e) => { e.preventDefault(); setHelpModalType('terms'); setHelpModalOpen(true); }}
+            >
+              Terms of Service
+            </a>
           </div>
         </div>
       </footer>
       
       <ChatBox currentUser={currentUser} />
+      <HelpModal isOpen={helpModalOpen} onClose={() => setHelpModalOpen(false)} content={modalContents[helpModalType]} />
       </div>
     </div>
   )

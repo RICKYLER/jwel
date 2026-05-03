@@ -322,7 +322,7 @@ export default function NavHeader({
           <button
             type="button"
             onClick={() => setIsMenuOpen((open) => !open)}
-            className="inline-flex rounded-xl border border-white/10 bg-white/5 p-2 text-white md:hidden"
+            className="inline-flex rounded-lg border border-white/10 bg-white/5 p-2 text-white md:hidden hover:bg-slate-800 transition-colors"
             aria-label="Toggle menu"
             aria-expanded={isMenuOpen}
           >
