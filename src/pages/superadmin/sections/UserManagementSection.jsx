@@ -4,6 +4,7 @@ import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
+import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded'
 import './UserManagementSection.css'
 
 const isRecentDate = (value) => {
@@ -71,6 +72,7 @@ export default function UserManagementSection({
   onEditUser,
   onArchiveUser,
   onDeleteArchivedUser,
+  onResetPassword,
   isDarkMode = true,
 }) {
   const [roleFilter, setRoleFilter] = useState('all')
@@ -499,6 +501,21 @@ export default function UserManagementSection({
                   aria-label={`Edit ${user.fullName || user.email || user.id}`}
                 >
                   <EditRoundedIcon sx={{ fontSize: 16 }} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onResetPassword?.(user)}
+                  disabled={
+                    !canManageAccess ||
+                    !user.email ||
+                    (currentAccessRole !== 'superadmin' && ['admin', 'superadmin'].includes(String(user.role || '').toLowerCase()))
+                  }
+                  className="user-action-icon"
+                  aria-label={`Reset password for ${user.fullName || user.email || user.id}`}
+                  title="Reset password to default"
+                >
+                  <LockResetRoundedIcon sx={{ fontSize: 16 }} />
                 </button>
 
                 <button

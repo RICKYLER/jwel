@@ -6,7 +6,7 @@ import { sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase'
 import './PasswordResetConfirmationPage.css'
 
-export default function PasswordResetConfirmationPage({ email, onNavigateBack,  }) {
+export default function PasswordResetConfirmationPage({ email, type = 'reset', onNavigateBack }) {
   const [isResending, setIsResending] = useState(false)
   const [resendMessage, setResendMessage] = useState(null)
 
@@ -75,15 +75,22 @@ export default function PasswordResetConfirmationPage({ email, onNavigateBack,  
 
             {/* Heading */}
             <div className="password-reset-confirmation-heading">
-              <h2>CHECK YOUR EMAIL</h2>
+              <h2>{type === 'authorized' ? 'REQUEST SUBMITTED' : 'CHECK YOUR EMAIL'}</h2>
             </div>
 
-            {/* Email Info Box */}
+            {/* Email Info Box - Different content based on type */}
             <div className="password-reset-confirmation-info-box">
-              <p>
-                We've sent a password reset link to <span className="password-reset-confirmation-email-highlight">{email}</span>. 
-                Please check your inbox and follow the instructions to reset your password.
-              </p>
+              {type === 'authorized' ? (
+                <p>
+                  A password reset request has been submitted for <span className="password-reset-confirmation-email-highlight">{email}</span>. 
+                  Your administrator will review and process your request shortly. You will receive an email once your password has been reset.
+                </p>
+              ) : (
+                <p>
+                  We've sent a password reset link to <span className="password-reset-confirmation-email-highlight">{email}</span>. 
+                  Please check your inbox and follow the instructions to reset your password.
+                </p>
+              )}
             </div>
 
             {/* Resend Message */}
@@ -119,13 +126,15 @@ export default function PasswordResetConfirmationPage({ email, onNavigateBack,  
 
             {/* Footer Links */}
             <div className="password-reset-confirmation-footer">
-              <button 
-                onClick={handleResendEmail} 
-                disabled={isResending}
-                className="password-reset-confirmation-footer-link"
-              >
-                {isResending ? 'RESENDING…' : 'RESEND LINK'}
-              </button>
+              {type !== 'authorized' && (
+                <button 
+                  onClick={handleResendEmail} 
+                  disabled={isResending}
+                  className="password-reset-confirmation-footer-link"
+                >
+                  {isResending ? 'RESENDING…' : 'RESEND LINK'}
+                </button>
+              )}
               <button 
                 onClick={handleContactSupport}
                 className="password-reset-confirmation-footer-link"

@@ -1683,3 +1683,95 @@ exports.checkEmailExists = onCall(async (request) => {
     throw new HttpsError('internal', `Unable to check email: ${error.message}`)
   }
 })
+
+// Reset user password to default
+exports.resetUserPassword = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to reset a user password.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+
+  try {
+    var requesterAccess = await getRoleFromEmail(requesterEmail, {
+      uid: request.auth.uid,
+      claimsRole: request.auth.token.role,
+    })
+  } catch (error) {
+    logger.error('Unable to resolve requester access in resetUserPassword', {
+      email: requesterEmail,
+      details: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Unable to resolve your access permissions. ${error.message}`)
+  }
+
+  if (!['admin', 'superadmin'].includes(requesterAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only admin or superadmin can reset user passwords.')
+  }
+
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  const newPassword = request.data?.newPassword || DEFAULT_OPERATOR_PASSWORD
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'Enter a valid email address to reset password.')
+  }
+
+  // Get the target user's role
+  let targetUserRole = 'customer'
+  try {
+    const targetAccess = await getRoleFromEmail(email, {})
+    targetUserRole = targetAccess.role
+  } catch (error) {
+    logger.warn('Unable to resolve target user role', {
+      email,
+      details: error.message,
+      structuredData: true,
+    })
+  }
+
+  // Admins can only reset non-admin passwords
+  if (requesterAccess.role === 'admin' && ['admin', 'superadmin'].includes(targetUserRole)) {
+    throw new HttpsError('permission-denied', 'Admin can reset non-admin user passwords only.')
+  }
+
+  const authApi = admin.auth()
+
+  try {
+    logger.info('Attempting to reset password for user', {
+      email,
+      requesterEmail,
+      structuredData: true,
+    })
+
+    // Get user by email
+    const authUser = await authApi.getUserByEmail(email)
+
+    // Update password
+    await authApi.updateUser(authUser.uid, {
+      password: newPassword,
+    })
+
+    logger.info('Password reset successfully', {
+      email,
+      uid: authUser.uid,
+      requesterEmail,
+      structuredData: true,
+    })
+
+    return {
+      success: true,
+      message: `Password reset successfully for ${email}`,
+      uid: authUser.uid,
+    }
+  } catch (error) {
+    logger.error('Unable to reset user password', {
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+      requesterEmail,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Unable to reset password for ${email}. ${error.message}`)
+  }
+})

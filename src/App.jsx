@@ -360,6 +360,7 @@ function App() {
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [currentPath, setCurrentPath] = useState(() => normalizePath(window.location.pathname))
   const [confirmationEmail, setConfirmationEmail] = useState('')
+  const [confirmationType, setConfirmationType] = useState('reset') // 'reset' or 'authorized'
   const [activeSlide, setActiveSlide] = useState(0)
   const [activeNav, setActiveNav] = useState(() =>
     getNavLabelForPath(normalizePath(window.location.pathname), window.location.hash.replace('#', '')),
@@ -1148,8 +1149,9 @@ function App() {
       <ForgotPasswordPage
         onNavigateBack={() => navigateTo('/login')}
         onGoogleSignIn={handleGoogleSignIn}
-        onNavigateConfirmation={(email) => {
+        onNavigateConfirmation={(email, type = 'reset') => {
           setConfirmationEmail(email)
+          setConfirmationType(type)
           navigateTo('/password-reset-confirmation')
         }}
       />,
@@ -1160,6 +1162,7 @@ function App() {
     return withSecurityModal(
       <PasswordResetConfirmationPage
         email={confirmationEmail}
+        type={confirmationType}
         onNavigateBack={() => navigateTo('/login')}
         onResendEmail={(email) => setConfirmationEmail(email)}
       />,

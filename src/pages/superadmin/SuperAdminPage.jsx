@@ -1507,6 +1507,79 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
+  const handleResetPassword = async (user) => {
+    if (!canManageAccess) {
+      setActionMessage({
+        type: 'error',
+        text: 'Only admin or superadmin can reset user passwords.',
+      })
+      return
+    }
+
+    const normalizedRole = normalizeText(user.role)
+
+    if (currentAccessRole === 'admin' && ['admin', 'superadmin'].includes(normalizedRole)) {
+      setActionMessage({
+        type: 'error',
+        text: 'Admin can reset non-admin passwords only.',
+      })
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Reset password for ${user.fullName || user.email || 'this user'} to default?`)
+
+      if (!confirmed) {
+        return
+      }
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const resetUserPassword = httpsCallable(functions, 'resetUserPassword')
+      const response = await resetUserPassword({
+        email: String(user.email || '').trim().toLowerCase(),
+        newPassword: DEFAULT_OPERATOR_PASSWORD,
+      })
+
+      // Add notification for password reset
+      const newNotification = {
+        id: `password-reset-${user.email}-${Date.now()}`,
+        type: 'PASSWORD_RESET',
+        title: 'Password Reset',
+        description: `Password reset for ${user.fullName || user.email}`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        email: user.email,
+      }
+
+      const updatedNotifications = [newNotification, ...chatNotifications]
+      setChatNotifications(updatedNotifications)
+      
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+      }
+
+      setActionMessage({
+        type: 'success',
+        text: response?.data?.message || `${user.email || user.id} password reset to default.`,
+      })
+      
+      toastSuccess(`Password reset successfully for ${user.fullName || user.email}`)
+    } catch (error) {
+      console.error('Unable to reset user password', error)
+      setActionMessage({
+        type: 'error',
+        text: `Unable to reset password. ${error.message}`,
+      })
+      
+      toastError(`Failed to reset password: ${error.message}`)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleCleanupDuplicatedPrivilegedUsers = async () => {
     if (!canManageAccess) {
       setActionMessage({
@@ -1666,6 +1739,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
             onEditUser={handleOpenEditUserModal}
             onArchiveUser={handleArchiveUser}
             onDeleteArchivedUser={handleDeleteArchivedUserPermanently}
+            onResetPassword={handleResetPassword}
             isDarkMode={isDarkMode}
           />
         )
