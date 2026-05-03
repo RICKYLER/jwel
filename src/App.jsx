@@ -20,6 +20,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage'
 import EmailPasswordResetPage from './pages/EmailPasswordResetPage'
 import EmailVerificationPage from './pages/EmailVerificationPage'
+import SignupSuccessScreen from './pages/SignupSuccessScreen'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
@@ -395,6 +396,7 @@ function App() {
   })
   const [emailPasswordResetCode, setEmailPasswordResetCode] = useState(null)
   const [emailVerificationCode, setEmailVerificationCode] = useState(null)
+  const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -1016,10 +1018,16 @@ function App() {
         await sendVerificationEmailWithCooldown(credentials.user, { force: true })
         await signOut(auth)
         setAccessProfile(defaultAccessProfile)
-        setAuthMessage({
-          type: 'success',
-          text: 'Account created securely. We sent a verification email—please use the newest link before your first login.',
+        // Show success screen instead of inline message
+        setSignupSuccessEmail(authForm.email.trim().toLowerCase())
+        setAuthForm({
+          fullName: '',
+          phone: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
         })
+        return
       } else {
         const credentials = await signInWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
 
@@ -1238,6 +1246,19 @@ function App() {
         resetCode={emailPasswordResetCode}
         onNavigateBack={() => {
           setEmailPasswordResetCode(null)
+          navigateTo('/login')
+        }}
+      />
+    )
+  }
+
+  // Show signup success screen
+  if (signupSuccessEmail) {
+    return withSecurityModal(
+      <SignupSuccessScreen
+        email={signupSuccessEmail}
+        onContinue={() => {
+          setSignupSuccessEmail(null)
           navigateTo('/login')
         }}
       />

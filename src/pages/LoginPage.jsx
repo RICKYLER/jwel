@@ -5,6 +5,7 @@ import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
+import SignupLoadingModal from './LoginPage/SignupLoadingModal'
 
 export default function LoginPage({
   onGoogleSignIn,
@@ -394,6 +395,10 @@ export default function LoginPage({
           </div>
         </footer>
       </section>
+
+      {/* Show loading modal during signup */}
+      {isSignup && authLoading && <SignupLoadingModal />}
     </div>
   )
 }
+
