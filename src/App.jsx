@@ -385,6 +385,7 @@ function App() {
   const [requiresPasswordChange, setRequiresPasswordChange] = useState(false)
   const [passwordChangeLoading, setPasswordChangeLoading] = useState(false)
   const [passwordChangeMessage, setPasswordChangeMessage] = useState(null)
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false)
   const [passwordChangeForm, setPasswordChangeForm] = useState({
     password: '',
     confirmPassword: '',
@@ -1089,12 +1090,13 @@ function App() {
         }
       }
 
-      setRequiresPasswordChange(false)
+      // Show success message instead of immediately closing
+      setPasswordChangeSuccess(true)
       setPasswordChangeForm({
         password: '',
         confirmPassword: '',
       })
-      setAuthMessage({
+      setPasswordChangeMessage({
         type: 'success',
         text: 'Password updated successfully. Your account is now fully activated.',
       })
@@ -1111,6 +1113,12 @@ function App() {
     } finally {
       setPasswordChangeLoading(false)
     }
+  }
+
+  const handleDismissPasswordChangeSuccess = () => {
+    setPasswordChangeSuccess(false)
+    setRequiresPasswordChange(false)
+    setPasswordChangeMessage(null)
   }
 
   const currentDashboardBasePath = getDashboardBasePath(currentPath)
@@ -1134,6 +1142,8 @@ function App() {
       onSubmit={handleRequiredPasswordChange}
       isSubmitting={passwordChangeLoading}
       message={passwordChangeMessage}
+      isSuccessful={passwordChangeSuccess}
+      onDismissSuccess={handleDismissPasswordChangeSuccess}
     />
   )
 

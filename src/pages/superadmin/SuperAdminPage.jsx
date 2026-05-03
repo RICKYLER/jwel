@@ -160,6 +160,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [notificationConfirmation, setNotificationConfirmation] = useState(null)
   const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState(null)
+  const [isResetPasswordLoading, setIsResetPasswordLoading] = useState(false)
   const [logoutConfirmation, setLogoutConfirmation] = useState(false)
   const [chatNotifications, setChatNotifications] = useState(() => {
     if (typeof window === 'undefined') {
@@ -816,6 +817,89 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     })
   }, [consoleLabel, currentUser?.displayName, myUserRecord.bio, myUserRecord.fullName, myUserRecord.location, myUserRecord.phone, myUserRecord.title])
 
+  // Load admin contact requests from Firestore
+  useEffect(() => {
+    const loadAdminRequests = async () => {
+      try {
+        const requestsSnapshot = await getDocs(
+          query(
+            collection(db, 'adminPasswordResetRequests'),
+            where('status', '==', 'pending'),
+            limit(50)
+          )
+        )
+
+        const requests = requestsSnapshot.docs.map((doc) => ({
+          id: `admin-request-${doc.id}`,
+          type: 'PASSWORD_RESET_REQUEST',
+          title: 'Password Reset Request',
+          description: `Admin contact from ${doc.data().fullName || doc.id}`,
+          read: doc.data().read || false,
+          createdAt: doc.data().requestedAt?.toISOString?.() || new Date().toISOString(),
+          email: doc.id,
+        }))
+
+        if (requests.length > 0) {
+          console.log('[SuperAdmin] Loaded admin requests:', requests)
+          // Only add if not already in notifications
+          const existingIds = new Set(chatNotifications.map((n) => n.id))
+          const newRequests = requests.filter((r) => !existingIds.has(r.id))
+          
+          if (newRequests.length > 0) {
+            const updatedNotifications = [...newRequests, ...chatNotifications]
+            setChatNotifications(updatedNotifications)
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[SuperAdmin] Error loading admin requests:', error)
+      }
+    }
+
+    loadAdminRequests()
+    
+    // Set up real-time listener
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, 'adminPasswordResetRequests'),
+        where('status', '==', 'pending')
+      ),
+      (snapshot) => {
+        const requests = snapshot.docs.map((doc) => ({
+          id: `admin-request-${doc.id}`,
+          type: 'PASSWORD_RESET_REQUEST',
+          title: 'Password Reset Request',
+          description: `Admin contact from ${doc.data().fullName || doc.id}`,
+          read: doc.data().read || false,
+          createdAt: doc.data().requestedAt?.toISOString?.() || new Date().toISOString(),
+          email: doc.id,
+        }))
+
+        console.log('[SuperAdmin] Real-time update of admin requests:', requests)
+        
+        const existingIds = new Set(chatNotifications.filter((n) => !n.id.startsWith('admin-request-')).map((n) => n.id))
+        const otherNotifications = chatNotifications.filter((n) => !n.id.startsWith('admin-request-'))
+        const updatedNotifications = [...requests, ...otherNotifications]
+        
+        setChatNotifications(updatedNotifications)
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+        }
+      },
+      (error) => {
+        console.error('[SuperAdmin] Error listening to admin requests:', error)
+      }
+    )
+
+    return () => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe()
+      }
+    }
+  }, [])
+
   const activeServices = filteredServiceRequests.filter(
     (item) => !['completed', 'cancelled'].includes(normalizeText(item.status)),
   ).length
@@ -1232,9 +1316,22 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return
     }
 
-    // Handle password reset notifications
+    // Handle password reset notifications from admin reset action
     if (notification.type === 'PASSWORD_RESET') {
       console.log('[SuperAdmin] Password reset notification clicked, navigating to user management')
+      setIsNotificationsOpen(false)
+      setActiveSection('user-management')
+      
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+      
+      return
+    }
+
+    // Handle password reset request notifications from "Contact Administrator"
+    if (notification.type === 'PASSWORD_RESET_REQUEST') {
+      console.log('[SuperAdmin] Password reset request notification clicked, navigating to user management')
       setIsNotificationsOpen(false)
       setActiveSection('user-management')
       
@@ -1555,8 +1652,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     if (!resetPasswordConfirmation?.user) return
 
     const user = resetPasswordConfirmation.user
-    setResetPasswordConfirmation(null)
-    setIsSubmitting(true)
+    setIsResetPasswordLoading(true)
 
     try {
       const resetUserPassword = httpsCallable(functions, 'resetUserPassword')
@@ -1589,6 +1685,9 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       })
       
       toastSuccess(`Password reset successfully for ${user.fullName || user.email}`)
+      
+      // Close modal after success
+      setResetPasswordConfirmation(null)
     } catch (error) {
       console.error('Unable to reset user password', error)
       setActionMessage({
@@ -1597,8 +1696,11 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       })
       
       toastError(`Failed to reset password: ${error.message}`)
+      
+      // Close modal after error
+      setResetPasswordConfirmation(null)
     } finally {
-      setIsSubmitting(false)
+      setIsResetPasswordLoading(false)
     }
   }
 
@@ -1914,6 +2016,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         onCancel={() => setResetPasswordConfirmation(null)}
         isDangerous={true}
         isDarkMode={isDarkMode}
+        isLoading={isResetPasswordLoading}
       />
 
       <SuperAdminSidebar

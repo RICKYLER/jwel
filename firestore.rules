@@ -141,6 +141,18 @@ service cloud.firestore {
       }
     }
 
+    match /adminPasswordResetRequests/{docId} {
+      allow read: if isAdminOrHigher();
+      allow create: if isSignedIn();
+      allow update: if isAdminOrHigher();
+      allow delete: if isAdminOrHigher();
+    }
+
+    match /deleteArchived/{docId} {
+      allow read: if isAdminOrHigher();
+      allow create, update, delete: if isAdminOrHigher();
+    }
+
     match /deleteArchived/{docId} {
       allow read: if isAdminOrHigher();
       allow create, update: if isAdminOrHigher();

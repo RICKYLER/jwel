@@ -279,16 +279,36 @@ export default function ForgotPasswordPage({ onNavigateBack, onNavigateConfirmat
             ) : isAuthorizedNeedsAdmin ? (
               <button 
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   console.log('[ForgotPassword] Contact administrator clicked for:', email)
-                  // Navigate to confirmation page for authorized account support
-                  if (onNavigateConfirmation) {
-                    onNavigateConfirmation(email, 'authorized')
+                  try {
+                    setLoading(true)
+                    const contactAdministrator = httpsCallable(functions, 'contactAdministrator')
+                    const response = await contactAdministrator({
+                      email: String(email || '').trim().toLowerCase(),
+                      fullName: email, // Use email as fallback for fullName
+                    })
+                    
+                    console.log('[ForgotPassword] Admin contact request submitted:', response.data)
+                    
+                    // Navigate to confirmation page for authorized account support
+                    if (onNavigateConfirmation) {
+                      onNavigateConfirmation(email, 'authorized')
+                    }
+                  } catch (error) {
+                    console.error('[ForgotPassword] Error contacting administrator:', error)
+                    setMessage({
+                      type: 'error',
+                      text: `Failed to submit request: ${error.message}`,
+                    })
+                  } finally {
+                    setLoading(false)
                   }
                 }}
+                disabled={loading}
                 className="forgot-password-submit-btn forgot-password-admin-btn"
               >
-                CONTACT ADMINISTRATOR
+                {loading ? 'SUBMITTING…' : 'CONTACT ADMINISTRATOR'}
               </button>
             ) : hasDualAuth ? (
               <div className="forgot-password-button-group">

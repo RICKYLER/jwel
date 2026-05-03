@@ -1,5 +1,6 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded'
+import CircularProgress from '@mui/material/CircularProgress'
 import { useEffect } from 'react'
 
 export default function ConfirmationModal({
@@ -12,6 +13,7 @@ export default function ConfirmationModal({
   onCancel,
   isDangerous = true,
   isDarkMode = true,
+  isLoading = false,
 }) {
   useEffect(() => {
     if (open) {
@@ -91,7 +93,10 @@ export default function ConfirmationModal({
             <button
               type="button"
               onClick={onCancel}
+              disabled={isLoading}
               className={`inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-bold transition-colors ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              } ${
                 isDarkMode
                   ? 'bg-white/10 text-white hover:bg-white/15'
                   : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
@@ -102,13 +107,23 @@ export default function ConfirmationModal({
             <button
               type="button"
               onClick={onConfirm}
-              className={`inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-bold transition-colors ${
+              disabled={isLoading}
+              className={`inline-flex items-center justify-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold transition-colors ${
+                isLoading ? 'opacity-70 cursor-not-allowed' : ''
+              } ${
                 isDangerous
                   ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-gray-600 text-white hover:bg-gray-700'
               }`}
             >
-              {confirmText}
+              {isLoading ? (
+                <>
+                  <CircularProgress size={16} sx={{ color: 'white' }} />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                confirmText
+              )}
             </button>
           </div>
         </div>

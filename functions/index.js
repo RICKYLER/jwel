@@ -1752,6 +1752,54 @@ exports.resetUserPassword = onCall(async (request) => {
       password: newPassword,
     })
 
+    // Set mustChangePassword flag in custom claims
+    try {
+      await authApi.setCustomUserClaims(authUser.uid, {
+        ...authUser.customClaims,
+        mustChangePassword: true,
+      })
+    } catch (claimsError) {
+      logger.warn('Unable to set mustChangePassword in custom claims', {
+        uid: authUser.uid,
+        email,
+        details: claimsError.message,
+        structuredData: true,
+      })
+    }
+
+    // Set mustChangePassword flag in Firestore user document
+    let userDocPath
+    if (targetUserRole === 'customer') {
+      userDocPath = `users/${authUser.uid}`
+    } else if (targetUserRole === 'superadmin') {
+      userDocPath = `authorizedSuperadmin/${email}`
+    } else if (targetUserRole === 'admin') {
+      userDocPath = `authorizedAdmin/${email}`
+    } else {
+      // Personnel or other roles
+      userDocPath = `authorizedPersonnel/${email}`
+    }
+
+    try {
+      await admin.firestore().doc(userDocPath).set(
+        {
+          email: email.toLowerCase(),
+          mustChangePassword: true,
+          firstLoginRequired: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    } catch (firestoreError) {
+      logger.warn('Unable to set mustChangePassword flag in Firestore', {
+        uid: authUser.uid,
+        email,
+        path: userDocPath,
+        details: firestoreError.message,
+        structuredData: true,
+      })
+    }
+
     logger.info('Password reset successfully', {
       email,
       uid: authUser.uid,
@@ -1773,5 +1821,52 @@ exports.resetUserPassword = onCall(async (request) => {
       structuredData: true,
     })
     throw new HttpsError('internal', `Unable to reset password for ${email}. ${error.message}`)
+  }
+})
+
+// Contact administrator for password reset request
+exports.contactAdministrator = onCall(async (request) => {
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  const fullName = String(request.data?.fullName || '').trim()
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'Enter a valid email address.')
+  }
+
+  logger.info('Contact administrator request', {
+    email,
+    fullName,
+    structuredData: true,
+  })
+
+  try {
+    // Store the admin contact request in a collection
+    const adminRequestsRef = admin.firestore().collection('adminPasswordResetRequests').doc(email)
+    
+    await adminRequestsRef.set({
+      email,
+      fullName: fullName || email,
+      requestedAt: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending',
+      read: false,
+    }, { merge: true })
+
+    logger.info('Admin contact request stored', {
+      email,
+      structuredData: true,
+    })
+
+    return {
+      success: true,
+      message: `Password reset request submitted for ${email}`,
+    }
+  } catch (error) {
+    logger.error('Unable to store admin contact request', {
+      email,
+      errorCode: error.code,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Unable to submit request: ${error.message}`)
   }
 })

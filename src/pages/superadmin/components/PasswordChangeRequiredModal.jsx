@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 import './PasswordChangeRequiredModal.css'
@@ -12,12 +13,44 @@ export default function PasswordChangeRequiredModal({
   onSubmit,
   isSubmitting,
   message,
+  isSuccessful = false,
+  onDismissSuccess,
 }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   if (!open) {
     return null
+  }
+
+  // Show success screen
+  if (isSuccessful) {
+    return (
+      <div className="password-change-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
+        <div className="password-change-modal-panel">
+          <div className="password-change-modal-icon" style={{ color: '#10b981' }}>
+            <CheckCircleRoundedIcon sx={{ fontSize: 48 }} />
+          </div>
+
+          <p className="password-change-modal-kicker" style={{ color: '#10b981' }}>Success</p>
+          <h2 id="success-modal-title" className="password-change-modal-title">
+            Password Updated Successfully
+          </h2>
+          <p className="password-change-modal-copy">
+            Your password has been changed and your account is now fully activated. You can now access all features of your dashboard.
+          </p>
+
+          <button 
+            type="button" 
+            onClick={onDismissSuccess}
+            className="password-change-submit"
+            style={{ marginTop: '2rem' }}
+          >
+            Continue to Dashboard
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
