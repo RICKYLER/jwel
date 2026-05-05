@@ -56,7 +56,9 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
         })
         
         // Set flag for customer dashboard to show verification success modal
+        console.log('[EMAIL VERIFY] Setting email_verified_success flag in sessionStorage')
         window.sessionStorage.setItem('email_verified_success', 'true')
+        console.log('[EMAIL VERIFY] Flag set. Current value:', window.sessionStorage.getItem('email_verified_success'))
       } catch (error) {
         console.error('[EMAIL VERIFY] Verification failed:', error?.code, error?.message)
         

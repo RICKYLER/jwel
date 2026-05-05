@@ -421,7 +421,9 @@ function App() {
   useEffect(() => {
     if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
       const emailVerifiedFlag = window.sessionStorage.getItem('email_verified_success')
+      console.log('[EMAIL VERIFIED MODAL] Checking flag on /customer route:', emailVerifiedFlag)
       if (emailVerifiedFlag) {
+        console.log('[EMAIL VERIFIED MODAL] Flag found! Setting modal to true')
         setShowEmailVerifiedModal(true)
         window.sessionStorage.removeItem('email_verified_success')
       }
@@ -1384,25 +1386,27 @@ function App() {
     const handleNavigateToProduct = (productId) => {
       setCurrentPath(`/customer/product/${productId}`)
     }
-    return withSecurityModal(
+    return (
       <>
         {showEmailVerifiedModal && (
           <EmailVerifiedModal onClose={() => setShowEmailVerifiedModal(false)} />
         )}
-        <CustomerShowroomPage
-          currentUser={currentUser}
-          onNavigateHome={() => goToHomeSection('home', 'Home')}
-          onSignOut={handleSignOut}
-          onNavigateToProduct={handleNavigateToProduct}
-          onNavigateToService={() => navigateTo('/customer/service')}
-          onNavigateToFinancing={() => navigateTo('/financing')}
-          onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
-          onNavigateToMessages={() => navigateTo('/customer/messages')}
-          onNavigateToProfile={() => navigateTo('/customer/profile')}
-          onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
-          onNavigateBack={() => goToHomeSection('home', 'Home')}
-        />
-      </>, 
+        {withSecurityModal(
+          <CustomerShowroomPage
+            currentUser={currentUser}
+            onNavigateHome={() => goToHomeSection('home', 'Home')}
+            onSignOut={handleSignOut}
+            onNavigateToProduct={handleNavigateToProduct}
+            onNavigateToService={() => navigateTo('/customer/service')}
+            onNavigateToFinancing={() => navigateTo('/financing')}
+            onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+            onNavigateToMessages={() => navigateTo('/customer/messages')}
+            onNavigateToProfile={() => navigateTo('/customer/profile')}
+            onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
+            onNavigateBack={() => goToHomeSection('home', 'Home')}
+          />, 
+        )}
+      </>
     )
   }
 
