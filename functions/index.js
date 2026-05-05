@@ -1824,6 +1824,174 @@ exports.resetUserPassword = onCall(async (request) => {
   }
 })
 
+// Send verification email
+exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid email address is required.')
+  }
+
+  const { generateVerificationCode, sendVerificationEmail: sendEmail } = require('./email-service')
+  
+  try {
+    // Generate verification code
+    const verificationCode = generateVerificationCode()
+    
+    // Store in Firestore with expiry (24 hours)
+    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+    
+    await admin.firestore().collection('emailVerifications').doc(email).set(
+      {
+        code: verificationCode,
+        email: email,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: expiryTime,
+        verified: false,
+      },
+      { merge: true }
+    )
+    
+    // Send email
+    await sendEmail(email, verificationCode)
+    
+    logger.info('Verification email sent successfully', {
+      email,
+      structuredData: true,
+    })
+    
+    return {
+      success: true,
+      message: 'Verification email sent successfully. Please check your inbox.',
+    }
+  } catch (error) {
+    logger.error('Failed to send verification email', {
+      email,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Failed to send verification email: ${error.message}`)
+  }
+})
+
+// Verify email code
+exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  const code = String(request.data?.code || '').trim()
+  
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid email address is required.')
+  }
+  
+  if (!code) {
+    throw new HttpsError('invalid-argument', 'Verification code is required.')
+  }
+  
+  try {
+    const docSnapshot = await admin.firestore().collection('emailVerifications').doc(email).get()
+    
+    if (!docSnapshot.exists) {
+      throw new HttpsError('not-found', 'No verification record found for this email.')
+    }
+    
+    const data = docSnapshot.data()
+    
+    // Check if expired
+    const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt)
+    if (new Date() > expiresAt) {
+      throw new HttpsError('invalid-argument', 'Verification code has expired. Please request a new one.')
+    }
+    
+    // Check if already verified
+    if (data.verified) {
+      throw new HttpsError('invalid-argument', 'This email has already been verified.')
+    }
+    
+    // Check code
+    if (data.code !== code) {
+      throw new HttpsError('invalid-argument', 'Invalid verification code.')
+    }
+    
+    // Mark as verified
+    await admin.firestore().collection('emailVerifications').doc(email).update({
+      verified: true,
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+    
+    logger.info('Email verified successfully', {
+      email,
+      structuredData: true,
+    })
+    
+    return {
+      success: true,
+      message: 'Email verified successfully!',
+      email: email,
+    }
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error
+    }
+    
+    logger.error('Email verification failed', {
+      email,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Email verification failed: ${error.message}`)
+  }
+})
+
+// Resend verification email
+exports.resendVerificationEmail = onCall({ cors: true }, async (request) => {
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid email address is required.')
+  }
+  
+  const { generateVerificationCode, sendVerificationEmail: sendEmail } = require('./email-service')
+  
+  try {
+    // Generate new code
+    const verificationCode = generateVerificationCode()
+    
+    // Update in Firestore with new expiry
+    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    
+    await admin.firestore().collection('emailVerifications').doc(email).set(
+      {
+        code: verificationCode,
+        email: email,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt: expiryTime,
+        verified: false,
+      },
+      { merge: false } // Overwrite to reset
+    )
+    
+    // Send email
+    await sendEmail(email, verificationCode)
+    
+    logger.info('Verification email resent successfully', {
+      email,
+      structuredData: true,
+    })
+    
+    return {
+      success: true,
+      message: 'Verification email has been resent. Please check your inbox.',
+    }
+  } catch (error) {
+    logger.error('Failed to resend verification email', {
+      email,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+    throw new HttpsError('internal', `Failed to resend verification email: ${error.message}`)
+  }
+})
+
 // Contact administrator for password reset request
 exports.contactAdministrator = onCall(async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()

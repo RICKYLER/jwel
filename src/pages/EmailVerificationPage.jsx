@@ -1,44 +1,54 @@
 import { useState, useEffect } from 'react'
-import { applyActionCode, checkActionCode } from 'firebase/auth'
+import { functions } from '../firebase'
+import { httpsCallable } from 'firebase/functions'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
-import { auth } from '../firebase'
 import './ForgotPasswordPage.css'
 
-export default function EmailVerificationPage({ onNavigateBack, verificationCode }) {
-  const [email, setEmail] = useState('')
+export default function EmailVerificationPage({ onNavigateBack, verificationCode, email }) {
+  const [verifyEmail, setVerifyEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState(false)
   const [message, setMessage] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [hasAttempted, setHasAttempted] = useState(false)
 
-  // Verify and apply the verification code when component mounts
+  // Verify email code when component mounts
   useEffect(() => {
-    const verifyEmail = async () => {
-      if (!verificationCode) {
-        setMessage({ type: 'error', text: 'No verification code provided. Please try the verification link again.' })
-        setLoading(false)
+    const performVerification = async () => {
+      // Prevent duplicate verification attempts
+      if (hasAttempted) {
         return
       }
 
-      try {
-        console.log('[EMAIL VERIFY] Checking code:', verificationCode.substring(0, 20) + '...')
-        
-        // First, check the code to get the email
-        const info = await checkActionCode(auth, verificationCode)
-        console.log('[EMAIL VERIFY] Code verified for email:', info?.data?.email)
-        
-        if (info?.data?.email) {
-          setEmail(info.data.email)
-        }
+      if (!verificationCode || !email) {
+        setMessage({ 
+          type: 'error', 
+          text: 'No verification code or email provided. Please try the verification link again.' 
+        })
+        setLoading(false)
+        setHasAttempted(true)
+        return
+      }
 
-        // Now apply the code to actually verify the email
-        console.log('[EMAIL VERIFY] Applying verification code...')
-        setVerifying(true)
-        await applyActionCode(auth, verificationCode)
-        console.log('[EMAIL VERIFY] Email verified successfully')
+      setHasAttempted(true)
+
+      try {
+        console.log('[EMAIL VERIFY] Starting verification for:', email)
         
+        // Call the verifyEmailCode Cloud Function
+        const verifyEmailCodeFn = httpsCallable(functions, 'verifyEmailCode')
+        setVerifying(true)
+        
+        const result = await verifyEmailCodeFn({
+          email: email,
+          code: verificationCode,
+        })
+        
+        console.log('[EMAIL VERIFY] Verification successful:', result.data)
+        
+        setVerifyEmail(email)
         setSuccess(true)
         setMessage({
           type: 'success',
@@ -47,10 +57,27 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
       } catch (error) {
         console.error('[EMAIL VERIFY] Verification failed:', error?.code, error?.message)
         
-        if (error?.code === 'auth/invalid-action-code' || error?.code === 'auth/expired-action-code') {
+        if (error?.code === 'functions/invalid-argument') {
+          if (error?.message?.includes('expired')) {
+            setMessage({
+              type: 'error',
+              text: 'Your verification link has expired. Please request a new verification email.',
+            })
+          } else if (error?.message?.includes('Invalid')) {
+            setMessage({
+              type: 'error',
+              text: 'Invalid verification code. Please check your link and try again.',
+            })
+          } else {
+            setMessage({
+              type: 'error',
+              text: error?.message || 'Verification failed.',
+            })
+          }
+        } else if (error?.code === 'functions/not-found') {
           setMessage({
             type: 'error',
-            text: 'Your verification link has expired. Please request a new verification email.',
+            text: 'No verification record found. Please request a new verification email.',
           })
         } else {
           setMessage({
@@ -64,8 +91,8 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
       }
     }
 
-    verifyEmail()
-  }, [verificationCode])
+    performVerification()
+  }, [verificationCode, email, hasAttempted])
 
   if (loading) {
     return (
@@ -87,7 +114,7 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
           <p className="forgot-password-kicker" style={{ color: '#10b981' }}>Success</p>
           <h2 className="forgot-password-title">Email Verified Successfully</h2>
           <p className="forgot-password-copy">
-            Your email {email && <strong>{email}</strong>} has been verified. You can now access all features of your account.
+            Your email {verifyEmail && <strong>{verifyEmail}</strong>} has been verified. You can now access all features of your account.
           </p>
           <button type="button" onClick={onNavigateBack} className="forgot-password-button">
             Back to Login

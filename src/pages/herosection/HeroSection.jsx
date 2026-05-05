@@ -93,6 +93,7 @@ export default function HeroSection({
   const [isModelsLoading, setIsModelsLoading] = useState(true)
   const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [currentSparePartsPage, setCurrentSparePartsPage] = useState(0)
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
 
@@ -636,7 +637,7 @@ export default function HeroSection({
                           <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
                             Engine
                           </span>
-                          <span className="block text-sm font-black text-white">{model.engineCC || model.engine || 'N/A'}</span>
+                          <span className="block text-sm font-black text-white">{model.engineCC || model.engine || model.engineSize || model.displacement || model.cc || 'N/A'}</span>
                         </div>
                         <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
                           <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
@@ -709,45 +710,101 @@ export default function HeroSection({
               </button>
             </div>
 
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-reveal="up" data-reveal-delay="200">
-              {isSparePartsLoading ? (
-                <div className="col-span-full rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
-                  Loading spare parts...
-                </div>
-              ) : liveSpareParts.length === 0 ? (
-                <div className="col-span-full rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
-                  No spare parts available right now.
-                </div>
-              ) : (
-                liveSpareParts.map((part) => (
-                <div
-                  key={part.id}
-                  className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer h-full flex flex-col"
-                  onClick={() => onNavigateSpareParts()}
-                >
-                  <div className="relative h-48 overflow-hidden bg-linear-to-b from-slate-800 to-slate-900 flex items-center justify-center">
-                    <img
-                      src={part.imageUrl || part.mainImage || part.image || part.partImage || getPlaceholderImage(part.name || 'Spare Part', 300, 200)}
-                      alt={part.name}
-                      className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
-                    />
+            {(() => {
+              const itemsPerPage = 6
+              const totalPages = Math.ceil(liveSpareParts.length / itemsPerPage)
+
+              return (
+                <>
+                  <div className="relative w-full overflow-x-hidden" data-reveal="up" data-reveal-delay="200">
+                    {isSparePartsLoading ? (
+                      <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                        Loading spare parts...
+                      </div>
+                    ) : liveSpareParts.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
+                        No spare parts available right now.
+                      </div>
+                    ) : (
+                      <div className="flex transition-transform duration-700" style={{ transform: `translateX(calc(-${currentSparePartsPage * 100}%))`, width: '100%' }}>
+                        {Array.from({ length: totalPages }).map((_, pageIndex) => (
+                          <div key={pageIndex} style={{ flex: '0 0 100%' }}>
+                            <div className="grid gap-6 grid-cols-2 lg:grid-cols-3">
+                              {liveSpareParts.slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage).map((part) => (
+                                <div
+                                  key={part.id}
+                                  className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-900 transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 cursor-pointer h-full flex flex-col"
+                                  onClick={() => onNavigateSpareParts()}
+                                >
+                                  <div className="relative h-40 overflow-hidden bg-linear-to-b from-slate-800 to-slate-900 flex items-center justify-center">
+                                    <img
+                                      src={part.imageUrl || part.mainImage || part.image || part.partImage || getPlaceholderImage(part.name || 'Spare Part', 300, 200)}
+                                      alt={part.name}
+                                      className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
+                                    />
+                                  </div>
+
+                                  <div className="p-3 sm:p-4 flex-1 flex flex-col">
+                                    <h3 className="text-base font-black text-white font-['Epilogue'] truncate">
+                                      {part.name}
+                                    </h3>
+                                    <p className="mt-1 text-xs text-neutral-400 line-clamp-2 flex-1">{part.description || 'Genuine spare part'}</p>
+                                    
+                                    <div className="mt-3 flex items-center justify-between">
+                                      <span className="text-xs font-bold text-blue-400">{part.price || 'Contact'}</span>
+                                      <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="p-4 sm:p-5 flex-1 flex flex-col">
-                    <h3 className="text-lg font-black text-white font-['Epilogue'] truncate">
-                      {part.name}
-                    </h3>
-                    <p className="mt-2 text-xs text-neutral-400 line-clamp-2 flex-1">{part.description || 'Genuine spare part'}</p>
-                    
-                    <div className="mt-4 flex items-center justify-between">
-                      <span className="text-sm font-bold text-blue-400">{part.price || 'Contact'}</span>
-                      <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
+                  {/* Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="mt-8 flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setCurrentSparePartsPage((prev) => Math.max(0, prev - 1))}
+                        disabled={currentSparePartsPage === 0}
+                        className="button button--outline-light rounded-full p-2 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Previous page"
+                      >
+                        <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: totalPages }).map((_, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setCurrentSparePartsPage(index)}
+                            className={`h-2 rounded-full transition-all ${
+                              currentSparePartsPage === index ? 'w-6 bg-red-600' : 'w-2 bg-white/35'
+                            }`}
+                            aria-label={`Go to page ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentSparePartsPage((prev) => Math.min(totalPages - 1, prev + 1))}
+                        disabled={currentSparePartsPage === totalPages - 1}
+                        className="button button--outline-light rounded-full p-2 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Next page"
+                      >
+                        <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20 }} />
+                      </button>
                     </div>
-                  </div>
-                </div>
-              ))
-              )}
-            </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </section>
 
@@ -889,17 +946,17 @@ export default function HeroSection({
                   className="h-full w-full"
                   style={{ minHeight: '24rem' }}
                 />
-                <div className="absolute left-6 top-6 z-10 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 backdrop-blur-md">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
+                <div className="absolute left-1 top-15 z-10 rounded-2xl border border-white/20 bg-linear-to-br from-white/10 to-white/5 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-black font-['Epilogue']">
                     Main Branch
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-white">Tagum, Davao del Norte</p>
+                  <p className="mt-1 text-sm font-semibold text-black">Tagum, Davao del Norte</p>
                 </div>
-                <div className="absolute bottom-6 right-6 z-10 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-right backdrop-blur-md">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']">
+                <div className="absolute bottom-6 left-1 z-10 rounded-2xl border border-white/20 bg-linear-to-br from-white/10 to-white/5 px-4 py-3 text-right backdrop-blur-sm">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-black font-['Epilogue']">
                     Showroom Hours
                   </p>
-                  <p className="mt-1 text-sm text-white">Mon-Sat 9AM-6PM</p>
+                  <p className="mt-1 text-sm text-black">Mon-Sat 9AM-6PM</p>
                 </div>
               </div>
             </div>

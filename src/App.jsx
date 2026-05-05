@@ -3,7 +3,6 @@ import {
   createUserWithEmailAndPassword,
   getRedirectResult,
   onAuthStateChanged,
-  sendEmailVerification,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
@@ -112,28 +111,6 @@ const isAuthorizedAccessCollectionSource = (source = '') =>
     'authorizedAdmin',
     'authorizedPersonnel',
   ].includes(String(source).trim())
-
-const getAuthorizedAccessDocRef = (email = '', source = '') => {
-  const normalizedEmail = String(email || '').trim().toLowerCase()
-
-  if (!normalizedEmail) {
-    return null
-  }
-
-  if (source === 'authorized-superadmin-collection' || source === 'authorizedSuperadmin') {
-    return doc(db, 'authorizedSuperadmin', normalizedEmail)
-  }
-
-  if (source === 'authorized-admin-collection' || source === 'authorizedAdmin') {
-    return doc(db, 'authorizedAdmin', normalizedEmail)
-  }
-
-  if (source === 'authorized-personnel-collection' || source === 'authorizedPersonnel') {
-    return doc(db, 'authorizedPersonnel', normalizedEmail)
-  }
-
-  return null
-}
 
 const GOOGLE_AUTH_PERSONA_STORAGE_KEY = 'bykelink-google-auth-persona'
 const VERIFICATION_EMAIL_COOLDOWN_MS = 5 * 60 * 1000
@@ -396,11 +373,26 @@ function App() {
   })
   const [emailPasswordResetCode, setEmailPasswordResetCode] = useState(null)
   const [emailVerificationCode, setEmailVerificationCode] = useState(null)
+  const [emailVerificationEmail, setEmailVerificationEmail] = useState(null)
   const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
   const [signupSuccessUser, setSignupSuccessUser] = useState(null)
   const [resendingEmail, setResendingEmail] = useState(false)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
+
+  // Extract verification code and email from URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const verificationCode = params.get('verification')
+    const verificationEmail = params.get('email')
+    
+    if (verificationCode && verificationEmail) {
+      setEmailVerificationCode(verificationCode)
+      setEmailVerificationEmail(decodeURIComponent(verificationEmail))
+      // Clean up URL to avoid re-processing on every render
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -779,144 +771,16 @@ function App() {
     }
   }
 
-  const sendVerificationEmailWithCooldown = async (user, options = {}) => {
-    if (!user?.uid) {
-      return { sent: false, reason: 'missing-user' }
-    }
-
-    const { force = false } = options
-    let verificationDocRef = doc(db, 'users', user.uid)
-
-    try {
-      const authorizedProfile = await getAuthorizedAdminProfile(user.email || '')
-      const authorizedDocRef = getAuthorizedAccessDocRef(user.email || '', authorizedProfile?.source)
-
-      if (authorizedDocRef) {
-        verificationDocRef = authorizedDocRef
-      }
-    } catch (error) {
-      console.warn('Unable to resolve the verification email storage location.', error)
-    }
-
-    if (!force) {
-      try {
-        const userSnapshot = await getDoc(verificationDocRef)
-        const userData = userSnapshot.data() || {}
-        const rawLastSentAt = userData.verificationEmailSentAt
-        const lastSentAt = rawLastSentAt?.toDate
-          ? rawLastSentAt.toDate()
-          : rawLastSentAt
-            ? new Date(rawLastSentAt)
-            : null
-
-        if (lastSentAt && !Number.isNaN(lastSentAt.getTime())) {
-          const elapsedMs = Date.now() - lastSentAt.getTime()
-
-          if (elapsedMs < VERIFICATION_EMAIL_COOLDOWN_MS) {
-            return { sent: false, reason: 'cooldown', lastSentAt }
-          }
-        }
-      } catch (error) {
-        console.warn('Unable to inspect the last verification email timestamp.', error)
-      }
-    }
-
-    // IMPORTANT: Don't use Firebase's default sendEmailVerification because:
-    // 1. It sends emails from Firebase's domain (firebaseapp.com) which we don't control
-    // 2. The email template in Firebase Console can't be easily overridden
-    // 3. Links go to Firebase's domain first, then redirect to us
-    // Instead, we generate a verification link and show it to the user
-
-    try {
-      // Generate a custom verification link via Cloud Function
-      const sendCustomEmailVerification = httpsCallable(functions, 'sendCustomEmailVerification')
-      const linkResult = await sendCustomEmailVerification({ email: user.email })
-      
-      console.log('[VERIFY EMAIL] Custom verification link generated:', linkResult.data?.verificationLink?.substring(0, 50))
-      
-      // Store the verification link in localStorage for the app to display
-      // This allows users to verify immediately without waiting for email
-      window.localStorage.setItem(`verificationLink_${user.uid}`, linkResult.data?.verificationLink)
-      
-      let emailSent = false
-      // Try to send the verification email to the user via Firebase
-      // This uses the actionCodeSettings to redirect back to our app domain
-      try {
-        const actionCodeSettings = {
-          url: window.location.origin,
-          handleCodeInApp: true,
-        }
-        await sendEmailVerification(user, actionCodeSettings)
-        console.log('[VERIFY EMAIL] Verification email sent to user')
-        emailSent = true
-      } catch (emailError) {
-        // Don't fail signup if email sending has rate limit issues
-        // Log the error but allow signup to continue
-        if (emailError?.code === 'auth/too-many-requests') {
-          console.warn('[VERIFY EMAIL] Rate limited by Firebase, will retry later:', emailError?.message)
-          // Email will arrive in a few minutes when rate limit resets
-          emailSent = false
-        } else {
-          console.warn('[VERIFY EMAIL] Failed to send verification email:', emailError?.message)
-          emailSent = false
-        }
-      }
-
-      // Record the verification email send timestamp regardless of whether email was actually sent
-      // This ensures cooldown is applied for future attempts
-      try {
-        await setDoc(
-          verificationDocRef,
-          {
-            email: user.email?.trim().toLowerCase() || '',
-            emailVerified: Boolean(user.emailVerified),
-            verificationEmailSentAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        )
-      } catch (firestoreError) {
-        console.warn('Unable to store the verification email timestamp.', firestoreError)
-      }
-
-      return { sent: emailSent, reason: emailSent ? 'email-sent' : 'rate-limited' }
-    } catch (error) {
-      console.warn('[VERIFY EMAIL] Failed to generate verification link:', error?.message)
-      // Record timestamp but return sent: false since we couldn't send
-      try {
-        await setDoc(
-          verificationDocRef,
-          {
-            email: user.email?.trim().toLowerCase() || '',
-            emailVerified: Boolean(user.emailVerified),
-            verificationEmailSentAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        )
-      } catch (firestoreError) {
-        console.warn('Unable to store the verification email timestamp.', firestoreError)
-      }
-      return { sent: false, reason: 'link-generation-failed' }
-    }
-  }
-
   const handleResendSignupEmail = async () => {
     if (!signupSuccessUser) return
     setResendingEmail(true)
     try {
-      const result = await sendVerificationEmailWithCooldown(signupSuccessUser, { force: true })
-      if (result.sent) {
-        setAuthMessage({
-          type: 'success',
-          text: 'Verification email sent! Check your inbox.',
-        })
-      } else {
-        setAuthMessage({
-          type: 'error',
-          text: 'Email sending is temporarily limited. Please try again in a moment.',
-        })
-      }
+      const resendVerificationEmailFn = httpsCallable(functions, 'resendVerificationEmail')
+      await resendVerificationEmailFn({ email: signupSuccessUser.email })
+      setAuthMessage({
+        type: 'success',
+        text: 'Verification email sent! Check your inbox.',
+      })
     } catch (error) {
       console.error('Error resending email:', error)
       setAuthMessage({
@@ -1089,7 +953,17 @@ function App() {
           role: 'customer',
           source: 'customer-signup',
         })
-        await sendVerificationEmailWithCooldown(credentials.user, { force: true })
+        
+        // Call the custom verification Cloud Function to send verification email
+        try {
+          const sendVerificationEmailFn = httpsCallable(functions, 'sendVerificationEmail')
+          await sendVerificationEmailFn({ email: authForm.email.trim().toLowerCase() })
+          console.log('[SIGNUP] Verification email sent successfully')
+        } catch (emailError) {
+          console.warn('[SIGNUP] Failed to send verification email:', emailError?.message)
+          // Continue with signup even if email fails - user can resend later
+        }
+        
         // Store user and show success screen, but DON'T sign out yet
         // This allows user to retry resending email if rate-limited
         setSignupSuccessEmail(authForm.email.trim().toLowerCase())
@@ -1106,13 +980,18 @@ function App() {
         const credentials = await signInWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
 
         if (!credentials.user.emailVerified && requestedRole !== 'superadmin') {
-          const verificationDispatch = await sendVerificationEmailWithCooldown(credentials.user)
+          try {
+            const sendVerificationEmailFn = httpsCallable(functions, 'sendVerificationEmail')
+            await sendVerificationEmailFn({ email: credentials.user.email })
+            console.log('[LOGIN] Verification email sent successfully')
+          } catch (emailError) {
+            console.warn('[LOGIN] Failed to send verification email:', emailError?.message)
+          }
+          
           await signOut(auth)
           setAccessProfile(defaultAccessProfile)
           throw new Error(
-            verificationDispatch.sent
-              ? 'Your email is not verified yet. We sent a fresh verification link—please use the newest email in your inbox.'
-              : 'Your email is not verified yet. Please use the latest verification email already sent to your inbox. New resend links replace older ones.',
+            'Your email is not verified yet. We sent a fresh verification link—please check your inbox and click the link to verify.',
           )
         }
 
@@ -1301,12 +1180,14 @@ function App() {
   )
 
   // Handle email verification from link in email
-  if (emailVerificationCode) {
+  if (emailVerificationCode && emailVerificationEmail) {
     return withSecurityModal(
       <EmailVerificationPage
         verificationCode={emailVerificationCode}
+        email={emailVerificationEmail}
         onNavigateBack={() => {
           setEmailVerificationCode(null)
+          setEmailVerificationEmail(null)
           navigateTo('/login')
         }}
       />
