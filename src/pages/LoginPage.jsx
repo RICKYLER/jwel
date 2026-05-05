@@ -7,6 +7,8 @@ import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import SignupLoadingModal from './LoginPage/SignupLoadingModal'
 import HelpModal from './LoginPage/HelpModal'
+import SignupSuccessScreen from './SignupSuccessScreen'
+import EmailVerificationPage from './EmailVerificationPage'
 import './LoginPage.css'
 import './LoginPage/HelpModal.css'
 
@@ -23,12 +25,29 @@ export default function LoginPage({
   onNavigateForgotPassword,
   authMessage,
   onClearAuthMessage,
+  signupSuccessEmail,
+  onSetSignupSuccessEmail,
+  emailVerificationCode,
+  emailVerificationEmail,
+  onResendSignupEmail,
+  resendingEmail,
 }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberSession, setRememberSession] = useState(false)
   const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
+
+  // Handlers for signup and verification flow
+  const handleDismissSignupScreen = () => {
+    onSetSignupSuccessEmail(null)
+  }
+
+  const handleDismissVerificationScreen = () => {
+    // Return to login after verification
+    window.sessionStorage.removeItem('signup_email')
+    onSetSignupSuccessEmail(null)
+  }
 
   const helpContent = {
     title: 'Help & Support',
@@ -105,6 +124,108 @@ export default function LoginPage({
   const handleSubmit = (e) => {
     e.preventDefault()
     onAuthSubmit(e)
+  }
+
+  // Show email verification screen if verification code exists
+  if (emailVerificationCode && emailVerificationEmail) {
+    return (
+      <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 text-white">
+        {/* Left Section: High-Impact Visual */}
+        <section className="hidden md:flex relative w-1/2 h-screen flex-col justify-between p-12 border-r border-slate-700/40">
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-slate-900/45 to-slate-900 z-10" />
+          <div className="absolute inset-0 bg-slate-950/30 z-10" />
+          <img
+            alt="Yamaha R1 Detail"
+            className="absolute inset-0 w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOYh1VE8GHnBGKvUvSZok4TgFf2UfOuQCaQZ1zDAYQLB-CkhLmw1mQ4zqEPTDQEUeQuoTFexJfBfonEo4ur4Hg8cBLp_o5Q5kCBDopOu9q1bSc3ZFFcwmdiqVz11uDgBIGg0xGPC2u-cL_cF9Md1LCiEpRfDeP6G4GS1k4R2zG6wcOb9rVXOVdNuu5KLvwh3YXr0SERtwaLZyAxXX3SMLIzgCWI_yCfGdz056mrFGBy7kXZmqVlY3XxcybIssMFPmGCwon5xXy0J8"
+          />
+
+          {/* Branding Overlay */}
+          <div className="relative z-20">
+            <div className="text-2xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-red-400 to-white bg-clip-text text-transparent">
+              Bykelink
+            </div>
+          </div>
+
+          <div className="relative z-20 space-y-4">
+            <h1 className="text-7xl font-bold tracking-tighter font-['Epilogue'] uppercase leading-none text-white">
+              Ignite <br /> The <span className="text-transparent bg-clip-text bg-linear-to-r from-red-300 to-white">Pulse</span>
+            </h1>
+            <p className="text-slate-300 font-['Manrope'] uppercase tracking-widest text-sm max-w-sm">
+              Experience the raw precision of engineering and the thrill of the open road.
+            </p>
+          </div>
+
+          {/* Red Ambient Glow */}
+          <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-red-500/20 to-transparent z-10 pointer-events-none" />
+        </section>
+
+        {/* Right Section: Email Verification */}
+        <section className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-24 relative bg-slate-900/70 backdrop-blur-sm">
+          <EmailVerificationPage
+            verificationCode={emailVerificationCode}
+            email={emailVerificationEmail}
+            onNavigateBack={handleDismissVerificationScreen}
+          />
+        </section>
+      </div>
+    )
+  }
+
+  // Show signup success screen if email was just submitted for signup
+  if (signupSuccessEmail) {
+    return (
+      <div className="min-h-screen flex flex-col md:flex-row overflow-hidden bg-linear-to-b from-slate-900 via-slate-800 to-slate-900 text-white">
+        {/* Left Section: High-Impact Visual */}
+        <section className="hidden md:flex relative w-1/2 h-screen flex-col justify-between p-12 border-r border-slate-700/40">
+          <div className="absolute inset-0 bg-linear-to-r from-transparent via-slate-900/45 to-slate-900 z-10" />
+          <div className="absolute inset-0 bg-slate-950/30 z-10" />
+          <img
+            alt="Yamaha R1 Detail"
+            className="absolute inset-0 w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOYh1VE8GHnBGKvUvSZok4TgFf2UfOuQCaQZ1zDAYQLB-CkhLmw1mQ4zqEPTDQEUeQuoTFexJfBfonEo4ur4Hg8cBLp_o5Q5kCBDopOu9q1bSc3ZFFcwmdiqVz11uDgBIGg0xGPC2u-cL_cF9Md1LCiEpRfDeP6G4GS1k4R2zG6wcOb9rVXOVdNuu5KLvwh3YXr0SERtwaLZyAxXX3SMLIzgCWI_yCfGdz056mrFGBy7kXZmqVlY3XxcybIssMFPmGCwon5xXy0J8"
+          />
+
+          {/* Branding Overlay */}
+          <div className="relative z-20">
+            <div className="text-2xl font-black italic tracking-tighter uppercase font-['Epilogue'] bg-linear-to-r from-red-400 to-white bg-clip-text text-transparent">
+              Bykelink
+            </div>
+          </div>
+
+          <div className="relative z-20 space-y-4">
+            <h1 className="text-7xl font-bold tracking-tighter font-['Epilogue'] uppercase leading-none text-white">
+              Ignite <br /> The <span className="text-transparent bg-clip-text bg-linear-to-r from-red-300 to-white">Pulse</span>
+            </h1>
+            <p className="text-slate-300 font-['Manrope'] uppercase tracking-widest text-sm max-w-sm">
+              Experience the raw precision of engineering and the thrill of the open road.
+            </p>
+          </div>
+
+          {/* Red Ambient Glow */}
+          <div className="absolute bottom-0 left-0 w-full h-1/3 bg-linear-to-t from-red-500/20 to-transparent z-10 pointer-events-none" />
+        </section>
+
+        {/* Right Section: Signup Success */}
+        <section className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-24 relative bg-slate-900/70 backdrop-blur-sm">
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={handleDismissSignupScreen}
+            className="absolute top-6 left-6 z-50 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-slate-400 hover:text-red-300 transition-colors md:top-8 md:left-8"
+            aria-label="Go back to login"
+          >
+            ← Back
+          </button>
+
+          <SignupSuccessScreen
+            email={signupSuccessEmail}
+            onResendEmail={onResendSignupEmail}
+            isResending={resendingEmail}
+          />
+        </section>
+      </div>
+    )
   }
 
   return (

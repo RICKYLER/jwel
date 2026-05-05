@@ -18,8 +18,6 @@ import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage'
 import EmailPasswordResetPage from './pages/EmailPasswordResetPage'
-import EmailVerificationPage from './pages/EmailVerificationPage'
-import SignupSuccessScreen from './pages/SignupSuccessScreen'
 import ServicePage from './pages/herosection/ServicePage'
 import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
@@ -1173,26 +1171,6 @@ function App() {
     </>
   )
 
-  // Handle email verification from link in email
-  // Skip if user is in signup flow - let SignupSuccessScreen handle verification with timeline
-  // Check sessionStorage directly to handle fresh page loads from email link
-  const savedSignupEmail = window.sessionStorage.getItem('signup_email')
-  const isSignupVerification = emailVerificationCode && emailVerificationEmail && savedSignupEmail
-  
-  if (emailVerificationCode && emailVerificationEmail && !isSignupVerification && !signupSuccessEmail) {
-    return withSecurityModal(
-      <EmailVerificationPage
-        verificationCode={emailVerificationCode}
-        email={emailVerificationEmail}
-        onNavigateBack={() => {
-          setEmailVerificationCode(null)
-          setEmailVerificationEmail(null)
-          navigateTo('/login')
-        }}
-      />
-    )
-  }
-
   // Handle email password reset from link in email
   if (emailPasswordResetCode) {
     return withSecurityModal(
@@ -1202,17 +1180,6 @@ function App() {
           setEmailPasswordResetCode(null)
           navigateTo('/login')
         }}
-      />
-    )
-  }
-
-  // Show signup success screen
-  if (signupSuccessEmail) {
-    return withSecurityModal(
-      <SignupSuccessScreen
-        email={signupSuccessEmail}
-        onResendEmail={handleResendSignupEmail}
-        isResending={resendingEmail}
       />
     )
   }
@@ -1258,6 +1225,12 @@ function App() {
         onNavigateForgotPassword={() => navigateTo('/forgot-password')}
         authMessage={authMessage}
         onClearAuthMessage={() => setAuthMessage(null)}
+        signupSuccessEmail={signupSuccessEmail}
+        onSetSignupSuccessEmail={setSignupSuccessEmail}
+        emailVerificationCode={emailVerificationCode}
+        emailVerificationEmail={emailVerificationEmail}
+        onResendSignupEmail={handleResendSignupEmail}
+        resendingEmail={resendingEmail}
       />,
     )
   }
