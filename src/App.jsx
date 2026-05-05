@@ -1033,13 +1033,8 @@ function App() {
         // Save to sessionStorage so verification link can restore signup screen
         window.sessionStorage.setItem('signup_email', signupEmail)
         
-        // Show loading screen and open Gmail
+        // Show loading screen (user will click "Check Email" to open Gmail)
         setSignupLoadingStage('loading')
-        
-        // Open Gmail after brief delay for animation
-        setTimeout(() => {
-          window.open('https://gmail.com', 'gmail_window', 'width=1200,height=800')
-        }, 1500)
         
         setAuthForm({
           fullName: '',
@@ -1254,7 +1249,11 @@ function App() {
 
   // Handle email verification from link in email
   // Skip if user is in signup flow - let SignupSuccessScreen handle verification with timeline
-  if (emailVerificationCode && emailVerificationEmail && !signupSuccessEmail) {
+  // Check sessionStorage directly to handle fresh page loads from email link
+  const savedSignupEmail = window.sessionStorage.getItem('signup_email')
+  const isSignupVerification = emailVerificationCode && emailVerificationEmail && savedSignupEmail
+  
+  if (emailVerificationCode && emailVerificationEmail && !isSignupVerification && !signupSuccessEmail) {
     return withSecurityModal(
       <EmailVerificationPage
         verificationCode={emailVerificationCode}

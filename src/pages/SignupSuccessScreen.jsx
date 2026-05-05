@@ -189,20 +189,28 @@ export default function SignupSuccessScreen({
             <div className="w-16 h-16 rounded-full border-4 border-blue-500/30 border-t-blue-500 mx-auto"></div>
           </div>
           
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Setting up your account</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Email Sent Successfully!</h2>
           
           <p className="text-white/70 mb-8 text-lg">
-            Opening Gmail so you can verify your email...
+            We've sent a verification email to your inbox
           </p>
           
-          <div className="space-y-4">
-            <p className="text-white/60">📧 Check your inbox for verification email</p>
+          <div className="space-y-4 mb-8">
+            <p className="text-white/60">📧 Check your inbox for the verification email</p>
             <p className="text-white/60">🔗 Click the verification link</p>
             <p className="text-white/60">✓ Your account will be verified automatically</p>
           </div>
           
-          <div className="mt-8 pt-8 border-t border-white/10">
-            <p className="text-white/50 text-sm">This window will refresh once verified</p>
+          <button
+            type="button"
+            onClick={() => window.open('https://gmail.com', '_blank')}
+            className="w-full bg-linear-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-3 md:py-4 rounded-xl font-bold uppercase tracking-wider text-sm md:text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-4"
+          >
+            📧 Check Email (Open Gmail)
+          </button>
+          
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <p className="text-white/50 text-sm">This window will update once your email is verified</p>
           </div>
         </div>
       </div>
