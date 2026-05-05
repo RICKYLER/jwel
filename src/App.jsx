@@ -36,6 +36,7 @@ import PasswordChangeRequiredModal from './pages/superadmin/components/PasswordC
 import SuperAdminPage from './pages/superadmin/SuperAdminPage'
 import GlobalLoadingScreen from './components/GlobalLoadingScreen'
 import ToastNotification from './components/ToastNotification'
+import EmailVerifiedModal from './components/EmailVerifiedModal'
 import { ToastProvider } from './context/ToastContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { auth, db, functions, googleProvider } from './firebase'
@@ -375,6 +376,7 @@ function App() {
   const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
   const [signupSuccessUser, setSignupSuccessUser] = useState(null)
   const [resendingEmail, setResendingEmail] = useState(false)
+  const [showEmailVerifiedModal, setShowEmailVerifiedModal] = useState(false)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -414,6 +416,17 @@ function App() {
 
     return unsubscribe
   }, [])
+
+  // Check for email verification success when navigating to customer dashboard
+  useEffect(() => {
+    if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
+      const emailVerifiedFlag = window.sessionStorage.getItem('email_verified_success')
+      if (emailVerifiedFlag) {
+        setShowEmailVerifiedModal(true)
+        window.sessionStorage.removeItem('email_verified_success')
+      }
+    }
+  }, [currentPath, currentUser, accessProfile.role])
 
   useEffect(() => {
     let isSubscribed = true
@@ -1372,19 +1385,24 @@ function App() {
       setCurrentPath(`/customer/product/${productId}`)
     }
     return withSecurityModal(
-      <CustomerShowroomPage
-        currentUser={currentUser}
-        onNavigateHome={() => goToHomeSection('home', 'Home')}
-        onSignOut={handleSignOut}
-        onNavigateToProduct={handleNavigateToProduct}
-        onNavigateToService={() => navigateTo('/customer/service')}
-        onNavigateToFinancing={() => navigateTo('/financing')}
-        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
-        onNavigateToMessages={() => navigateTo('/customer/messages')}
-        onNavigateToProfile={() => navigateTo('/customer/profile')}
-        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
-        onNavigateBack={() => goToHomeSection('home', 'Home')}
-      />, 
+      <>
+        {showEmailVerifiedModal && (
+          <EmailVerifiedModal onClose={() => setShowEmailVerifiedModal(false)} />
+        )}
+        <CustomerShowroomPage
+          currentUser={currentUser}
+          onNavigateHome={() => goToHomeSection('home', 'Home')}
+          onSignOut={handleSignOut}
+          onNavigateToProduct={handleNavigateToProduct}
+          onNavigateToService={() => navigateTo('/customer/service')}
+          onNavigateToFinancing={() => navigateTo('/financing')}
+          onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+          onNavigateToMessages={() => navigateTo('/customer/messages')}
+          onNavigateToProfile={() => navigateTo('/customer/profile')}
+          onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
+          onNavigateBack={() => goToHomeSection('home', 'Home')}
+        />
+      </>, 
     )
   }
 
