@@ -377,6 +377,9 @@ function App() {
   const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
   const [signupSuccessUser, setSignupSuccessUser] = useState(null)
   const [resendingEmail, setResendingEmail] = useState(false)
+  const [verificationStage, setVerificationStage] = useState(1) // 1=Email Sent, 2=Link Clicked, 3=Verified
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -389,10 +392,46 @@ function App() {
     if (verificationCode && verificationEmail) {
       setEmailVerificationCode(verificationCode)
       setEmailVerificationEmail(decodeURIComponent(verificationEmail))
+      // Update timeline to show "Click Link" stage
+      setVerificationStage(2)
       // Clean up URL to avoid re-processing on every render
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
+
+  // Auto-verify email when URL parameters detected and user is on SignupSuccessScreen
+  useEffect(() => {
+    const autoVerifyEmail = async () => {
+      if (!emailVerificationCode || !emailVerificationEmail || !signupSuccessEmail) return
+      
+      // Only auto-verify if the email matches the signup email
+      if (emailVerificationEmail.toLowerCase() !== signupSuccessEmail.toLowerCase()) return
+      
+      // Prevent duplicate verification attempts
+      if (isVerifying || isVerified) return
+
+      setIsVerifying(true)
+      
+      try {
+        const verifyEmailCodeFn = httpsCallable(functions, 'verifyEmailCode')
+        await verifyEmailCodeFn({
+          email: emailVerificationEmail,
+          code: emailVerificationCode,
+        })
+        
+        // Success! Update to verified stage
+        setVerificationStage(3)
+        setIsVerified(true)
+        console.log('[AUTO-VERIFY] Email verified successfully')
+      } catch (error) {
+        console.error('[AUTO-VERIFY] Verification failed:', error?.message)
+        setIsVerifying(false)
+        // Don't update stage to allow user to retry
+      }
+    }
+
+    autoVerifyEmail()
+  }, [emailVerificationCode, emailVerificationEmail, signupSuccessEmail, isVerifying, isVerified])
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -802,6 +841,11 @@ function App() {
     setAccessProfile(defaultAccessProfile)
     setSignupSuccessEmail(null)
     setSignupSuccessUser(null)
+    setVerificationStage(1)
+    setIsVerifying(false)
+    setIsVerified(false)
+    setEmailVerificationCode(null)
+    setEmailVerificationEmail(null)
   }
 
   const resolveRoleAfterLogin = async (user, requestedRole) => {
@@ -1180,7 +1224,8 @@ function App() {
   )
 
   // Handle email verification from link in email
-  if (emailVerificationCode && emailVerificationEmail) {
+  // Skip if user is in signup flow - let SignupSuccessScreen handle verification with timeline
+  if (emailVerificationCode && emailVerificationEmail && !signupSuccessEmail) {
     return withSecurityModal(
       <EmailVerificationPage
         verificationCode={emailVerificationCode}
@@ -1215,6 +1260,9 @@ function App() {
         onContinue={handleDismissSignupSuccess}
         onResendEmail={handleResendSignupEmail}
         isResending={resendingEmail}
+        verificationStage={verificationStage}
+        isVerifying={isVerifying}
+        isVerified={isVerified}
       />
     )
   }
