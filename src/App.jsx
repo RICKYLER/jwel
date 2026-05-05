@@ -384,12 +384,23 @@ function App() {
   const completeAccessFlowRef = useRef(null)
 
   // Extract verification code and email from URL parameters
+  // Also restore signup state from sessionStorage if available
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const verificationCode = params.get('verification')
     const verificationEmail = params.get('email')
     
     if (verificationCode && verificationEmail) {
+      // Check if there's a saved signup session
+      const savedSignupEmail = window.sessionStorage.getItem('signup_email')
+      const savedSignupEmailToVerify = decodeURIComponent(verificationEmail).toLowerCase()
+      
+      // If this email matches a saved signup, restore the signup screen
+      if (savedSignupEmail && savedSignupEmail.toLowerCase() === savedSignupEmailToVerify) {
+        console.log('[RESTORE] Restoring signup session for email:', savedSignupEmail)
+        setSignupSuccessEmail(savedSignupEmail)
+      }
+      
       setEmailVerificationCode(verificationCode)
       setEmailVerificationEmail(decodeURIComponent(verificationEmail))
       // Update timeline to show "Click Link" stage
@@ -846,6 +857,9 @@ function App() {
     setIsVerified(false)
     setEmailVerificationCode(null)
     setEmailVerificationEmail(null)
+    
+    // Clear signup session storage
+    window.sessionStorage.removeItem('signup_email')
   }
 
   const resolveRoleAfterLogin = async (user, requestedRole) => {
@@ -1010,8 +1024,13 @@ function App() {
         
         // Store user and show success screen, but DON'T sign out yet
         // This allows user to retry resending email if rate-limited
-        setSignupSuccessEmail(authForm.email.trim().toLowerCase())
+        const signupEmail = authForm.email.trim().toLowerCase()
+        setSignupSuccessEmail(signupEmail)
         setSignupSuccessUser(credentials.user)
+        
+        // Save to sessionStorage so verification link can restore signup screen
+        window.sessionStorage.setItem('signup_email', signupEmail)
+        
         setAuthForm({
           fullName: '',
           phone: '',
