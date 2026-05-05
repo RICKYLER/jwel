@@ -152,16 +152,12 @@ export default function SignupSuccessScreen({
   signupLoadingStage = null,
   onLoadingComplete = null,
 }) {
-  // Auto-complete loading stage after animation
+  // Dismiss loading screen when email verification completes
   React.useEffect(() => {
-    if (signupLoadingStage === 'loading') {
-      const timer = setTimeout(() => {
-        onLoadingComplete?.()
-      }, 2500)
-      return () => clearTimeout(timer)
+    if (isVerified && signupLoadingStage === 'loading') {
+      onLoadingComplete?.()
     }
-  }, [signupLoadingStage, onLoadingComplete])
-
+  }, [isVerified, signupLoadingStage, onLoadingComplete])
   // Show loading screen
   if (signupLoadingStage === 'loading') {
     return (
@@ -203,7 +199,13 @@ export default function SignupSuccessScreen({
           
           <button
             type="button"
-            onClick={() => window.open('https://gmail.com', '_blank')}
+            onClick={() => {
+              window.open('https://gmail.com', '_blank')
+              // Dismiss loading screen after user clicks
+              setTimeout(() => {
+                onLoadingComplete?.()
+              }, 500)
+            }}
             className="w-full bg-linear-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-3 md:py-4 rounded-xl font-bold uppercase tracking-wider text-sm md:text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 mb-4"
           >
             📧 Check Email (Open Gmail)
