@@ -377,73 +377,23 @@ function App() {
   const [signupSuccessEmail, setSignupSuccessEmail] = useState(null)
   const [signupSuccessUser, setSignupSuccessUser] = useState(null)
   const [resendingEmail, setResendingEmail] = useState(false)
-  const [verificationStage, setVerificationStage] = useState(1) // 1=Email Sent, 2=Link Clicked, 3=Verified
-  const [isVerifying, setIsVerifying] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
-  const [signupLoadingStage, setSignupLoadingStage] = useState(null) // 'loading' or null - controls post-signup flow
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
   // Extract verification code and email from URL parameters
-  // Also restore signup state from sessionStorage if available
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const verificationCode = params.get('verification')
     const verificationEmail = params.get('email')
     
     if (verificationCode && verificationEmail) {
-      // Check if there's a saved signup session
-      const savedSignupEmail = window.sessionStorage.getItem('signup_email')
-      const savedSignupEmailToVerify = decodeURIComponent(verificationEmail).toLowerCase()
-      
-      // If this email matches a saved signup, restore the signup screen
-      if (savedSignupEmail && savedSignupEmail.toLowerCase() === savedSignupEmailToVerify) {
-        console.log('[RESTORE] Restoring signup session for email:', savedSignupEmail)
-        setSignupSuccessEmail(savedSignupEmail)
-      }
-      
       setEmailVerificationCode(verificationCode)
       setEmailVerificationEmail(decodeURIComponent(verificationEmail))
-      // Update timeline to show "Click Link" stage
-      setVerificationStage(2)
       // Clean up URL to avoid re-processing on every render
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }, [])
 
-  // Auto-verify email when URL parameters detected and user is on SignupSuccessScreen
-  useEffect(() => {
-    const autoVerifyEmail = async () => {
-      if (!emailVerificationCode || !emailVerificationEmail || !signupSuccessEmail) return
-      
-      // Only auto-verify if the email matches the signup email
-      if (emailVerificationEmail.toLowerCase() !== signupSuccessEmail.toLowerCase()) return
-      
-      // Prevent duplicate verification attempts
-      if (isVerifying || isVerified) return
-
-      setIsVerifying(true)
-      
-      try {
-        const verifyEmailCodeFn = httpsCallable(functions, 'verifyEmailCode')
-        await verifyEmailCodeFn({
-          email: emailVerificationEmail,
-          code: emailVerificationCode,
-        })
-        
-        // Success! Update to verified stage
-        setVerificationStage(3)
-        setIsVerified(true)
-        console.log('[AUTO-VERIFY] Email verified successfully')
-      } catch (error) {
-        console.error('[AUTO-VERIFY] Verification failed:', error?.message)
-        setIsVerifying(false)
-        // Don't update stage to allow user to retry
-      }
-    }
-
-    autoVerifyEmail()
-  }, [emailVerificationCode, emailVerificationEmail, signupSuccessEmail, isVerifying, isVerified])
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -843,27 +793,6 @@ function App() {
     }
   }
 
-  const handleDismissSignupSuccess = async () => {
-    // Sign out user after they dismiss the success screen
-    try {
-      await signOut(auth)
-    } catch (error) {
-      console.warn('Error signing out after signup:', error)
-    }
-    setAccessProfile(defaultAccessProfile)
-    setSignupSuccessEmail(null)
-    setSignupSuccessUser(null)
-    setVerificationStage(1)
-    setIsVerifying(false)
-    setIsVerified(false)
-    setEmailVerificationCode(null)
-    setEmailVerificationEmail(null)
-    
-    // Clear signup session storage and loading state
-    window.sessionStorage.removeItem('signup_email')
-    setSignupLoadingStage(null)
-  }
-
   const resolveRoleAfterLogin = async (user, requestedRole) => {
     const syncUserAccess = httpsCallable(functions, 'syncUserAccess')
 
@@ -1032,9 +961,6 @@ function App() {
         
         // Save to sessionStorage so verification link can restore signup screen
         window.sessionStorage.setItem('signup_email', signupEmail)
-        
-        // Show loading screen (user will click "Check Email" to open Gmail)
-        setSignupLoadingStage('loading')
         
         setAuthForm({
           fullName: '',
@@ -1285,14 +1211,8 @@ function App() {
     return withSecurityModal(
       <SignupSuccessScreen
         email={signupSuccessEmail}
-        onContinue={handleDismissSignupSuccess}
         onResendEmail={handleResendSignupEmail}
         isResending={resendingEmail}
-        verificationStage={verificationStage}
-        isVerifying={isVerifying}
-        isVerified={isVerified}
-        signupLoadingStage={signupLoadingStage}
-        onLoadingComplete={() => setSignupLoadingStage(null)}
       />
     )
   }
