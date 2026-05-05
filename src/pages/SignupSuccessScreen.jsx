@@ -3,6 +3,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { CircularProgress } from '@mui/material'
+import React from 'react'
 import './ForgotPasswordPage.css'
 
 const Timeline = ({ currentStage, isVerifying, isVerified }) => {
@@ -148,7 +149,65 @@ export default function SignupSuccessScreen({
   verificationStage = 1,
   isVerifying = false,
   isVerified = false,
+  signupLoadingStage = null,
+  onLoadingComplete = null,
 }) {
+  // Auto-complete loading stage after animation
+  React.useEffect(() => {
+    if (signupLoadingStage === 'loading') {
+      const timer = setTimeout(() => {
+        onLoadingComplete?.()
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
+  }, [signupLoadingStage, onLoadingComplete])
+
+  // Show loading screen
+  if (signupLoadingStage === 'loading') {
+    return (
+      <div className="forgot-password-shell">
+        <style>{`
+          @keyframes loadingFade {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+          
+          @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+          }
+          
+          .loading-dots::after {
+            animation: dots 1.5s infinite;
+          }
+        `}</style>
+        
+        <div className="enhanced-panel rounded-2xl p-8 md:p-10 shadow-2xl text-center">
+          <div className="mb-8 animate-spin">
+            <div className="w-16 h-16 rounded-full border-4 border-blue-500/30 border-t-blue-500 mx-auto"></div>
+          </div>
+          
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Setting up your account</h2>
+          
+          <p className="text-white/70 mb-8 text-lg">
+            Opening Gmail so you can verify your email...
+          </p>
+          
+          <div className="space-y-4">
+            <p className="text-white/60">📧 Check your inbox for verification email</p>
+            <p className="text-white/60">🔗 Click the verification link</p>
+            <p className="text-white/60">✓ Your account will be verified automatically</p>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-white/10">
+            <p className="text-white/50 text-sm">This window will refresh once verified</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="forgot-password-shell">
       <style>{`

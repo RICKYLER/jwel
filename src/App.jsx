@@ -380,6 +380,7 @@ function App() {
   const [verificationStage, setVerificationStage] = useState(1) // 1=Email Sent, 2=Link Clicked, 3=Verified
   const [isVerifying, setIsVerifying] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
+  const [signupLoadingStage, setSignupLoadingStage] = useState(null) // 'loading' or null - controls post-signup flow
   const authPersonaRef = useRef(authPersona)
   const completeAccessFlowRef = useRef(null)
 
@@ -858,8 +859,9 @@ function App() {
     setEmailVerificationCode(null)
     setEmailVerificationEmail(null)
     
-    // Clear signup session storage
+    // Clear signup session storage and loading state
     window.sessionStorage.removeItem('signup_email')
+    setSignupLoadingStage(null)
   }
 
   const resolveRoleAfterLogin = async (user, requestedRole) => {
@@ -1030,6 +1032,14 @@ function App() {
         
         // Save to sessionStorage so verification link can restore signup screen
         window.sessionStorage.setItem('signup_email', signupEmail)
+        
+        // Show loading screen and open Gmail
+        setSignupLoadingStage('loading')
+        
+        // Open Gmail after brief delay for animation
+        setTimeout(() => {
+          window.open('https://gmail.com', 'gmail_window', 'width=1200,height=800')
+        }, 1500)
         
         setAuthForm({
           fullName: '',
@@ -1282,6 +1292,8 @@ function App() {
         verificationStage={verificationStage}
         isVerifying={isVerifying}
         isVerified={isVerified}
+        signupLoadingStage={signupLoadingStage}
+        onLoadingComplete={() => setSignupLoadingStage(null)}
       />
     )
   }
