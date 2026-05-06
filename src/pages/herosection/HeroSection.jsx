@@ -1026,27 +1026,6 @@ export default function HeroSection({
 
       <footer className="border-t border-white/10 bg-neutral-950" data-reveal="up" data-reveal-delay="100">
         <div className="mx-auto max-w-screen-2xl px-6 py-14 lg:px-8">
-          <div className="mb-10 flex flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/40 p-5 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between" data-reveal="up" data-reveal-delay="160">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white font-['Epilogue']">Stay Connected</p>
-              <p className="mt-2 text-sm text-slate-300">Get updates on new models, promos, and service advisories.</p>
-            </div>
-              <div className="flex w-full max-w-md gap-2">
-              <input
-                type="email"
-                placeholder="Your Email"
-                className="flex-1 rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-red-600"
-              />
-              <button
-                type="button"
-                className="button button--primary inline-flex items-center justify-center rounded-xl px-4 text-white"
-                aria-label="Send newsletter email"
-              >
-                <SendRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
-              </button>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 gap-10 md:grid-cols-4" data-reveal="up" data-reveal-delay="210">
           <div className="space-y-4">
             <div className="text-2xl font-black text-neutral-100 font-['Epilogue']">BYKELINK</div>

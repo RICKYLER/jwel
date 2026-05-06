@@ -7,6 +7,7 @@ import bykelinkLogo from '../assets/bykelinklogo.png'
 export default function NavHeader({
   currentUser,
   customerName,
+  activeNav,
   navLinks,
   onLogoClick,
   onNavigateClick,
@@ -102,6 +103,16 @@ export default function NavHeader({
           background: rgba(255,85,64,0.08);
           border-radius: 6px;
           transition: opacity 0.25s ease;
+        }
+
+        /* Active nav link */
+        .nav-link.active {
+          color: #ff5540 !important;
+        }
+
+        .nav-link.active::before {
+          width: 100%;
+          background: linear-gradient(90deg, #ff5540, #ff5540);
         }
 
         /* User buttons in header */
@@ -220,6 +231,17 @@ export default function NavHeader({
           width: calc(100% - 2rem);
         }
 
+        /* Active mobile nav link */
+        .mobile-nav-link.active {
+          color: #ff5540 !important;
+          background: rgba(255,85,64,0.08);
+        }
+
+        .mobile-nav-link.active::before {
+          width: calc(100% - 2rem);
+          background: #ff5540;
+        }
+
         /* Mobile user/action buttons (full-width) */
         .mobile-get-started-btn {
           width: 100%;
@@ -274,12 +296,15 @@ export default function NavHeader({
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-7 md:flex">
             {navLinks.map((link) => {
+              const isActive = activeNav === link.label || link.active
               return (
                 <a
                   key={link.label}
                   href={link.href}
                   onClick={(event) => handleNavClick(event, link)}
-                  className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 border-transparent text-neutral-400 nav-link`}
+                  className={`border-b-2 pb-1 text-sm font-bold uppercase tracking-tight font-['Epilogue'] transition-colors duration-300 border-transparent text-neutral-400 nav-link ${
+                    isActive ? 'active' : ''
+                  }`}
                 >
                   {link.label}
                 </a>
@@ -335,16 +360,21 @@ export default function NavHeader({
           className={`mobile-menu-panel fixed top-16 left-0 h-[calc(100vh-64px)] w-80 max-w-[calc(100vw-24px)] bg-slate-950/98 backdrop-blur-xl border-r border-white/10 shadow-2xl md:hidden overflow-y-auto z-50 ${isMenuOpen ? 'is-open' : ''}`}
         >
           <div className="flex flex-col gap-3 p-4">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                onClick={(event) => handleNavClick(event, link)}
-                className="rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white transition-all duration-200 mobile-nav-link"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = activeNav === link.label || link.active
+              return (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={(event) => handleNavClick(event, link)}
+                  className={`rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white transition-all duration-200 mobile-nav-link ${
+                    isActive ? 'active' : ''
+                  }`}
+                >
+                  {link.label}
+                </a>
+              )
+            })}
 
             <div className="border-t border-white/10 pt-3 mt-3">
               {currentUser ? (

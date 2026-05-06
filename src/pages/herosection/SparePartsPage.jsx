@@ -3,6 +3,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore'
 import CallRoundedIcon from '@mui/icons-material/CallRounded'
 import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
@@ -89,6 +90,8 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
   const [isInventoryLoading, setIsInventoryLoading] = useState(true)
   const [selectedModelId, setSelectedModelId] = useState('')
   const [activeImage, setActiveImage] = useState(0)
+  const [isImageExpandOpen, setIsImageExpandOpen] = useState(false)
+  const [expandedImageIndex, setExpandedImageIndex] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [filterCategory, setFilterCategory] = useState('all')
@@ -234,21 +237,23 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
       />
 
       <main className="pt-24">
-        <section className="relative flex min-h-88 items-center overflow-hidden bg-linear-to-r from-red-600 via-white to-slate-800">
-          <div className="absolute inset-0 opacity-20">
+        <section className="relative flex min-h-96 items-center overflow-hidden bg-linear-to-r from-red-980 via-red-800 to-slate-600">
+          <div className="absolute inset-0 opacity-30">
             <img
               alt={selectedModel?.label || 'Spare parts highlight'}
               className="h-full w-full object-cover"
               src={primaryImage}
             />
           </div>
+          {/* Dark overlay for contrast */}
+          <div className="absolute inset-0 bg-black/40" />
           <div className="relative z-10 mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl">
-              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-red-100">Genuine Spare Parts</p>
-              <h1 className="mb-4 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl">
-                Keep Every Ride <span className="bg-linear-to-r from-red-100 to-white bg-clip-text text-transparent">Factory Ready</span>
+              <p className="mb-2 text-sm font-bold uppercase tracking-widest text-red-200">Genuine Spare Parts</p>
+              <h1 className="mb-4 text-4xl font-black leading-tight text-white sm:text-5xl lg:text-6xl">
+                Keep Every Ride <span className="bg-linear-to-r from-yellow-300 to-white bg-clip-text text-transparent">Factory Ready</span>
               </h1>
-              <p className="max-w-2xl text-base text-slate-100 sm:text-lg">
+              <p className="max-w-2xl text-base text-white/90 sm:text-lg">
                 Find current parts inventory, compare compatible items, and review stock information through the same polished catalog experience as our customer showroom.
               </p>
             </div>
@@ -283,6 +288,10 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   <div className="absolute bottom-5 right-5 flex gap-2">
                     <button
                       type="button"
+                      onClick={() => {
+                        setIsImageExpandOpen(true)
+                        setExpandedImageIndex(activeImage)
+                      }}
                       className="rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-red-600"
                       aria-label="Expand image"
                     >
@@ -341,7 +350,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                 <button
                   type="button"
                   onClick={goToLoginPage}
-                  className="w-full rounded-full bg-linear-to-r from-red-600 to-white py-4 text-lg font-bold text-white shadow-xl shadow-red-900/20 transition-transform active:scale-95 hover:from-red-700 hover:to-slate-100"
+                  className="w-full rounded-xl bg-linear-to-r from-red-600 to-black-700 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-red-600/30 transition-transform hover:from-red-900 hover:to-gray-500 active:scale-95"
                 >
                   Check More Items
                 </button>
@@ -454,7 +463,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         <button
                           type="button"
                           onClick={() => handleModelSelect(model.id)}
-                          className="w-full rounded-xl bg-linear-to-r from-red-600 to-white py-3 text-sm font-bold uppercase tracking-[0.24em] text-white transition-all hover:from-red-700 hover:to-slate-100"
+                          className="w-full rounded-xl bg-linear-to-r from-red-600 to-black-700 py-4 text-sm font-black uppercase tracking-[0.2em] text-white shadow-lg shadow-red-600/30 transition-transform hover:from-red-900 hover:to-gray-500 active:scale-95"
                         >
                           View Item
                         </button>
@@ -481,7 +490,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                   </button>
                   
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
+                    <button   
                       key={page}
                       type="button"
                       onClick={() => handlePageChange(page)}
@@ -489,7 +498,7 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
                         currentPage === page
                           ? 'border-red-600 bg-red-600 text-white'
                           : 'border-slate-600 text-white hover:border-red-600 hover:bg-red-600/10'
-                      }`}
+                      }`}             
                       aria-label={`Page ${page}`}
                       aria-current={currentPage === page ? 'page' : undefined}
                     >
@@ -597,11 +606,84 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
           <div className="text-sm uppercase tracking-wide text-slate-400">
             © 2024 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </div>
-          <div className="flex gap-6">
-            <span className="text-xs font-bold tracking-[0.2em] text-neutral-700">REVVING YOUR HEART</span>
-          </div>
         </div>
       </footer>
+
+      {isImageExpandOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[85vh] max-w-4xl w-full flex flex-col">
+            {/* Main Image */}
+            <div className="relative flex-1 overflow-hidden rounded-2xl bg-black">
+              <img
+                src={selectedModel?.gallery?.[expandedImageIndex] || selectedModel?.gallery?.[0]}
+                alt={selectedModel?.label}
+                className="h-full w-full object-contain"
+              />
+              
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsImageExpandOpen(false)}
+                className="absolute top-4 right-4 rounded-full bg-red-600 p-2 text-white transition-colors hover:bg-red-700"
+                aria-label="Close image"
+              >
+                <CloseRoundedIcon sx={{ fontSize: 24 }} />
+              </button>
+
+              {/* Previous Button */}
+              {selectedModel?.gallery && selectedModel.gallery.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedImageIndex((prev) => (prev === 0 ? selectedModel.gallery.length - 1 : prev - 1))}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-red-600"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeftRoundedIcon sx={{ fontSize: 28 }} />
+                </button>
+              )}
+
+              {/* Next Button */}
+              {selectedModel?.gallery && selectedModel.gallery.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setExpandedImageIndex((prev) => (prev === selectedModel.gallery.length - 1 ? 0 : prev + 1))}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-slate-950/70 p-3 text-white transition-colors hover:bg-red-600"
+                  aria-label="Next image"
+                >
+                  <ChevronRightRoundedIcon sx={{ fontSize: 28 }} />
+                </button>
+              )}
+
+              {/* Image Counter */}
+              {selectedModel?.gallery && selectedModel.gallery.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-slate-950/70 px-4 py-2 text-sm font-bold text-white">
+                  {expandedImageIndex + 1} / {selectedModel.gallery.length}
+                </div>
+              )}
+            </div>
+
+            {/* Gallery Thumbnails */}
+            {selectedModel?.gallery && selectedModel.gallery.length > 1 && (
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                {selectedModel.gallery.map((image, index) => (
+                  <button
+                    key={`expanded-${index}`}
+                    type="button"
+                    onClick={() => setExpandedImageIndex(index)}
+                    className={`shrink-0 h-16 w-16 overflow-hidden rounded-lg border-2 transition-all ${
+                      expandedImageIndex === index
+                        ? 'border-red-600 ring-2 ring-red-600/50'
+                        : 'border-slate-600 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={image} alt={`Thumbnail ${index + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <ChatBox currentUser={currentUser} />
     </div>
