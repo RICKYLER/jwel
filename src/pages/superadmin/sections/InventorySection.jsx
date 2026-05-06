@@ -1303,10 +1303,11 @@ export default function InventorySection({
                   >
                     + Add Specification
                   </button>
-                  {/* Technical Specification Modal */}
-                  {isSpecModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg">
+                </label>
+                {/* Technical Specification Modal */}
+                {isSpecModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={e => e.stopPropagation()}>
+                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg" onClick={e => e.stopPropagation()}>
                         <h2 className="text-lg font-bold mb-4">Add Technical Specification</h2>
                         <label className="block mb-4">
                           <span className="block text-xs font-bold mb-1">Category</span>
@@ -1389,38 +1390,37 @@ export default function InventorySection({
                       </div>
                     </div>
                   )}
-                  {/* Group and display Technical Specifications by category */}
-                  <div className="space-y-4">
-                    {Object.entries(
-                      (itemForm.specs || []).reduce((acc, spec) => {
-                        if (!spec.category) return acc;
-                        if (!acc[spec.category]) acc[spec.category] = [];
-                        acc[spec.category].push(spec);
-                        return acc;
-                      }, {})
-                    ).map(([category, specs]) => (
-                      <div key={category}>
-                        <div className="font-bold text-xs uppercase tracking-widest mb-1">{category}</div>
-                        <ul className="ml-2 space-y-1">
-                          {specs.map((spec, idx) => (
-                            <li key={idx} className="flex items-center gap-2">
-                              <span className="font-semibold">{spec.label}</span>
-                              <span className="text-white/70">{spec.value}</span>
-                              <button
-                                type="button"
-                                className="text-red-500 font-bold ml-2 text-xs"
-                                onClick={() => setItemForm(prev => ({
-                                  ...prev,
-                                  specs: prev.specs.filter((s, i) => !(s.category === category && s.label === spec.label && s.value === spec.value && i === prev.specs.findIndex(ss => ss === spec)))
-                                }))}
-                              >Remove</button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </label>
+                {/* Group and display Technical Specifications by category */}
+                <div className="space-y-4">
+                  {Object.entries(
+                    (itemForm.specs || []).reduce((acc, spec) => {
+                      if (!spec.category) return acc;
+                      if (!acc[spec.category]) acc[spec.category] = [];
+                      acc[spec.category].push(spec);
+                      return acc;
+                    }, {})
+                  ).map(([category, specs]) => (
+                    <div key={category}>
+                      <div className="font-bold text-xs uppercase tracking-widest mb-1">{category}</div>
+                      <ul className="ml-2 space-y-1">
+                        {specs.map((spec, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <span className="font-semibold">{spec.label}</span>
+                            <span className="text-white/70">{spec.value}</span>
+                            <button
+                              type="button"
+                              className="text-red-500 font-bold ml-2 text-xs"
+                              onClick={() => setItemForm(prev => ({
+                                ...prev,
+                                specs: prev.specs.filter((s, i) => !(s.category === category && s.label === spec.label && s.value === spec.value && i === prev.specs.findIndex(ss => ss === spec)))
+                              }))}
+                            >Remove</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Standard Equipment - Vertical Section */}
@@ -2372,10 +2372,11 @@ export default function InventorySection({
                     >
                       + Add Specification
                     </button>
+                  </label>
                   {/* Technical Specification Modal for Edit Item */}
                   {isSpecModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={e => e.stopPropagation()}>
+                      <div className="bg-neutral-900 rounded-lg p-6 w-full max-w-md shadow-lg" onClick={e => e.stopPropagation()}>
                         <h2 className="text-lg font-bold mb-4">Add Technical Specification</h2>
                         <label className="block mb-4">
                           <span className="block text-xs font-bold mb-1">Category</span>
@@ -2520,8 +2521,7 @@ export default function InventorySection({
                       </div>
                     ))}
                   </div>
-                </label>
-              </div>
+                </div>
               </>
               )}
 
