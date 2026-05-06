@@ -207,10 +207,6 @@ export default function UserManagementSection({
     setConfirmAction({
       type: 'edit',
       user,
-      onConfirm: () => {
-        onEditUser?.(user)
-        setConfirmAction(null)
-      },
     })
   }
 
@@ -218,10 +214,6 @@ export default function UserManagementSection({
     setConfirmAction({
       type: 'archive',
       user,
-      onConfirm: () => {
-        onArchiveUser?.(user)
-        setConfirmAction(null)
-      },
     })
   }
 
@@ -229,11 +221,33 @@ export default function UserManagementSection({
     setConfirmAction({
       type: 'delete',
       user,
-      onConfirm: () => {
-        onDeleteArchivedUser?.(user)
-        setConfirmAction(null)
-      },
     })
+  }
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction || confirmAction.isLoading) {
+      return
+    }
+
+    if (confirmAction.type === 'edit') {
+      onEditUser?.(confirmAction.user)
+      setConfirmAction(null)
+      return
+    }
+
+    setConfirmAction((current) => (current ? { ...current, isLoading: true } : current))
+
+    try {
+      if (confirmAction.type === 'archive') {
+        await onArchiveUser?.(confirmAction.user)
+      }
+
+      if (confirmAction.type === 'delete') {
+        await onDeleteArchivedUser?.(confirmAction.user)
+      }
+    } finally {
+      setConfirmAction(null)
+    }
   }
 
   const handleExportVisibleUsers = () => {
@@ -287,11 +301,21 @@ export default function UserManagementSection({
           confirmAction?.type === 'edit' ? 'Edit' : 
           'Confirm'
         }
+        loadingText={
+          confirmAction?.type === 'archive' ? 'Archiving User Account...' :
+          confirmAction?.type === 'delete' ? 'Deleting User Account...' :
+          'Processing...'
+        }
         cancelText="Cancel"
         isDangerous={confirmAction?.type === 'delete' || confirmAction?.type === 'archive'}
         isDarkMode={isDarkMode}
-        onConfirm={() => confirmAction?.onConfirm()}
-        onCancel={() => setConfirmAction(null)}
+        isLoading={!!confirmAction?.isLoading}
+        onConfirm={handleConfirmAction}
+        onCancel={() => {
+          if (!confirmAction?.isLoading) {
+            setConfirmAction(null)
+          }
+        }}
       />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

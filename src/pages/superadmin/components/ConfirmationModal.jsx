@@ -9,6 +9,7 @@ export default function ConfirmationModal({
   title,
   message,
   confirmText = 'Delete',
+  loadingText = 'Processing...',
   cancelText = 'Cancel',
   onConfirm,
   onCancel,
@@ -29,6 +30,14 @@ export default function ConfirmationModal({
 
   if (!open) return null
 
+  const handleCancel = () => {
+    if (isLoading) {
+      return
+    }
+
+    onCancel?.()
+  }
+
   const modalContent = (
     <div
       className="fixed inset-0 flex items-center justify-center p-4"
@@ -38,7 +47,7 @@ export default function ConfirmationModal({
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
       }}
-      onClick={onCancel}
+      onClick={handleCancel}
       role="dialog"
       aria-modal="true"
     >
@@ -89,8 +98,11 @@ export default function ConfirmationModal({
 
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
+            disabled={isLoading}
             className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+              isLoading ? 'cursor-not-allowed opacity-50' : ''
+            } ${
               isDarkMode
                 ? 'hover:bg-white/10 text-white/60'
                 : 'hover:bg-gray-100 text-gray-400'
@@ -103,7 +115,7 @@ export default function ConfirmationModal({
         <div className="mt-6 flex gap-3 justify-end">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             disabled={isLoading}
             className={`inline-flex items-center justify-center rounded-full px-6 py-2.5 text-sm font-bold transition-colors ${
               isLoading ? 'opacity-50 cursor-not-allowed' : ''
@@ -130,7 +142,7 @@ export default function ConfirmationModal({
             {isLoading ? (
               <>
                 <CircularProgress size={16} sx={{ color: 'white' }} />
-                <span>Processing...</span>
+                <span>{loadingText}</span>
               </>
             ) : (
               confirmText
