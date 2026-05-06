@@ -1,10 +1,16 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import PersonAddAlt1RoundedIcon from '@mui/icons-material/PersonAddAlt1Rounded'
 import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
+import StorageRoundedIcon from '@mui/icons-material/StorageRounded'
+import ConfirmationModal from '../components/ConfirmationModal'
 import './UserManagementSection.css'
 
 const isRecentDate = (value) => {
@@ -68,7 +74,6 @@ export default function UserManagementSection({
   searchTerm,
   onSearchChange,
   onOpenNewUserModal,
-  onCleanupDuplicates,
   onEditUser,
   onArchiveUser,
   onDeleteArchivedUser,
@@ -265,44 +270,29 @@ export default function UserManagementSection({
 
   return (
     <section className={`user-management-shell animate-entrance space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
-      {confirmAction && (
-        <div
-          className="confirmation-overlay"
-          onClick={() => setConfirmAction(null)}
-        >
-          <div
-            className="confirmation-dialog"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="confirmation-title">
-              {confirmAction.type === 'edit' && 'Edit User Account?'}
-              {confirmAction.type === 'archive' && 'Archive This User?'}
-              {confirmAction.type === 'delete' && 'Permanently Delete Archived User?'}
-            </h3>
-            <p className="confirmation-message">
-              {confirmAction.type === 'edit' && `Update account details for ${confirmAction.user?.fullName || confirmAction.user?.email}?`}
-              {confirmAction.type === 'archive' && `Move ${confirmAction.user?.fullName || confirmAction.user?.email} to archived records?`}
-              {confirmAction.type === 'delete' && `This action cannot be undone. ${confirmAction.user?.fullName || confirmAction.user?.email} will be permanently removed from the system.`}
-            </p>
-            <div className="confirmation-actions">
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="confirmation-button confirmation-button--cancel"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => confirmAction.onConfirm()}
-                className="confirmation-button confirmation-button--confirm"
-              >
-                {confirmAction.type === 'delete' ? 'Delete' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationModal
+        open={!!confirmAction}
+        title={
+          confirmAction?.type === 'edit' ? 'Edit user details?' :
+          confirmAction?.type === 'archive' ? 'Archive This User?' :
+          'Permanently Delete Archived User?'
+        }
+        message={
+          confirmAction?.type === 'edit' ? `Update account details for ${confirmAction?.user?.fullName || confirmAction?.user?.email}?` :
+          confirmAction?.type === 'archive' ? `Move ${confirmAction?.user?.fullName || confirmAction?.user?.email} to archived records?` :
+          `This action cannot be undone. ${confirmAction?.user?.fullName || confirmAction?.user?.email} will be permanently removed from the system.`
+        }
+        confirmText={
+          confirmAction?.type === 'delete' ? 'Delete' : 
+          confirmAction?.type === 'edit' ? 'Edit' : 
+          'Confirm'
+        }
+        cancelText="Cancel"
+        isDangerous={confirmAction?.type === 'delete' || confirmAction?.type === 'archive'}
+        isDarkMode={isDarkMode}
+        onConfirm={() => confirmAction?.onConfirm()}
+        onCancel={() => setConfirmAction(null)}
+      />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -379,17 +369,6 @@ export default function UserManagementSection({
               title="Export users to CSV"
             >
               <DownloadRoundedIcon sx={{ fontSize: 18 }} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onCleanupDuplicates}
-              disabled={!canManageAccess || isSubmitting}
-              className="user-table-icon-button"
-              aria-label="Clean up duplicated privileged users"
-              title="Remove stale users records for authorized admin and personnel accounts"
-            >
-              Clean Up
             </button>
 
             <button
@@ -578,48 +557,73 @@ export default function UserManagementSection({
           </div>
         </div>
 
-        {showArchived && (
-          <div className="archived-users-shell animate-archived-in">
-            <div className="archived-users-header">
-              <div>
-                <p className="archived-users-kicker">Delete Archived</p>
-                <h3>Archived Users</h3>
-                <p>
-                  Admin can view archived records only. Only superadmin can permanently delete them.
-                </p>
+        {showArchived && createPortal(
+          <div className="archived-users-modal-overlay" onClick={() => setShowArchived(false)}>
+            <div className="archived-users-modal-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="archived-users-modal-header">
+                <div className="archived-users-modal-header-content">
+                  <div className="archived-users-modal-icon">
+                    <StorageRoundedIcon sx={{ fontSize: 24 }} />
+                  </div>
+                  <div>
+                    <p className="archived-users-kicker">Delete Archived</p>
+                    <h3>Archived Users</h3>
+                    <p className="archived-users-description">
+                      Admin can view archived records only. Only superadmin can permanently delete them.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowArchived(false)}
+                  className="archived-users-modal-close"
+                  aria-label="Close archived users modal"
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                </button>
+              </div>
+
+              <div className="archived-users-modal-list">
+                {visibleArchivedUsers.length ? (
+                  visibleArchivedUsers.map((user) => (
+                    <div key={user.email || user.id} className="archived-user-item">
+                      <div className="archived-user-avatar">
+                        <PersonRoundedIcon sx={{ fontSize: 20 }} />
+                      </div>
+                      <div className="archived-user-details">
+                        <p className="archived-user-name">{user.fullName || user.displayName || user.email || 'Archived User'}</p>
+                        <p className="archived-user-meta">
+                          {user.email || 'No email'} • {formatRoleLabel(user.role)} • {formatDate(user.archivedAt || user.updatedAt || user.createdAt)}
+                        </p>
+                      </div>
+
+                      {currentAccessRole === 'superadmin' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmedDelete(user)}
+                          disabled={isSubmitting}
+                          className="archived-user-delete"
+                        >
+                          <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                          Delete
+                        </button>
+                      ) : (
+                        <span className="archived-user-view-only">
+                          <span className="archived-user-badge">View only</span>
+                        </span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="archived-user-empty">
+                    <ArchiveRoundedIcon sx={{ fontSize: 32 }} />
+                    <p>No archived user records yet.</p>
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="archived-users-list">
-              {visibleArchivedUsers.length ? (
-                visibleArchivedUsers.map((user) => (
-                  <div key={user.email || user.id} className="archived-user-item">
-                    <div>
-                      <p className="archived-user-name">{user.fullName || user.displayName || user.email || 'Archived User'}</p>
-                      <p className="archived-user-meta">
-                        {user.email || 'No email'} • {formatRoleLabel(user.role)} • {formatDate(user.archivedAt || user.updatedAt || user.createdAt)}
-                      </p>
-                    </div>
-
-                    {currentAccessRole === 'superadmin' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleConfirmedDelete(user)}
-                        disabled={isSubmitting}
-                        className="archived-user-delete"
-                      >
-                        Delete Permanently
-                      </button>
-                    ) : (
-                      <span className="archived-user-view-only">View only</span>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="archived-user-empty">No archived user records yet.</div>
-              )}
-            </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </section>

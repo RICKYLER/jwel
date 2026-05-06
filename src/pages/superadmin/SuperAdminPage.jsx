@@ -107,6 +107,7 @@ const defaultEditUserForm = {
   email: '',
   role: 'admin',
   status: 'active',
+  accessibleSections: [],
 }
 
 export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', initialFinancingApplicationId = '', onNavigateDashboardPath }) {
@@ -196,6 +197,25 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
 
+  const adminName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Administrator'
+  const adminEmail = currentUser?.email || 'No email'
+  const consoleLabel = accessProfile?.label || 'Superadmin'
+  const currentAccessRole = accessProfile?.role || 'guest'
+  const canManageAccess = ['admin', 'superadmin'].includes(currentAccessRole)
+  const canEditOperations = ['admin', 'superadmin'].includes(currentAccessRole)
+  const personnelInviteRoles = [
+    'mechanics personnel',
+    'inventory personnel',
+    'cashier personnel',
+    'front desk personnel',
+  ]
+  const assignableInviteRoles =
+    currentAccessRole === 'superadmin' ? ['admin', ...personnelInviteRoles] : personnelInviteRoles
+  const assignableRoleOptions =
+    currentAccessRole === 'superadmin'
+      ? roleOptions.filter((role) => role !== 'superadmin')
+      : roleOptions.filter((role) => !['admin', 'superadmin'].includes(role))
+
   // Load profile data from Firestore
   useEffect(() => {
     if (!currentUser?.uid) return
@@ -262,7 +282,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     return () => {
       if (unsubscribe) unsubscribe()
     }
-  }, [currentUser?.uid, currentUser?.email, accessProfile?.role])
+  }, [currentUser?.uid, currentUser?.email, accessProfile?.role, personnelInviteRoles])
 
   // Load flagship location from settings
   useEffect(() => {
@@ -316,25 +336,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       setActiveSection('financing-application-detail')
     }
   }, [currentPath, financingApplications, initialFinancingApplicationId])
-
-  const adminName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Administrator'
-  const adminEmail = currentUser?.email || 'No email'
-  const consoleLabel = accessProfile?.label || 'Superadmin'
-  const currentAccessRole = accessProfile?.role || 'guest'
-  const canManageAccess = ['admin', 'superadmin'].includes(currentAccessRole)
-  const canEditOperations = ['admin', 'superadmin'].includes(currentAccessRole)
-  const personnelInviteRoles = [
-    'mechanics personnel',
-    'inventory personnel',
-    'cashier personnel',
-    'front desk personnel',
-  ]
-  const assignableInviteRoles =
-    currentAccessRole === 'superadmin' ? ['admin', ...personnelInviteRoles] : personnelInviteRoles
-  const assignableRoleOptions =
-    currentAccessRole === 'superadmin'
-      ? roleOptions.filter((role) => role !== 'superadmin')
-      : roleOptions.filter((role) => !['admin', 'superadmin'].includes(role))
 
   useEffect(() => {
     if (!actionMessage) {
@@ -840,7 +841,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         }))
 
         if (requests.length > 0) {
-          console.log('[SuperAdmin] Loaded admin requests:', requests)
           // Only add if not already in notifications
           const existingIds = new Set(chatNotifications.map((n) => n.id))
           const newRequests = requests.filter((r) => !existingIds.has(r.id))
@@ -877,9 +877,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           email: doc.id,
         }))
 
-        console.log('[SuperAdmin] Real-time update of admin requests:', requests)
-        
-        const existingIds = new Set(chatNotifications.filter((n) => !n.id.startsWith('admin-request-')).map((n) => n.id))
         const otherNotifications = chatNotifications.filter((n) => !n.id.startsWith('admin-request-'))
         const updatedNotifications = [...requests, ...otherNotifications]
         
@@ -977,7 +974,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const handleCollectionUpdate = async (collectionName, docId, payload) => {
     // If called without parameters, just trigger a re-subscription refresh
     if (!collectionName || !docId) {
-      console.log('Refreshing collection subscriptions...')
       return
     }
 
@@ -1115,6 +1111,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       email: user.email || '',
       role: user.role || assignableRoleOptions[0] || 'customer',
       status: user.status?.toLowerCase() === 'suspended' ? 'inactive' : 'active',
+      accessibleSections: user.accessibleSections || [],
     })
     setIsEditUserModalOpen(true)
   }
@@ -1318,7 +1315,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
     // Handle password reset notifications from admin reset action
     if (notification.type === 'PASSWORD_RESET') {
-      console.log('[SuperAdmin] Password reset notification clicked, navigating to user management')
       setIsNotificationsOpen(false)
       setActiveSection('user-management')
       
@@ -1331,7 +1327,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
     // Handle password reset request notifications from "Contact Administrator"
     if (notification.type === 'PASSWORD_RESET_REQUEST') {
-      console.log('[SuperAdmin] Password reset request notification clicked, navigating to user management')
       setIsNotificationsOpen(false)
       setActiveSection('user-management')
       
@@ -1442,6 +1437,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         firstLoginRequired: Boolean(selectedUser.firstLoginRequired || selectedUser.requiresPasswordChange),
         createdAt: selectedUser.createdAt,
         invitedBy: selectedUser.invitedBy,
+        accessibleSections: editUserForm.accessibleSections || [],
       })
 
       setActionMessage({
@@ -1550,14 +1546,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return
     }
 
-    if (typeof window !== 'undefined') {
-      const confirmed = window.confirm(`Archive ${user.fullName || user.email || 'this user'}?`)
-
-      if (!confirmed) {
-        return
-      }
-    }
-
     setIsSubmitting(true)
 
     try {
@@ -1590,14 +1578,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         text: 'Only superadmin can permanently delete archived records.',
       })
       return
-    }
-
-    if (typeof window !== 'undefined') {
-      const confirmed = window.confirm(`Permanently delete ${user.fullName || user.email || 'this archived user'}?`)
-
-      if (!confirmed) {
-        return
-      }
     }
 
     setIsSubmitting(true)
@@ -1713,15 +1693,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return
     }
 
-    if (typeof window !== 'undefined') {
-      const confirmed = window.confirm(
-        'Remove stale customer records from the users collection for accounts that already exist in authorized admin/personnel collections?',
-      )
 
-      if (!confirmed) {
-        return
-      }
-    }
 
     setIsSubmitting(true)
 
@@ -1969,6 +1941,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         availableRoles={assignableInviteRoles}
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
+        isDarkMode={isDarkMode}
       />
 
       <EditUserModal
@@ -1980,6 +1953,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         availableRoles={assignableRoleOptions}
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
+        sidebarItems={baseSidebarItems}
       />
 
       <ConfirmationModal
@@ -2068,7 +2042,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           onConfirm={() => {
             // discard changes and navigate
             if (savedProfileSnapshot) {
-              setProfileForm((_) => ({ ...savedProfileSnapshot }))
+              setProfileForm(() => ({ ...savedProfileSnapshot }))
             }
             setIsLeaveConfirmOpen(false)
             if (pendingSection) setActiveSection(pendingSection)

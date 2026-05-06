@@ -163,7 +163,7 @@ export default function CustomerMessagesPage({
   }
 
   const handleDeleteConversation = async (conversationId) => {
-    if (!window.confirm('Are you sure you want to delete this conversation?')) return
+
 
     try {
       // Delete all messages in the conversation

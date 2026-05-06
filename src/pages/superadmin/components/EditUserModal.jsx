@@ -1,3 +1,4 @@
+import React from 'react'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import './EditUserModal.css'
 
@@ -10,7 +11,20 @@ export default function EditUserModal({
   availableRoles = [],
   canManageAccess,
   isSubmitting,
+  sidebarItems = [],
 }) {
+  // Prevent body scroll when modal is open
+  React.useEffect(() => {
+    if (open) {
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.documentElement.style.overflow = ''
+        document.body.style.overflow = ''
+      }
+    }
+  }, [open])
+
   if (!open) {
     return null
   }
@@ -28,8 +42,7 @@ export default function EditUserModal({
 
   return (
     <div className="edit-user-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-user-modal-title">
-      <button type="button" className="edit-user-modal-backdrop" onClick={onClose} aria-label="Close edit user modal" />
-
+      <div className="edit-user-modal-backdrop" onClick={onClose} />
       <div className="edit-user-modal-panel">
         <div className="edit-user-modal-visual">
           <div>
@@ -40,7 +53,12 @@ export default function EditUserModal({
         </div>
 
         <div className="edit-user-modal-content">
-          <button type="button" onClick={onClose} className="edit-user-modal-close" aria-label="Close modal">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="edit-user-modal-close" 
+            aria-label="Close modal"
+          >
             <CloseRoundedIcon sx={{ fontSize: 18 }} />
           </button>
 
@@ -79,7 +97,32 @@ export default function EditUserModal({
                 disabled
               />
             </label>
-
+            <div className="edit-user-modal-section">
+              <p className="edit-user-modal-section-title">Menu Access</p>
+              <div className="edit-user-access-checkboxes">
+                {sidebarItems.map((item) => (
+                  <label key={item.id} className="edit-user-access-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={editUserForm.accessibleSections?.includes(item.id) ?? false}
+                      onChange={(event) => {
+                        setEditUserForm((current) => {
+                          const sections = current.accessibleSections ?? []
+                          return {
+                            ...current,
+                            accessibleSections: event.target.checked
+                              ? [...sections, item.id]
+                              : sections.filter((s) => s !== item.id),
+                          }
+                        })
+                      }}
+                      disabled={!canManageAccess || isSubmitting}
+                    />
+                    <span>{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
             <div className="edit-user-modal-grid">
               <label className="edit-user-field">
                 <span>Assigned Role</span>

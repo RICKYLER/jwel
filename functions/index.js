@@ -840,7 +840,15 @@ exports.deleteArchivedUserPermanently = onCall(async (request) => {
 
   try {
     if (authUid) {
-      await authApi.deleteUser(authUid)
+      try {
+        await authApi.deleteUser(authUid)
+      } catch (authError) {
+        // If user doesn't exist in Auth, that's okay - just continue with DB cleanup
+        if (authError.code !== 'auth/user-not-found') {
+          throw authError
+        }
+        logger.warn(`Auth user ${authUid} not found for email ${email}, continuing with DB cleanup`)
+      }
     }
 
     await Promise.all([
