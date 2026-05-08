@@ -1302,7 +1302,7 @@ export default function InventorySection({
                     }}
                   >
                     + Add Specification
-                  </button>
+                  </button> 
                 </label>
                 {/* Technical Specification Modal */}
                 {isSpecModalOpen && (

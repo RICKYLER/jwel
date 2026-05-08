@@ -509,7 +509,7 @@ export default function LoginPage({
               <button
                 type="submit"
                 disabled={authLoading || googleLoading}
-                className="w-full bg-linear-to-r from-red-600 to-white hover:from-red-700 hover:to-slate-100 disabled:opacity-70 text-white py-5 rounded-full font-['Epilogue'] font-bold uppercase tracking-widest text-sm shadow-lg shadow-red-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="w-full flex items-center justify-center gap-3 bg-linear-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 disabled:opacity-50 py-4 rounded-xl transition-all border border-slate-600/60 shadow-lg shadow-black/20 active:scale-[0.98] font-bold uppercase tracking-wider text-sm group"
               >
                 {isSignup && <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />}
                 {authLoading ? 'Please wait...' : (isSignup ? 'Create Secure Account' : 'Login')}

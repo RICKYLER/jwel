@@ -204,7 +204,6 @@ input:focus {
 /* Button Hover Effect */
 button[type="submit"]:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
 }
 
 button[type="submit"]:active:not(:disabled) {

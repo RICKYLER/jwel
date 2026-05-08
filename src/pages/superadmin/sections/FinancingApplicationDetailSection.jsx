@@ -338,7 +338,7 @@ export default function FinancingApplicationDetailSection({
         <div>
           <article className="fa-response-box">
             <h4>Direct Response - Live Chat</h4>
-            <p style={{ fontSize: '12px', color: '#666', marginTop: '8px', marginBottom: 0 }}>
+            <p style={{ fontSize: '12px', color: 'var(--text)', marginTop: '8px', marginBottom: 0 }}>
               Real-time conversation with {application.applicant?.fullName || 'Applicant'}
             </p>
           </article>
@@ -350,12 +350,12 @@ export default function FinancingApplicationDetailSection({
               overflowY: 'auto',
               padding: '16px',
               marginBottom: '16px',
-              background: '#f5f5f5',
+              background: 'var(--card)',
               borderRadius: '8px',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              border: '1px solid #e0e0e0',
+              border: '1px solid var(--border)',
             }}>
               {conversationMessages.length === 0 ? (
                 <div style={{
@@ -363,7 +363,7 @@ export default function FinancingApplicationDetailSection({
                   alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#999',
+                  color: 'var(--text)',
                   fontSize: '12px',
                   fontWeight: '500',
                   textAlign: 'center',
@@ -383,8 +383,8 @@ export default function FinancingApplicationDetailSection({
                     <div
                       style={{
                         maxWidth: '75%',
-                        background: msg.senderType === 'admin' ? '#b80012' : '#e0e0e0',
-                        color: msg.senderType === 'admin' ? '#fff' : '#333',
+                        background: msg.senderType === 'admin' ? '#b80012' : 'var(--card)',
+                        color: msg.senderType === 'admin' ? '#fff' : 'var(--text)',
                         padding: '10px 14px',
                         borderRadius: '8px',
                         fontSize: '12px',
@@ -392,11 +392,11 @@ export default function FinancingApplicationDetailSection({
                         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                       }}
                     >
-                      <p style={{ margin: 0, fontWeight: '600', fontSize: '11px', opacity: 0.8, marginBottom: '4px' }}>
+                      <p style={{ margin: 0, fontWeight: '600', fontSize: '11px', marginBottom: '4px', color: msg.senderType === 'admin' ? '#ffffff' : '#333' }}>
                         {msg.senderName || (msg.senderType === 'admin' ? 'You' : 'Applicant')}
                       </p>
-                      <p style={{ margin: 0, lineHeight: 1.4 }}>{msg.message}</p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '10px', opacity: 0.6 }}>
+                      <p style={{ margin: 0, lineHeight: 1.4, color: msg.senderType === 'admin' ? '#fff' : '#333' }}>{msg.message}</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: msg.senderType === 'admin' ? '#ffffff' : '#333' }}>
                         {msg.timestamp?.toLocaleTimeString?.('en-PH', { hour: '2-digit', minute: '2-digit' }) || ''}
                       </p>
                     </div>
@@ -422,9 +422,9 @@ export default function FinancingApplicationDetailSection({
                   flex: 1,
                   padding: '10px 12px',
                   borderRadius: '6px',
-                  border: '1px solid #ddd',
-                  background: '#fff',
-                  color: '#333',
+                  border: '1px solid var(--border)',
+                  background: 'var(--card)',
+                  color: 'var(--text)',
                   fontSize: '12px',
                   fontFamily: 'inherit',
                   resize: 'none',
@@ -438,14 +438,13 @@ export default function FinancingApplicationDetailSection({
                 disabled={isSaving || !canEditOperations || !replyMessage.trim()}
                 style={{
                   padding: '10px 14px',
-                  background: '#b80012',
-                  color: '#fff',
+                  background: isSaving || !canEditOperations || !replyMessage.trim() ? 'rgba(184, 0, 18, 0.6)' : '#b80012',
+                  color: '#ffffff',
                   border: 'none',
                   borderRadius: '6px',
                   fontWeight: '600',
                   fontSize: '12px',
                   cursor: isSaving || !canEditOperations || !replyMessage.trim() ? 'not-allowed' : 'pointer',
-                  opacity: isSaving || !canEditOperations || !replyMessage.trim() ? 0.6 : 1,
                   transition: 'all 0.2s',
                   minHeight: '40px',
                   display: 'flex',
@@ -528,14 +527,14 @@ export default function FinancingApplicationDetailSection({
             margin: '0 0 12px 0',
             fontSize: '18px',
             fontWeight: 700,
-            color: '#ffffff',
+            color: 'var(--text)',
           }}>
             {confirmModal.title}
           </h3>
           <p style={{
             margin: '0 0 20px 0',
             fontSize: '14px',
-            color: 'rgba(255, 255, 255, 0.7)',
+            color: 'var(--text)',
             lineHeight: '1.5',
           }}>
             {confirmModal.message}
@@ -546,7 +545,7 @@ export default function FinancingApplicationDetailSection({
               style={{
                 padding: '8px 16px',
                 background: 'rgba(255, 255, 255, 0.08)',
-                color: 'rgba(255, 255, 255, 0.7)',
+                color: 'var(--text)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '6px',
                 fontSize: '12px',
@@ -562,7 +561,7 @@ export default function FinancingApplicationDetailSection({
               style={{
                 padding: '8px 16px',
                 background: 'linear-gradient(135deg, rgba(225, 1, 0, 0.2) 0%, rgba(225, 1, 0, 0.1) 100%)',
-                color: '#ffffff',
+                color: 'var(--text)',
                 border: '1px solid rgba(225, 1, 0, 0.3)',
                 borderRadius: '6px',
                 fontSize: '12px',

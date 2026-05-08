@@ -27,7 +27,6 @@
   letter-spacing: 0.14em;
   font-weight: 800;
   color: var(--text);
-  opacity: 0.5;
 }
 
 .fa-stat-value {
@@ -106,7 +105,6 @@
 
 .fa-panel-actions button:hover {
   background: var(--card);
-  opacity: 0.8;
   color: var(--text);
 }
 
@@ -125,7 +123,6 @@
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--text);
-  opacity: 0.5;
   background: var(--card);
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
@@ -139,7 +136,6 @@
 
 .fa-table tbody tr:hover {
   background: var(--card);
-  opacity: 0.8;
 }
 
 .fa-table tbody td {
@@ -160,9 +156,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
   font-weight: 900;
   font-size: 11px;
 }
@@ -170,13 +166,13 @@
 .fa-applicant-name {
   margin: 0;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text);
   font-size: 14px;
 }
 
 .fa-applicant-meta {
   margin: 2px 0 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
   font-size: 11px;
 }
 
@@ -190,13 +186,13 @@
 .fa-unit-placeholder {
   width: 44px;
   height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--card);
   object-fit: cover;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
   font-size: 10px;
   font-weight: 700;
 }
@@ -206,12 +202,12 @@
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .fa-unit-sub {
   margin: 2px 0 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
   font-size: 11px;
 }
 
@@ -221,7 +217,7 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
 }
 
 .fa-income-cell p span {
@@ -230,7 +226,8 @@
 }
 
 .fa-income-cell p strong {
-  color: #ffffff;
+  color: var(--text);
+  opacity: 1;
 }
 
 .fa-income-cell .amortization-line strong {
@@ -279,7 +276,7 @@
 .fa-empty-state {
   padding: 18px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
   font-size: 13px;
 }
 
@@ -289,7 +286,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border);
 }
 
 .fa-panel-footer p {
@@ -302,92 +299,95 @@
 
 /* Light Mode Support */
 .financing-applications-section.light-mode {
-  background: #FFFFFF;
-  border: 1px solid #D0D0D0;
-  color: #2E2E30;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode h2,
 .financing-applications-section.light-mode h3 {
-  color: #2E2E30;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-stat-card {
-  background: #FAFAFA;
-  border: 1px solid #D0D0D0;
-  color: #2E2E30;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-stat-label {
-  color: #555555;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-stat-value {
-  color: #2E2E30;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-review-panel {
-  background: #FFFFFF;
-  border: 1px solid #D0D0D0;
+  background: var(--bg);
+  border: 1px solid var(--border);
 }
 
 .financing-applications-section.light-mode .fa-panel-header {
-  border-bottom: 1px solid #D0D0D0;
-  background: #FAFAFA;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
 }
 
 .financing-applications-section.light-mode .fa-panel-header h4 {
-  color: #2E2E30;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-panel-actions button {
-  border: 1px solid #D0D0D0;
-  background: #FAFAFA;
-  color: #555555;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: #333333;
 }
 
 .financing-applications-section.light-mode .fa-table thead th {
-  background: #FAFAFA;
-  color: #555555;
-  border-bottom: 1px solid #D0D0D0;
+  background: var(--card);
+  color: #333333;
+  border-bottom: 1px solid var(--border);
+  opacity: 1;
 }
 
 .financing-applications-section.light-mode .fa-table tbody tr {
-  border-bottom: 1px solid #D0D0D0;
+  border-bottom: 1px solid var(--border);
 }
 
 .financing-applications-section.light-mode .fa-table tbody tr:hover {
-  background: #F5F5F5;
+  background: var(--card);
 }
 
 .financing-applications-section.light-mode .fa-avatar {
-  background: #FAFAFA;
-  border: 1px solid #D0D0D0;
-  color: #555555;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-applicant-name {
-  color: #2E2E30;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-applicant-meta {
-  color: #808080;
+  color: #333333;
 }
 
 .financing-applications-section.light-mode .fa-unit-name {
-  color: #2E2E30;
+  color: var(--text);
 }
 
 .financing-applications-section.light-mode .fa-unit-sub {
-  color: #808080;
+  color: #333333;
 }
 
 .financing-applications-section.light-mode .fa-income-cell p {
-  color: #555555;
+  color: #333333;
+  opacity: 1;
 }
 
 .financing-applications-section.light-mode .fa-income-cell p strong {
-  color: #2E2E30;
+  color: var(--text);
+  opacity: 1;
 }
 
 .financing-applications-section.light-mode .chip-pending-review {
@@ -415,12 +415,12 @@
 }
 
 .financing-applications-section.light-mode .fa-panel-footer {
-  border-top: 1px solid #D0D0D0;
+  border-top: 1px solid var(--border);
 }
 
 .financing-applications-section.light-mode .fa-panel-footer p {
-  color: #555555;
-  color: rgba(255, 255, 255, 0.42);
+  color: #333333;
+  opacity: 1;
 }
 
 .fa-panel-footer button {
@@ -443,7 +443,6 @@
 }
 
 .fa-panel-footer button:disabled {
-  opacity: 0.4;
   cursor: not-allowed;
 }
 

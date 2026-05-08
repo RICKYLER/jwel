@@ -103,10 +103,10 @@ export default function FinancingApplicationsSection({
     <section className={`financing-applications-section rounded-xl p-6 ${!isDarkMode ? 'light-mode' : ''}`}>
       <div className="mb-7 flex items-center justify-between gap-4">
         <div>
-          <h3 className="font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-[#15171b]">
+          <h3 className="font-['Epilogue'] text-3xl font-black uppercase tracking-tight" style={{ color: 'var(--text)' }}>
             Financing Review &amp; Response
           </h3>
-          <p className="mt-1 text-sm text-[#6a6f77]">Manage and process motorcycle credit applications with precision.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text)' }}>Manage and process motorcycle credit applications with precision.</p>
         </div>
       </div>
 
@@ -196,7 +196,7 @@ export default function FinancingApplicationsSection({
                         style={{
                           border: 'none',
                           background: 'transparent',
-                          color: 'rgba(255, 255, 255, 0.7)',
+                          color: 'var(--text)',
                           fontSize: '11px',
                           textTransform: 'uppercase',
                           fontWeight: '900',
@@ -206,10 +206,10 @@ export default function FinancingApplicationsSection({
                           transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                          e.target.style.color = 'rgba(255, 255, 255, 0.9)'
+                          e.target.style.opacity = '1'
                         }}
                         onMouseLeave={(e) => {
-                          e.target.style.color = 'rgba(255, 255, 255, 0.7)'
+                          e.target.style.opacity = '1'
                         }}
                       >
                         View Details
