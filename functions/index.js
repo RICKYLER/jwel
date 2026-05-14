@@ -1383,7 +1383,7 @@ exports.updateUserPassword = onCall(async (request) => {
     /[A-Z]/,
     /[a-z]/,
     /[0-9]/,
-    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
+    /[!@#$%^&*()_+\-={}|:;"'<>,.?]/,
   ]
 
   const meetsRequirements = passwordRequirements.every((regex) => regex.test(newPassword))
@@ -1920,22 +1920,23 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
       throw new HttpsError('invalid-argument', 'Invalid verification code.')
     }
     
-    // Mark as verified
-    await admin.firestore().collection('emailVerifications').doc(email).update({
-      verified: true,
-      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-    })
-    
-    logger.info('Email verified successfully', {
-      email,
-      structuredData: true,
-    })
-    
-    return {
-      success: true,
-      message: 'Email verified successfully!',
-      email: email,
-    }
+    // Mark as verified in Firestore
+      await admin.firestore().collection('emailVerifications').doc(email).update({
+        verified: true,
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      })
+
+      // ✅ Also update Firebase Auth user
+      const userRecord = await admin.auth().getUserByEmail(email)
+      await admin.auth().updateUser(userRecord.uid, { emailVerified: true })
+
+      logger.info('Email verified successfully', { email, structuredData: true })
+
+      return {
+        success: true,
+        message: 'Email verified successfully!',
+        email: email,
+      }
   } catch (error) {
     if (error instanceof HttpsError) {
       throw error
@@ -2091,20 +2092,17 @@ exports.sendCustomEmailVerification = onCall({ enforceAppCheck: false }, async (
 
 // Update Firebase email template to send verification links directly to our app domain
 exports.configureEmailTemplates = onRequest({ enforceAppCheck: false }, async (req, res) => {
-  const authApiKey = process.env.FIREBASE_AUTH_API_KEY || 'AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI'
   const projectId = process.env.GCLOUD_PROJECT || 'bykelink-system'
 
   try {
     logger.info('Updating email templates for custom domain')
 
-    // Update the email verification template to use our app domain
-    const emailTemplateUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/emailTemplates:sendTestMessage`
-
-    // Fetch current template first
     const getTemplateUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/emailTemplates/VERIFY_EMAIL`
-    
-    const response = await require('https').get(getTemplateUrl, { headers: { Authorization: `Bearer ${process.env.FIREBASE_ADMIN_SDK_KEY}` } })
-    
+
+    await require('https').get(getTemplateUrl, { 
+      headers: { Authorization: `Bearer ${process.env.FIREBASE_ADMIN_SDK_KEY}` } 
+    })
+
     logger.info('Email template configuration completed')
     
     res.json({
