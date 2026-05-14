@@ -1226,27 +1226,28 @@ function App() {
 
   if (currentPath === '/login') {
     return withSecurityModal(
-      <LoginPage
-        authMode={authMode}
-        onGoogleSignIn={handleGoogleSignIn}
-        onAuthFieldChange={handleAuthFieldChange}
-        onAuthSubmit={handleAuthSubmit}
-        onSelectAuthPersona={handleSelectAuthPersona}
-        onToggleAuthMode={handleToggleAuthMode}
-        authForm={authForm}
-        authLoading={authLoading || isAccessResolving}
-        googleLoading={googleLoading}
-        onNavigateBack={() => navigateTo('/login')}  
-        onNavigateForgotPassword={() => navigateTo('/forgot-password')}
-        authMessage={authMessage}
-        onClearAuthMessage={() => setAuthMessage(null)}
-        signupSuccessEmail={signupSuccessEmail}
-        onSetSignupSuccessEmail={setSignupSuccessEmail}
-        emailVerificationCode={emailVerificationCode}
-        emailVerificationEmail={emailVerificationEmail}
-        onResendSignupEmail={handleResendSignupEmail}
-        resendingEmail={resendingEmail}
-      />,
+       <LoginPage
+      authMode={authMode}
+      onGoogleSignIn={handleGoogleSignIn}
+      onAuthFieldChange={handleAuthFieldChange}
+      onAuthSubmit={handleAuthSubmit}
+      onSelectAuthPersona={handleSelectAuthPersona}
+      onToggleAuthMode={handleToggleAuthMode}
+      authForm={authForm}
+      authLoading={authLoading || isAccessResolving}
+      googleLoading={googleLoading}
+      onNavigateBack={() => navigateTo('/login')}  
+      onNavigateForgotPassword={() => navigateTo('/forgot-password')}
+      authMessage={authMessage}
+      onClearAuthMessage={() => setAuthMessage(null)}
+      signupSuccessEmail={signupSuccessEmail}
+      onSetSignupSuccessEmail={setSignupSuccessEmail}
+      emailVerificationCode={emailVerificationCode}
+      emailVerificationEmail={emailVerificationEmail}
+      onResendSignupEmail={handleResendSignupEmail}
+      resendingEmail={resendingEmail}
+      onNavigateToCustomerDashboard={() => navigateTo('/customer')} // ADD THIS
+    />,
     )
   }
 
