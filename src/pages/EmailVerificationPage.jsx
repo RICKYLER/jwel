@@ -6,15 +6,20 @@ import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import './ForgotPasswordPage.css'
 
-export default function EmailVerificationPage({ onNavigateBack, verificationCode, email }) {
+export default function EmailVerificationPage({ 
+  onVerificationSuccess,  // NEW: Called when verification succeeds
+  onNavigateBack,         // For back button on error states
+  verificationCode, 
+  email 
+}) {
   const [verifyEmail, setVerifyEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState(false)
   const [message, setMessage] = useState(null)
   const [success, setSuccess] = useState(false)
   const [hasAttempted, setHasAttempted] = useState(false)
-  const [autoRedirectCounter, setAutoRedirectCounter] = useState(5) // 5 second countdown
-  const redirectCalledRef = useRef(false) // Prevent multiple redirect calls
+  const [autoRedirectCounter, setAutoRedirectCounter] = useState(5)
+  const redirectCalledRef = useRef(false)
 
   // Auto-redirect after 5 seconds when verification is successful
   useEffect(() => {
@@ -22,7 +27,6 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
 
     console.log('[EMAIL VERIFY] Starting auto-redirect countdown, counter:', autoRedirectCounter)
 
-    // Only set up timer if counter is greater than 0
     if (autoRedirectCounter > 0) {
       const timer = setTimeout(() => {
         console.log('[EMAIL VERIFY] Timer fired, decrementing from', autoRedirectCounter)
@@ -47,18 +51,17 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
     console.log('[EMAIL VERIFY] Counter reached 0, attempting redirect')
     redirectCalledRef.current = true
 
-    if (onNavigateBack) {
-      console.log('[EMAIL VERIFY] onNavigateBack exists, calling it now')
-      onNavigateBack()
+    if (onVerificationSuccess) {
+      console.log('[EMAIL VERIFY] Calling onVerificationSuccess callback')
+      onVerificationSuccess()
     } else {
-      console.error('[EMAIL VERIFY] ERROR: onNavigateBack prop is missing!')
+      console.error('[EMAIL VERIFY] ERROR: onVerificationSuccess prop is missing!')
     }
-  }, [success, autoRedirectCounter, onNavigateBack])
+  }, [success, autoRedirectCounter, onVerificationSuccess])
 
   // Verify email code when component mounts
   useEffect(() => {
     const performVerification = async () => {
-      // Prevent duplicate verification attempts
       if (hasAttempted) {
         return
       }
@@ -78,7 +81,6 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
       try {
         console.log('[EMAIL VERIFY] Starting verification for:', email)
         
-        // Call the verifyEmailCode Cloud Function
         const verifyEmailCodeFn = httpsCallable(functions, 'verifyEmailCode')
         setVerifying(true)
         
@@ -96,7 +98,6 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
           text: 'Email verified successfully!',
         })
         
-        // Set flag for customer dashboard to show verification success modal
         console.log('[EMAIL VERIFY] Setting email_verified_success flag in sessionStorage')
         window.sessionStorage.setItem('email_verified_success', 'true')
         console.log('[EMAIL VERIFY] Flag set. Current value:', window.sessionStorage.getItem('email_verified_success'))
@@ -142,10 +143,9 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
 
   const handleBackClick = () => {
     console.log('[EMAIL VERIFY] Back button clicked')
-    console.log('[EMAIL VERIFY] onNavigateBack prop:', typeof onNavigateBack)
     
     if (onNavigateBack) {
-      console.log('[EMAIL VERIFY] Calling onNavigateBack now')
+      console.log('[EMAIL VERIFY] Calling onNavigateBack')
       onNavigateBack()
     } else {
       console.error('[EMAIL VERIFY] ERROR: onNavigateBack prop is not defined!')
@@ -175,7 +175,6 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
             Your email {verifyEmail && <strong>{verifyEmail}</strong>} has been verified. You can now access all features of your account.
           </p>
           
-          {/* Auto-redirect countdown display */}
           <p style={{ 
             fontSize: '12px', 
             color: '#94a3b8', 
