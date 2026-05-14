@@ -31,7 +31,6 @@ export default function LoginPage({
   emailVerificationEmail,
   onResendSignupEmail,
   resendingEmail,
-  onNavigateToCustomerDashboard, // NEW: Add this prop from App.jsx
 }) {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -44,29 +43,10 @@ export default function LoginPage({
     onSetSignupSuccessEmail(null)
   }
 
-  // FIXED: Redirect to customer dashboard after verification, not back to login
-  const handleVerificationSuccess = () => {
-    console.log('[LOGIN PAGE] Email verification successful, navigating to customer dashboard')
-    window.sessionStorage.removeItem('signup_email')
-    onSetSignupSuccessEmail(null)
-    
-    // Navigate to customer dashboard
-    if (onNavigateToCustomerDashboard) {
-      onNavigateToCustomerDashboard()
-    } else {
-      console.error('[LOGIN PAGE] onNavigateToCustomerDashboard is not defined')
-    }
-  }
-
   const handleDismissVerificationScreen = () => {
-    console.log('[LOGIN PAGE] Dismissing verification screen')
+    // Return to login after verification
     window.sessionStorage.removeItem('signup_email')
     onSetSignupSuccessEmail(null)
-    
-    // Go back to login form if they manually dismiss
-    if (onNavigateBack) {
-      onNavigateBack()
-    }
   }
 
   const helpContent = {
@@ -185,7 +165,6 @@ export default function LoginPage({
           <EmailVerificationPage
             verificationCode={emailVerificationCode}
             email={emailVerificationEmail}
-            onVerificationSuccess={handleVerificationSuccess}
             onNavigateBack={handleDismissVerificationScreen}
           />
         </section>
@@ -638,3 +617,4 @@ export default function LoginPage({
     </div>
   )
 }
+

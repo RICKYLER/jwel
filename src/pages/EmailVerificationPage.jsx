@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { functions } from '../firebase'
 import { httpsCallable } from 'firebase/functions'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
@@ -6,62 +6,18 @@ import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import './ForgotPasswordPage.css'
 
-export default function EmailVerificationPage({ 
-  onVerificationSuccess,  // NEW: Called when verification succeeds
-  onNavigateBack,         // For back button on error states
-  verificationCode, 
-  email 
-}) {
+export default function EmailVerificationPage({ onNavigateBack, verificationCode, email }) {
   const [verifyEmail, setVerifyEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [verifying, setVerifying] = useState(false)
   const [message, setMessage] = useState(null)
   const [success, setSuccess] = useState(false)
   const [hasAttempted, setHasAttempted] = useState(false)
-  const [autoRedirectCounter, setAutoRedirectCounter] = useState(5)
-  const redirectCalledRef = useRef(false)
-
-  // Auto-redirect after 5 seconds when verification is successful
-  useEffect(() => {
-    if (!success) return
-
-    console.log('[EMAIL VERIFY] Starting auto-redirect countdown, counter:', autoRedirectCounter)
-
-    if (autoRedirectCounter > 0) {
-      const timer = setTimeout(() => {
-        console.log('[EMAIL VERIFY] Timer fired, decrementing from', autoRedirectCounter)
-        setAutoRedirectCounter(prev => {
-          const newCounter = prev - 1
-          console.log('[EMAIL VERIFY] Counter updated to:', newCounter)
-          return newCounter
-        })
-      }, 1000)
-
-      return () => {
-        console.log('[EMAIL VERIFY] Cleaning up timer')
-        clearTimeout(timer)
-      }
-    }
-  }, [success, autoRedirectCounter])
-
-  // Separate effect to handle redirect when counter reaches 0
-  useEffect(() => {
-    if (!success || autoRedirectCounter > 0 || redirectCalledRef.current) return
-
-    console.log('[EMAIL VERIFY] Counter reached 0, attempting redirect')
-    redirectCalledRef.current = true
-
-    if (onVerificationSuccess) {
-      console.log('[EMAIL VERIFY] Calling onVerificationSuccess callback')
-      onVerificationSuccess()
-    } else {
-      console.error('[EMAIL VERIFY] ERROR: onVerificationSuccess prop is missing!')
-    }
-  }, [success, autoRedirectCounter, onVerificationSuccess])
 
   // Verify email code when component mounts
   useEffect(() => {
     const performVerification = async () => {
+      // Prevent duplicate verification attempts
       if (hasAttempted) {
         return
       }
@@ -81,6 +37,7 @@ export default function EmailVerificationPage({
       try {
         console.log('[EMAIL VERIFY] Starting verification for:', email)
         
+        // Call the verifyEmailCode Cloud Function
         const verifyEmailCodeFn = httpsCallable(functions, 'verifyEmailCode')
         setVerifying(true)
         
@@ -98,6 +55,7 @@ export default function EmailVerificationPage({
           text: 'Email verified successfully!',
         })
         
+        // Set flag for customer dashboard to show verification success modal
         console.log('[EMAIL VERIFY] Setting email_verified_success flag in sessionStorage')
         window.sessionStorage.setItem('email_verified_success', 'true')
         console.log('[EMAIL VERIFY] Flag set. Current value:', window.sessionStorage.getItem('email_verified_success'))
@@ -141,17 +99,6 @@ export default function EmailVerificationPage({
     performVerification()
   }, [verificationCode, email, hasAttempted])
 
-  const handleBackClick = () => {
-    console.log('[EMAIL VERIFY] Back button clicked')
-    
-    if (onNavigateBack) {
-      console.log('[EMAIL VERIFY] Calling onNavigateBack')
-      onNavigateBack()
-    } else {
-      console.error('[EMAIL VERIFY] ERROR: onNavigateBack prop is not defined!')
-    }
-  }
-
   if (loading) {
     return (
       <div className="forgot-password-shell">
@@ -174,24 +121,8 @@ export default function EmailVerificationPage({
           <p className="forgot-password-copy">
             Your email {verifyEmail && <strong>{verifyEmail}</strong>} has been verified. You can now access all features of your account.
           </p>
-          
-          <p style={{ 
-            fontSize: '12px', 
-            color: '#94a3b8', 
-            marginTop: '16px',
-            marginBottom: '12px'
-          }}>
-            {autoRedirectCounter > 0 
-              ? `Redirecting to login in ${autoRedirectCounter} seconds...`
-              : 'Redirecting now...'}
-          </p>
-          
-          <button 
-            type="button" 
-            onClick={handleBackClick}
-            className="forgot-password-button"
-          >
-            Back to Login Now
+          <button type="button" onClick={onNavigateBack} className="forgot-password-button">
+            Back to Login
           </button>
         </div>
       </div>
@@ -200,12 +131,7 @@ export default function EmailVerificationPage({
 
   return (
     <div className="forgot-password-shell">
-      <button 
-        type="button" 
-        onClick={handleBackClick}
-        className="forgot-password-back-button" 
-        aria-label="Go back"
-      >
+      <button type="button" onClick={onNavigateBack} className="forgot-password-back-button" aria-label="Go back">
         <ArrowBackRoundedIcon sx={{ fontSize: 20 }} />
         <span>Back</span>
       </button>
