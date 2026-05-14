@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { functions } from '../firebase'
 import { httpsCallable } from 'firebase/functions'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
@@ -13,6 +13,26 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
   const [message, setMessage] = useState(null)
   const [success, setSuccess] = useState(false)
   const [hasAttempted, setHasAttempted] = useState(false)
+  const [autoRedirectCounter, setAutoRedirectCounter] = useState(5) // 5 second countdown
+
+  // Auto-redirect after 5 seconds when verification is successful
+  useEffect(() => {
+    if (!success) return
+
+    const timer = setInterval(() => {
+      setAutoRedirectCounter((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          // Auto navigate back to login
+          onNavigateBack?.()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [success, onNavigateBack])
 
   // Verify email code when component mounts
   useEffect(() => {
@@ -121,8 +141,23 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
           <p className="forgot-password-copy">
             Your email {verifyEmail && <strong>{verifyEmail}</strong>} has been verified. You can now access all features of your account.
           </p>
-          <button type="button" onClick={onNavigateBack} className="forgot-password-button">
-            Back to Login
+          
+          {/* Auto-redirect countdown display */}
+          <p style={{ 
+            fontSize: '12px', 
+            color: '#94a3b8', 
+            marginTop: '16px',
+            marginBottom: '12px'
+          }}>
+            Redirecting to login in {autoRedirectCounter} seconds...
+          </p>
+          
+          <button 
+            type="button" 
+            onClick={onNavigateBack} 
+            className="forgot-password-button"
+          >
+            Back to Login Now
           </button>
         </div>
       </div>
