@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState , useNavigate} from 'react'
 import GoogleIcon from '@mui/icons-material/Google'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -31,23 +31,29 @@ export default function LoginPage({
   emailVerificationEmail,
   onResendSignupEmail,
   resendingEmail,
-}) {
+}) 
+{
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberSession, setRememberSession] = useState(false)
   const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
 
+  const navigation = useNavigate();
+
   // Handlers for signup and verification flow
   const handleDismissSignupScreen = () => {
     onSetSignupSuccessEmail(null)
   }
 
-  const handleDismissVerificationScreen = () => {
-    // Return to login after verification
-    window.sessionStorage.removeItem('signup_email')
-    onSetSignupSuccessEmail(null)
-  }
+const handleDismissVerificationScreen = () => {
+  // Return to login after verification
+  window.sessionStorage.removeItem('signup_email')
+  onSetSignupSuccessEmail(null)
+  
+  // Navigate back to login form
+  navigation('login')  // or whatever your navigation method is
+}
 
   const helpContent = {
     title: 'Help & Support',
