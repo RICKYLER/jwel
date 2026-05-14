@@ -5,6 +5,7 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import MailRoundedIcon from '@mui/icons-material/MailRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import './ForgotPasswordPage.css'
+import { getAuth } from 'firebase/auth'
 
 export default function EmailVerificationPage({ onNavigateBack, verificationCode, email }) {
   const [verifyEmail, setVerifyEmail] = useState('')
@@ -54,6 +55,13 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
           type: 'success',
           text: 'Email verified successfully!',
         })
+
+        // ✅ Refresh Firebase Auth user so emailVerified flag updates
+        const auth = getAuth()
+        if (auth.currentUser) {
+          await auth.currentUser.reload()
+          console.log('[EMAIL VERIFY] Reloaded user. emailVerified =', auth.currentUser.emailVerified)
+        }
         
         // Set flag for customer dashboard to show verification success modal
         console.log('[EMAIL VERIFY] Setting email_verified_success flag in sessionStorage')

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getAuth } from 'firebase/auth'
 import GoogleIcon from '@mui/icons-material/Google'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -43,10 +44,24 @@ export default function LoginPage({
     onSetSignupSuccessEmail(null)
   }
 
-  const handleDismissVerificationScreen = () => {
+  const handleDismissVerificationScreen = async () => {
+  // Clear any temporary signup state
   window.sessionStorage.removeItem('signup_email')
   onSetSignupSuccessEmail(null)
-  window.location.href = '/login'   // ✅ forces navigation
+
+  // ✅ Refresh Firebase Auth user so emailVerified flag updates
+  const auth = getAuth()
+  if (auth.currentUser) {
+    try {
+   
+   await auth.currentUser.reload()
+      console.log('Reloaded user. emailVerified =', auth.currentUser.emailVerified)
+    } catch (err) {
+      console.error('Failed to reload user:', err)
+    }
+  }
+  // ✅ Redirect to login
+  window.location.href = '/login'
 }
 
   const helpContent = {
