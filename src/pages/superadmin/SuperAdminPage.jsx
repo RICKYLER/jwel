@@ -23,7 +23,7 @@ import NewUserModal from './components/NewUserModal'
 import NotificationsDrawer from './components/NotificationsDrawer'
 import ProfileSection from './components/ProfileSection'
 import SuperAdminHeader from './components/SuperAdminHeader'
-import SuperAdminSidebar from './components/SuperAdminSidebar'
+import SuperAdminSidebar from './components/SuperAdminSidebar/SuperAdminSidebar'
 import AnalyticsSection from './sections/AnalyticsSection'
 import ChatsManagementSection from './sections/ChatsManagementSection'
 import DashboardSection from './sections/DashboardSection'
@@ -203,12 +203,15 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const currentAccessRole = accessProfile?.role || 'guest'
   const canManageAccess = ['admin', 'superadmin'].includes(currentAccessRole)
   const canEditOperations = ['admin', 'superadmin'].includes(currentAccessRole)
-  const personnelInviteRoles = [
-    'mechanics personnel',
-    'inventory personnel',
-    'cashier personnel',
-    'front desk personnel',
-  ]
+  const personnelInviteRoles = useMemo(
+    () => [
+      'mechanics personnel',
+      'inventory personnel',
+      'cashier personnel',
+      'front desk personnel',
+    ],
+    []
+  )
   const assignableInviteRoles =
     currentAccessRole === 'superadmin' ? ['admin', ...personnelInviteRoles] : personnelInviteRoles
   const assignableRoleOptions =
@@ -842,16 +845,19 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
         if (requests.length > 0) {
           // Only add if not already in notifications
-          const existingIds = new Set(chatNotifications.map((n) => n.id))
-          const newRequests = requests.filter((r) => !existingIds.has(r.id))
-          
-          if (newRequests.length > 0) {
-            const updatedNotifications = [...newRequests, ...chatNotifications]
-            setChatNotifications(updatedNotifications)
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+          setChatNotifications((current) => {
+            const existingIds = new Set(current.map((n) => n.id))
+            const newRequests = requests.filter((r) => !existingIds.has(r.id))
+            
+            if (newRequests.length > 0) {
+              const updatedNotifications = [...newRequests, ...current]
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+              }
+              return updatedNotifications
             }
-          }
+            return current
+          })
         }
       } catch (error) {
         console.error('[SuperAdmin] Error loading admin requests:', error)
@@ -877,13 +883,15 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           email: doc.id,
         }))
 
-        const otherNotifications = chatNotifications.filter((n) => !n.id.startsWith('admin-request-'))
-        const updatedNotifications = [...requests, ...otherNotifications]
-        
-        setChatNotifications(updatedNotifications)
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
-        }
+        setChatNotifications((current) => {
+          const otherNotifications = current.filter((n) => !n.id.startsWith('admin-request-'))
+          const updatedNotifications = [...requests, ...otherNotifications]
+          
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('bykelink-chat-notifications', JSON.stringify(updatedNotifications))
+          }
+          return updatedNotifications
+        })
       },
       (error) => {
         console.error('[SuperAdmin] Error listening to admin requests:', error)

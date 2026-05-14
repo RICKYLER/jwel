@@ -47,6 +47,9 @@ export default function LoginPage({
     // Return to login after verification
     window.sessionStorage.removeItem('signup_email')
     onSetSignupSuccessEmail(null)
+   if (onNavigateBack) {
+    onNavigateBack()  // ← Add this line to actually navigate back
+  }
   }
 
   const helpContent = {
