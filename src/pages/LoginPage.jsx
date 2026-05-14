@@ -44,10 +44,10 @@ export default function LoginPage({
   }
 
   const handleDismissVerificationScreen = () => {
-    // Return to login after verification
-    window.sessionStorage.removeItem('signup_email')
-    onSetSignupSuccessEmail(null)
-  }
+  window.sessionStorage.removeItem('signup_email')
+  onSetSignupSuccessEmail(null)
+  window.location.href = '/login'   // ✅ forces navigation
+}
 
   const helpContent = {
     title: 'Help & Support',
