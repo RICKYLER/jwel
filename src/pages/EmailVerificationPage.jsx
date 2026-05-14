@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { functions } from '../firebase'
 import { httpsCallable } from 'firebase/functions'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
@@ -14,25 +14,46 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
   const [success, setSuccess] = useState(false)
   const [hasAttempted, setHasAttempted] = useState(false)
   const [autoRedirectCounter, setAutoRedirectCounter] = useState(5) // 5 second countdown
+  const redirectCalledRef = useRef(false) // Prevent multiple redirect calls
 
   // Auto-redirect after 5 seconds when verification is successful
   useEffect(() => {
     if (!success) return
 
-    const timer = setInterval(() => {
-      setAutoRedirectCounter((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          // Auto navigate back to login
-          onNavigateBack?.()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    console.log('[EMAIL VERIFY] Starting auto-redirect countdown, counter:', autoRedirectCounter)
 
-    return () => clearInterval(timer)
-  }, [success, onNavigateBack])
+    // Only set up timer if counter is greater than 0
+    if (autoRedirectCounter > 0) {
+      const timer = setTimeout(() => {
+        console.log('[EMAIL VERIFY] Timer fired, decrementing from', autoRedirectCounter)
+        setAutoRedirectCounter(prev => {
+          const newCounter = prev - 1
+          console.log('[EMAIL VERIFY] Counter updated to:', newCounter)
+          return newCounter
+        })
+      }, 1000)
+
+      return () => {
+        console.log('[EMAIL VERIFY] Cleaning up timer')
+        clearTimeout(timer)
+      }
+    }
+  }, [success, autoRedirectCounter])
+
+  // Separate effect to handle redirect when counter reaches 0
+  useEffect(() => {
+    if (!success || autoRedirectCounter > 0 || redirectCalledRef.current) return
+
+    console.log('[EMAIL VERIFY] Counter reached 0, attempting redirect')
+    redirectCalledRef.current = true
+
+    if (onNavigateBack) {
+      console.log('[EMAIL VERIFY] onNavigateBack exists, calling it now')
+      onNavigateBack()
+    } else {
+      console.error('[EMAIL VERIFY] ERROR: onNavigateBack prop is missing!')
+    }
+  }, [success, autoRedirectCounter, onNavigateBack])
 
   // Verify email code when component mounts
   useEffect(() => {
@@ -119,6 +140,18 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
     performVerification()
   }, [verificationCode, email, hasAttempted])
 
+  const handleBackClick = () => {
+    console.log('[EMAIL VERIFY] Back button clicked')
+    console.log('[EMAIL VERIFY] onNavigateBack prop:', typeof onNavigateBack)
+    
+    if (onNavigateBack) {
+      console.log('[EMAIL VERIFY] Calling onNavigateBack now')
+      onNavigateBack()
+    } else {
+      console.error('[EMAIL VERIFY] ERROR: onNavigateBack prop is not defined!')
+    }
+  }
+
   if (loading) {
     return (
       <div className="forgot-password-shell">
@@ -149,12 +182,14 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
             marginTop: '16px',
             marginBottom: '12px'
           }}>
-            Redirecting to login in {autoRedirectCounter} seconds...
+            {autoRedirectCounter > 0 
+              ? `Redirecting to login in ${autoRedirectCounter} seconds...`
+              : 'Redirecting now...'}
           </p>
           
           <button 
             type="button" 
-            onClick={onNavigateBack} 
+            onClick={handleBackClick}
             className="forgot-password-button"
           >
             Back to Login Now
@@ -166,7 +201,12 @@ export default function EmailVerificationPage({ onNavigateBack, verificationCode
 
   return (
     <div className="forgot-password-shell">
-      <button type="button" onClick={onNavigateBack} className="forgot-password-back-button" aria-label="Go back">
+      <button 
+        type="button" 
+        onClick={handleBackClick}
+        className="forgot-password-back-button" 
+        aria-label="Go back"
+      >
         <ArrowBackRoundedIcon sx={{ fontSize: 20 }} />
         <span>Back</span>
       </button>

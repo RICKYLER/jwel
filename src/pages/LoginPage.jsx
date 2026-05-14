@@ -43,14 +43,13 @@ export default function LoginPage({
     onSetSignupSuccessEmail(null)
   }
 
-  const handleDismissVerificationScreen = () => {
-  // Return to login after verification
-  window.sessionStorage.removeItem('signup_email')
-  onSetSignupSuccessEmail(null)
-  if (onNavigateBack) {
-    onNavigateBack()  // ← ADD THIS LINE
-  }
-}
+   const handleDismissVerificationScreen = () => {
+     window.sessionStorage.removeItem('signup_email')
+     onSetSignupSuccessEmail(null)
+     if (onNavigateBack) {
+       onNavigateBack()  // ← ADD THIS
+     }
+   }
 
   const helpContent = {
     title: 'Help & Support',

@@ -1236,7 +1236,7 @@ function App() {
         authForm={authForm}
         authLoading={authLoading || isAccessResolving}
         googleLoading={googleLoading}
-        onNavigateBack={() => navigateTo('/login')} 
+        onNavigateBack={() => navigateTo('/login')}  
         onNavigateForgotPassword={() => navigateTo('/forgot-password')}
         authMessage={authMessage}
         onClearAuthMessage={() => setAuthMessage(null)}
