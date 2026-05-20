@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, deleteDoc, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where } from 'firebase/firestore'
+import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
@@ -38,6 +38,7 @@ import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
 import ServiceTypeSection from './sections/ServiceTypeSection'
+import { saveAccessAssignment } from '../../services/userService';
 import {
   buildChartBars,
   fallbackTechnicians,
@@ -1016,62 +1017,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     }
   }
 
-  const saveAccessAssignment = async (email, role, extraData = {}) => {
-    const normalizedEmail = email.trim().toLowerCase()
-    const normalizedRole = normalizeText(role)
-    const normalizedStatus = String(extraData.status || 'active').trim().toLowerCase()
-    const personnelRoles = [
-      'mechanics personnel',
-      'inventory personnel',
-      'cashier personnel',
-      'front desk personnel',
-    ]
-    const isPersonnelRole = personnelRoles.includes(normalizedRole)
-    const isAdminRole = ['admin', 'superadmin'].includes(normalizedRole)
-    const isActive = normalizedStatus !== 'inactive' && normalizedRole !== 'customer'
-    const dashboardPath =
-      normalizedRole === 'superadmin'
-        ? '/superadmin'
-        : normalizedRole === 'admin'
-          ? '/admin'
-          : isPersonnelRole || normalizedRole === 'staff'
-            ? '/staff'
-            : null
-    const collectionName = isAdminRole ? 'authorizedAdmin' : 'authorizedPersonnel'
-    const alternateCollection = isAdminRole ? 'authorizedPersonnel' : 'authorizedAdmin'
-    const accessLevel = normalizedRole === 'superadmin' || normalizedRole === 'admin' ? normalizedRole : 'staff'
-
-    const writeOperations = [
-      setDoc(
-        doc(db, collectionName, normalizedEmail),
-        {
-          email: normalizedEmail,
-          fullName: extraData.fullName?.trim() || '',
-          role: normalizedRole,
-          personnelRole: isPersonnelRole ? normalizedRole : '',
-          accessLevel,
-          status: isActive ? 'active' : 'inactive',
-          active: isActive,
-          temporaryPassword: extraData.temporaryPassword?.trim() || '',
-          mustChangePassword: Boolean(extraData.mustChangePassword),
-          firstLoginRequired: Boolean(extraData.firstLoginRequired),
-          dashboardPath,
-          invitedBy: extraData.invitedBy || currentUser?.email || '',
-          updatedAt: serverTimestamp(),
-          createdAt: extraData.createdAt || serverTimestamp(),
-        },
-        { merge: true },
-      ),
-    ]
-
-    if (currentAccessRole === 'superadmin') {
-      writeOperations.push(deleteDoc(doc(db, alternateCollection, normalizedEmail)))
-    }
-
-    await Promise.all(writeOperations)
-
-  }
-
   const handleOpenNewUserModal = () => {
     if (!canManageAccess) {
       setActionMessage({
@@ -1409,60 +1354,56 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     onSignOut?.()
   }, [onSignOut])
 
-  const handleEditUserSave = async (event) => {
-    event.preventDefault()
+ const handleEditUserSave = async (event) => {
+  event.preventDefault();
 
-    if (!selectedUser?.email) {
-      setActionMessage({
-        type: 'error',
-        text: 'No user record is selected for editing.',
-      })
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      if (!editUserForm.fullName.trim()) {
-        throw new Error('Enter the full name before saving the user profile.')
-      }
-
-      const normalizedRole = normalizeText(editUserForm.role)
-
-      if (!assignableRoleOptions.includes(normalizedRole)) {
-        throw new Error(
-          currentAccessRole === 'admin'
-            ? 'Admin accounts can only assign non-admin roles.'
-            : 'You are not allowed to assign that role from this console.',
-        )
-      }
-
-      await saveAccessAssignment(editUserForm.email, normalizedRole, {
-        fullName: editUserForm.fullName,
-        status: editUserForm.status,
-        temporaryPassword: selectedUser.temporaryPassword || DEFAULT_OPERATOR_PASSWORD,
-        mustChangePassword: Boolean(selectedUser.mustChangePassword || selectedUser.requiresPasswordChange),
-        firstLoginRequired: Boolean(selectedUser.firstLoginRequired || selectedUser.requiresPasswordChange),
-        createdAt: selectedUser.createdAt,
-        invitedBy: selectedUser.invitedBy,
-        accessibleSections: editUserForm.accessibleSections || [],
-      })
-
-      setActionMessage({
-        type: 'success',
-        text: `${editUserForm.email} updated successfully.`,
-      })
-      handleCloseEditUserModal()
-    } catch (error) {
-      console.error('Unable to update user', error)
-      setActionMessage({
-        type: 'error',
-        text: `Unable to update the user. ${error.message}`,
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+  if (!selectedUser?.email) {
+    setActionMessage({
+      type: 'error',
+      text: 'No user record is selected for editing.',
+    });
+    return;
   }
+
+  setIsSubmitting(true);
+
+  try {
+    const fullName = editUserForm.fullName.trim();
+    if (!fullName) {
+      throw new Error('Enter the full name before saving the user profile.');
+    }
+
+    const normalizedRole = normalizeText(editUserForm.role);
+
+    const updatePayload = {
+      fullName,
+      status: editUserForm.status,
+      accessibleSections: editUserForm.accessibleSections || [],
+      temporaryPassword: selectedUser.temporaryPassword || DEFAULT_OPERATOR_PASSWORD,
+      mustChangePassword: Boolean(selectedUser.mustChangePassword || selectedUser.requiresPasswordChange),
+      firstLoginRequired: Boolean(selectedUser.firstLoginRequired || selectedUser.requiresPasswordChange),
+      createdAt: selectedUser.createdAt,
+      invitedBy: selectedUser.invitedBy,
+    };
+
+    // ✅ Call service layer
+    await saveAccessAssignment(editUserForm.email.trim().toLowerCase(), normalizedRole, updatePayload);
+
+    setActionMessage({
+      type: 'success',
+      text: `${editUserForm.email} updated successfully.`,
+    });
+    handleCloseEditUserModal();
+  } catch (error) {
+    console.error('Unable to update user', error);
+    setActionMessage({
+      type: 'error',
+      text: `Unable to update the user. ${error.message}`,
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleGrantAccess = async (event) => {
     event.preventDefault()

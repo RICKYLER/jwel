@@ -10,6 +10,7 @@ import SignupLoadingModal from './LoginPage/SignupLoadingModal'
 import HelpModal from './LoginPage/HelpModal'
 import SignupSuccessScreen from './SignupSuccessScreen'
 import EmailVerificationPage from './EmailVerificationPage'
+import useAutoDismiss from '../hooks/useAutoDismiss'
 import './LoginPage.css'
 import './LoginPage/HelpModal.css'
 
@@ -33,11 +34,14 @@ export default function LoginPage({
   onResendSignupEmail,
   resendingEmail,
 }) {
+  
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberSession, setRememberSession] = useState(false)
   const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
+
+  useAutoDismiss(authMessage, onClearAuthMessage, 3000)
 
   // Handlers for signup and verification flow
   const handleDismissSignupScreen = () => {
@@ -298,7 +302,7 @@ export default function LoginPage({
 
         <div className="w-full max-w-md">
           {/* Auth Message Display */}
-          {authMessage && (
+           {authMessage && (
             <div
               className={`mb-6 rounded-xl p-4 text-sm font-['Manrope'] ${
                 authMessage.type === 'error'
@@ -307,15 +311,7 @@ export default function LoginPage({
               }`}
             >
               <p>{authMessage.text}</p>
-              {onClearAuthMessage && (
-                <button
-                  type="button"
-                  onClick={onClearAuthMessage}
-                  className="mt-2 text-xs font-bold uppercase tracking-wide opacity-70 hover:opacity-100"
-                >
-                  Dismiss
-                </button>
-              )}
+              <button onClick={onClearAuthMessage}>Dismiss</button>
             </div>
           )}
 
