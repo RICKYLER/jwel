@@ -1797,6 +1797,7 @@ exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
 })
 
 // Verify email code
+// Verify email code (Firestore-only)
 exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
   const code = String(request.data?.code || '').trim()
@@ -1820,7 +1821,7 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
     
     // Check if expired
     const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt)
-    if (new Date() > expiresAt) {
+    if (!expiresAt || new Date() > expiresAt) {
       throw new HttpsError('invalid-argument', 'Verification code has expired. Please request a new one.')
     }
     
@@ -1835,22 +1836,18 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
     }
     
     // Mark as verified in Firestore
-      await admin.firestore().collection('emailVerifications').doc(email).update({
-        verified: true,
-        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      })
+    await admin.firestore().collection('emailVerifications').doc(email).update({
+      verified: true,
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
 
-      // ✅ Also update Firebase Auth user
-      const userRecord = await admin.auth().getUserByEmail(email)
-      await admin.auth().updateUser(userRecord.uid, { emailVerified: true })
+    logger.info('Email verified successfully (Firestore only)', { email, structuredData: true })
 
-      logger.info('Email verified successfully', { email, structuredData: true })
-
-      return {
-        success: true,
-        message: 'Email verified successfully!',
-        email: email,
-      }
+    return {
+      success: true,
+      message: 'Email verified successfully!',
+      email: email,
+    }
   } catch (error) {
     if (error instanceof HttpsError) {
       throw error

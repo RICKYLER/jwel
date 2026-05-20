@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { getAuth } from 'firebase/auth'
+import { getAuth , signInWithEmailAndPassword} from 'firebase/auth'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import GoogleIcon from '@mui/icons-material/Google'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -17,7 +18,6 @@ import './LoginPage/HelpModal.css'
 export default function LoginPage({
   onGoogleSignIn,
   onAuthFieldChange,
-  onAuthSubmit,
   authForm,
   authLoading,
   googleLoading,
@@ -41,6 +41,36 @@ export default function LoginPage({
   const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
 
+  const auth = getAuth()
+  const db = getFirestore()
+
+  const handleLogin = async (email, password) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password)
+    console.log('Logged in user:', userCredential.user.email)
+
+    // ✅ Check Firestore verification status
+    const verificationDoc = await getDoc(doc(db, 'emailVerifications', email))
+    if (!verificationDoc.exists()) {
+      alert('Please verify your email before logging in.')
+      return
+    }
+
+    const verificationData = verificationDoc.data()
+    if (!verificationData.verified) {
+      alert('Please verify your email before logging in.')
+      return
+    }
+
+    // ✅ If verified, proceed
+    console.log('Login successful, email verified via Firestore')
+    window.location.href = '/dashboard'
+  } catch (err) {
+    console.error('Login failed:', err)
+    alert('Invalid credentials or login error.')
+  }
+}
+
   useAutoDismiss(authMessage, onClearAuthMessage, 3000)
 
   // Handlers for signup and verification flow
@@ -53,19 +83,6 @@ export default function LoginPage({
   window.sessionStorage.removeItem('signup_email')
   onSetSignupSuccessEmail(null)
 
-  // ✅ Refresh Firebase Auth user so emailVerified flag updates
-  const auth = getAuth()
-  if (auth.currentUser) {
-    try {
-   
-   await auth.currentUser.reload()
-      console.log('Reloaded user. emailVerified =', auth.currentUser.emailVerified)
-    } catch (err) {
-      console.error('Failed to reload user:', err)
-    }
-  }
-  // ✅ Redirect to login
-  window.location.href = '/login'
 }
 
   const helpContent = {
@@ -138,11 +155,6 @@ export default function LoginPage({
     help: helpContent,
     privacy: privacyContent,
     terms: termsContent,
-  }
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onAuthSubmit(e)
   }
 
   // Show email verification screen if verification code exists
@@ -326,7 +338,13 @@ export default function LoginPage({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+  onSubmit={(e) => {
+    e.preventDefault()
+    handleLogin(authForm.email, authForm.password)
+  }}
+  className="space-y-4"
+>
             {/* Signup Fields */}
             {isSignup && (
               <div className="grid gap-3 grid-cols-2">
