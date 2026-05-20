@@ -89,6 +89,70 @@ const getWebApiKey = () =>
       'AIzaSyACbx4Fg8mqeGHVfJZNqUcdA3q4PLUrlPQ',
   ).trim()
 
+const sendFirebaseVerificationEmail = async ({ email, temporaryPassword }) => {
+  const apiKey = getWebApiKey()
+
+  if (!apiKey) {
+    logger.warn('FIREBASE_WEB_API_KEY is missing. Firebase verification email could not be sent.', {
+      email,
+      structuredData: true,
+    })
+
+    return { sent: false }
+  }
+
+  const signInResponse = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: temporaryPassword,
+        returnSecureToken: true,
+      }),
+    },
+  )
+
+  const signInData = await signInResponse.json().catch(() => ({}))
+
+  if (!signInResponse.ok || !signInData.idToken) {
+    logger.warn('Unable to sign in the invited operator for Firebase verification dispatch.', {
+      email,
+      details: signInData?.error?.message || 'sign-in failed',
+      structuredData: true,
+    })
+
+    return { sent: false }
+  }
+
+  const verifyResponse = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requestType: 'VERIFY_EMAIL',
+        idToken: signInData.idToken,
+      }),
+    },
+  )
+
+  const verifyData = await verifyResponse.json().catch(() => ({}))
+
+  if (!verifyResponse.ok) {
+    logger.warn('Firebase verification email dispatch failed.', {
+      email,
+      details: verifyData?.error?.message || 'verify-email failed',
+      structuredData: true,
+    })
+
+    return { sent: false }
+  }
+
+  return { sent: true }
+}
+
 const isAuthorizedCollectionSource = (source = '') =>
   ['authorizedSuperadmin', 'authorizedAdmin', 'authorizedPersonnel'].includes(String(source).trim())
 
@@ -446,56 +510,93 @@ exports.syncUserAccess = onCall(async (request) => {
     source: accessRecord.source,
   }
 })
-const { generateVerificationCode, sendVerificationEmail } = require('./email-service');
 
 exports.createOperatorAccount = onCall(async (request) => {
   if (!request.auth) {
-    throw new HttpsError("unauthenticated", "You must be signed in to invite an operator.");
+    throw new HttpsError('unauthenticated', 'You must be signed in to invite an operator.')
   }
 
-  const inviterEmail = String(request.auth.token.email || "").trim().toLowerCase();
-  const fullName = String(request.data?.fullName || "").trim();
-  const email = String(request.data?.email || "").trim().toLowerCase();
-  const role = String(request.data?.role || "admin").trim().toLowerCase();
-  const status = String(request.data?.status || "active").trim().toLowerCase();
-  const temporaryPassword = "Password123"; // default password
+  const inviterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const inviterAccess = await getRoleFromEmail(inviterEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  const fullName = String(request.data?.fullName || '').trim()
+  const email = String(request.data?.email || '').trim().toLowerCase()
+  const role = normalizeRole(request.data?.role || 'admin')
+  const status = String(request.data?.status || 'active').trim().toLowerCase()
+  const temporaryPassword = DEFAULT_OPERATOR_PASSWORD
 
   if (!fullName) {
-    throw new HttpsError("invalid-argument", "Enter the operator full name first.");
-  }
-  if (!email || !email.includes("@")) {
-    throw new HttpsError("invalid-argument", "Enter a valid operator email address.");
+    throw new HttpsError('invalid-argument', 'Enter the operator full name first.')
   }
 
-  const active = status !== "inactive";
-  const isAdminRole = role === "admin";
-  const isPersonnelRole = ["mechanics personnel", "inventory personnel", "cashier personnel", "front desk personnel"].includes(role);
-  const accessLevel = isAdminRole ? "admin" : "staff";
-  const targetCollection = isAdminRole ? "authorizedAdmin" : "authorizedPersonnel";
-  const alternateCollection = isAdminRole ? "authorizedPersonnel" : "authorizedAdmin";
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'Enter a valid operator email address.')
+  }
 
-  const authApi = admin.auth();
-  let operatorUser;
+  if (!['admin', ...personnelRoles].includes(role)) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Only admin, mechanics personnel, inventory personnel, cashier personnel, or front desk personnel can be created from this modal.',
+    )
+  }
+
+  if (!['admin', 'superadmin'].includes(inviterAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only admin or superadmin can create operator accounts.')
+  }
+
+  const inviterCanCreateRole =
+    inviterAccess.role === 'superadmin'
+      ? ['admin', ...personnelRoles].includes(role)
+      : personnelRoles.includes(role)
+
+  if (!inviterCanCreateRole) {
+    throw new HttpsError(
+      'permission-denied',
+      inviterAccess.role === 'admin'
+        ? 'Admin can only create non-admin operator accounts.'
+        : 'Only superadmin can create admin operator accounts.',
+    )
+  }
+
+  if (temporaryPassword.length < 8) {
+    throw new HttpsError(
+      'invalid-argument',
+      'Temporary password must be at least 8 characters long.',
+    )
+  }
+
+  const active = status !== 'inactive'
+  const isAdminRole = role === 'admin'
+  const isPersonnelRole = personnelRoles.includes(role)
+  const accessLevel = isAdminRole ? 'admin' : 'staff'
+  const targetCollection = isAdminRole ? 'authorizedAdmin' : 'authorizedPersonnel'
+  const alternateCollection = isAdminRole ? 'authorizedPersonnel' : 'authorizedAdmin'
+  const dashboardPath = getDashboardPath(role)
+  const authApi = admin.auth()
+  let operatorUser
 
   try {
-    operatorUser = await authApi.getUserByEmail(email);
+    operatorUser = await authApi.getUserByEmail(email)
     await authApi.updateUser(operatorUser.uid, {
       displayName: fullName,
       password: temporaryPassword,
       disabled: !active,
       emailVerified: false,
-    });
+    })
   } catch (error) {
-    if (error.code === "auth/user-not-found") {
+    if (error.code === 'auth/user-not-found') {
       operatorUser = await authApi.createUser({
         email,
         password: temporaryPassword,
         displayName: fullName,
         emailVerified: false,
         disabled: !active,
-      });
+      })
     } else {
-      throw new HttpsError("internal", `Unable to create the operator account. ${error.message}`);
+      throw new HttpsError('internal', `Unable to create the operator account. ${error.message}`)
     }
   }
 
@@ -503,16 +604,17 @@ exports.createOperatorAccount = onCall(async (request) => {
     await authApi.setCustomUserClaims(operatorUser.uid, {
       role,
       accessLevel,
-      dashboardPath: isAdminRole ? "/admin" : "/staff",
+      isPrivileged: true,
+      dashboardPath: dashboardPath || '',
       mustChangePassword: true,
-    });
+    })
   } catch (error) {
-    logger.warn("Unable to set custom claims for createOperatorAccount.", {
+    logger.warn('Unable to set custom claims for createOperatorAccount.', {
       uid: operatorUser.uid,
       email,
       details: error.message,
       structuredData: true,
-    });
+    })
   }
 
   try {
@@ -523,9 +625,10 @@ exports.createOperatorAccount = onCall(async (request) => {
           fullName,
           role,
           accessLevel,
-          personnelRole: isPersonnelRole ? role : "",
+          personnelRole: isPersonnelRole ? role : '',
           status,
           active,
+          dashboardPath,
           mustChangePassword: true,
           firstLoginRequired: true,
           temporaryPassword,
@@ -533,53 +636,66 @@ exports.createOperatorAccount = onCall(async (request) => {
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        { merge: true },
       ),
       admin.firestore().collection(alternateCollection).doc(email).delete(),
-    ]);
+    ])
   } catch (error) {
-    logger.warn("Unable to persist operator access records.", {
+    logger.warn('Unable to persist operator access records from Cloud Functions. The client will need deployed Firestore rules for direct writes.', {
       email,
       role,
       details: error.message,
       structuredData: true,
-    });
+    })
   }
 
-  // ✅ Nodemailer email sending
-  try {
-    const verificationCode = generateVerificationCode();
-    await sendVerificationEmail(email, verificationCode);
+  const emailResult = await sendFirebaseVerificationEmail({
+    email,
+    temporaryPassword,
+  })
 
-    // Optionally persist verification code in Firestore
-    await admin.firestore().collection("emailVerifications").doc(email).set({
-      code: verificationCode,
-      expiresAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), // 24h expiry
-      verified: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    logger.info("Operator invite created successfully with Nodemailer.", {
-      email,
-      role,
-      accessLevel,
-      emailSent: true,
-      targetCollection,
-      structuredData: true,
-    });
-
-    return {
-      ok: true,
-      email,
-      role,
-      accessLevel,
-      emailSent: true,
-      message: `Operator created for ${email}. Verification email sent via Nodemailer.`,
-    };
-  } catch (error) {
-    throw new HttpsError("internal", `Operator created but failed to send Nodemailer email. ${error.message}`);
+  if (emailResult.sent) {
+    try {
+      await Promise.all([
+        admin.firestore().collection(targetCollection).doc(email).set(
+          {
+            verificationEmailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        ),
+      ])
+    } catch (error) {
+      logger.warn('Unable to persist the verification email timestamp for the invited operator.', {
+        email,
+        uid: operatorUser.uid,
+        details: error.message,
+        structuredData: true,
+      })
+    }
   }
-});
+
+  logger.info('Operator invite created successfully.', {
+    email,
+    role,
+    accessLevel,
+    emailSent: emailResult.sent,
+    targetCollection,
+    structuredData: true,
+  })
+
+  return {
+    ok: true,
+    email,
+    role,
+    accessLevel,
+    emailSent: emailResult.sent,
+    message: emailResult.sent
+      ? `Firebase verification email sent to ${email}. Please use the newest verification email link.`
+      : `Operator created for ${email}. Firebase verification email could not be sent automatically.`,
+  }
+})
+
 exports.archiveOperatorAccount = onCall(async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'You must be signed in to archive an operator.')
@@ -1383,36 +1499,6 @@ exports.updateUserPassword = onCall(async (request) => {
   }
 })
 
-exports.updateUserAccess = onCall(async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to update your access.')
-  }
-
-  const { email, role, status, accessibleSections, fullName } = request.data;
-
-  if (!email || !fullName || !role) {
-    throw new HttpsError('invalid-argument', 'Missing required fields.');
-  }
-
-  try {
-    const db = admin.firestore();
-    const userRef = db.collection('users').doc(email.trim().toLowerCase());
-
-    const updateData = {
-      fullName,
-      role,
-      status,
-      accessibleSections,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-
-    await userRef.set(updateData, { merge: true });
-    return { ok: true, message: 'Access updated successfully.' };
-  } catch (error) {
-    throw new HttpsError('internal', `Failed to update access. ${error.message}`);
-  }
-});
-
 exports.approveFinancingApplication = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'You must be signed in to approve applications.')
@@ -1797,7 +1883,6 @@ exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
 })
 
 // Verify email code
-// Verify email code (Firestore-only)
 exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
   const code = String(request.data?.code || '').trim()
@@ -1821,7 +1906,7 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
     
     // Check if expired
     const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt)
-    if (!expiresAt || new Date() > expiresAt) {
+    if (new Date() > expiresAt) {
       throw new HttpsError('invalid-argument', 'Verification code has expired. Please request a new one.')
     }
     
@@ -1836,18 +1921,22 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
     }
     
     // Mark as verified in Firestore
-    await admin.firestore().collection('emailVerifications').doc(email).update({
-      verified: true,
-      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-    })
+      await admin.firestore().collection('emailVerifications').doc(email).update({
+        verified: true,
+        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      })
 
-    logger.info('Email verified successfully (Firestore only)', { email, structuredData: true })
+      // ✅ Also update Firebase Auth user
+      const userRecord = await admin.auth().getUserByEmail(email)
+      await admin.auth().updateUser(userRecord.uid, { emailVerified: true })
 
-    return {
-      success: true,
-      message: 'Email verified successfully!',
-      email: email,
-    }
+      logger.info('Email verified successfully', { email, structuredData: true })
+
+      return {
+        success: true,
+        message: 'Email verified successfully!',
+        email: email,
+      }
   } catch (error) {
     if (error instanceof HttpsError) {
       throw error
