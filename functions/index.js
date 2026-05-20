@@ -1499,6 +1499,36 @@ exports.updateUserPassword = onCall(async (request) => {
   }
 })
 
+exports.updateUserAccess = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to update your access.')
+  }
+
+  const { email, role, status, accessibleSections, fullName } = request.data;
+
+  if (!email || !fullName || !role) {
+    throw new HttpsError('invalid-argument', 'Missing required fields.');
+  }
+
+  try {
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(email.trim().toLowerCase());
+
+    const updateData = {
+      fullName,
+      role,
+      status,
+      accessibleSections,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await userRef.set(updateData, { merge: true });
+    return { ok: true, message: 'Access updated successfully.' };
+  } catch (error) {
+    throw new HttpsError('internal', `Failed to update access. ${error.message}`);
+  }
+});
+
 exports.approveFinancingApplication = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'You must be signed in to approve applications.')
