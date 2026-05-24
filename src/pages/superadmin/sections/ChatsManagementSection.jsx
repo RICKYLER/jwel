@@ -166,7 +166,7 @@ export default function ChatsManagementSection({
     const searchLower = searchTerm.toLowerCase()
     return baseConversations.filter(
       (conv) =>
-        conv.userName?.toLowerCase().includes(searchLower) ||
+        conv.senderName?.toLowerCase().includes(searchLower) ||
         conv.userEmail?.toLowerCase().includes(searchLower)
     )
   }, [conversations, searchTerm, viewMode])
@@ -491,12 +491,12 @@ export default function ChatsManagementSection({
                       {conv.otherUserAvatar ? (
                         <img
                           src={conv.otherUserAvatar}
-                          alt={conv.userName}
+                          alt={conv.senderName}
                           className="w-12 h-12 rounded-full object-cover border border-red-600"
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-700">
-                          {(conv.userName || 'U').charAt(0).toUpperCase()}
+                          {(conv.senderName || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
@@ -511,7 +511,7 @@ export default function ChatsManagementSection({
                             ? 'text-white'
                             : 'text-white'
                       }`}>
-                        {conv.userName || 'Unknown User'}
+                        {conv.senderName || 'Unknown User'}
                       </p>
                       <p className={`text-xs truncate mt-1 ${
                         isBulkDeleteMode
@@ -561,7 +561,7 @@ export default function ChatsManagementSection({
             {/* Chat Header */}
             <div className="chat-header">
               <div>
-                <h3 className="text-lg font-bold text-white">{selectedConversation.userName}</h3>
+                <h3 className="text-lg font-bold text-white">{selectedConversation.senderName}</h3>
                 <p className="text-xs text-neutral-400">{selectedConversation.userEmail}</p>
               </div>
               <div className="flex items-center gap-2">
