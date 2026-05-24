@@ -8,18 +8,13 @@ const DEFAULT_OPERATOR_PASSWORD = 'Password123'
 
 const personnelRoles = [
   'mechanics personnel',
-  'inventory personnel',
-  'cashier personnel',
-  'front desk personnel',
+  'staff personnel',
 ]
 
 const rolePriority = {
   customer: 0,
   staff: 1,
   'mechanics personnel': 1,
-  'inventory personnel': 1,
-  'cashier personnel': 1,
-  'front desk personnel': 1,
   admin: 2,
   superadmin: 3,
 }
@@ -31,9 +26,6 @@ const normalizeRole = (value = 'customer') => {
   if (normalizedValue === 'admin') return 'admin'
   if (normalizedValue === 'staff') return 'staff'
   if (normalizedValue === 'mechanicspersonnel' || normalizedValue === 'mechanicpersonnel') return 'mechanics personnel'
-  if (normalizedValue === 'inventorypersonnel') return 'inventory personnel'
-  if (normalizedValue === 'cashierpersonnel') return 'cashier personnel'
-  if (normalizedValue === 'frontdeskpersonnel') return 'front desk personnel'
 
   return 'customer'
 }
@@ -72,10 +64,6 @@ const getDashboardPath = (role, explicitPath = '') => {
     case 'admin':
       return '/admin'
     case 'staff':
-    case 'mechanics personnel':
-    case 'inventory personnel':
-    case 'cashier personnel':
-    case 'front desk personnel':
       return '/staff'
     default:
       return null

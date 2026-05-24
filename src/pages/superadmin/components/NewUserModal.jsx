@@ -1,5 +1,5 @@
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import ConfirmationModal from './ConfirmationModal'
 import './NewUserModal.css'
 
@@ -16,30 +16,50 @@ export default function NewUserModal({
 }) {
   const [initialInviteForm, setInitialInviteForm] = useState(null)
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false)
+  const hasInitializedRef = useRef(false)
 
   const roleLabels = {
     admin: 'Admin',
     'mechanics personnel': 'Mechanics Personnel',
-    'inventory personnel': 'Inventory Personnel',
-    'cashier personnel': 'Cashier Personnel',
-    'front desk personnel': 'Front Desk Personnel',
+    'staff personnel': 'Staff Personnel',
   }
 
+  const menuAccessOptions = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'user-management', label: 'User Management' },
+    { id: 'inventory', label: 'Inventory' },
+    { id: 'services', label: 'Services' },
+    { id: 'bookings', label: 'Bookings' },
+    { id: 'messages', label: 'Messages' },
+    { id: 'reports', label: 'Reports' },
+    { id: 'settings', label: 'Settings' },
+  ]
+
+  // Capture initial form state when modal opens to enable dirty-change detection
   useEffect(() => {
     if (!open) {
-      setInitialInviteForm(null)
-      setShowUnsavedChangesModal(false)
+      hasInitializedRef.current = false
       return
     }
 
-    setInitialInviteForm({
-      fullName: inviteForm.fullName || '',
-      email: inviteForm.email || '',
-      role: inviteForm.role || '',
-      status: inviteForm.status || '',
-      temporaryPassword: inviteForm.temporaryPassword || '',
-    })
-  }, [open])
+    // Only initialize once when modal opens to avoid cascading renders
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      // Defer state update to avoid cascading renders
+      const timer = setTimeout(() => {
+        setInitialInviteForm({
+          fullName: inviteForm.fullName || '',
+          email: inviteForm.email || '',
+          role: inviteForm.role || '',
+          status: inviteForm.status || '',
+          temporaryPassword: inviteForm.temporaryPassword || '',
+          menuAccess: inviteForm.menuAccess || [],
+        })
+        setShowUnsavedChangesModal(false)
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [open, inviteForm])
 
   const isDirty = useMemo(() => {
     if (!initialInviteForm) {
@@ -51,9 +71,10 @@ export default function NewUserModal({
       (inviteForm.email || '') !== initialInviteForm.email ||
       (inviteForm.role || '') !== initialInviteForm.role ||
       (inviteForm.status || '') !== initialInviteForm.status ||
-      (inviteForm.temporaryPassword || '') !== initialInviteForm.temporaryPassword
+      (inviteForm.temporaryPassword || '') !== initialInviteForm.temporaryPassword ||
+      JSON.stringify(inviteForm.menuAccess || []) !== JSON.stringify(initialInviteForm.menuAccess || [])
     )
-  }, [initialInviteForm, inviteForm.email, inviteForm.fullName, inviteForm.role, inviteForm.status, inviteForm.temporaryPassword])
+  }, [initialInviteForm, inviteForm.email, inviteForm.fullName, inviteForm.role, inviteForm.status, inviteForm.temporaryPassword, inviteForm.menuAccess])
 
   const handleRequestClose = () => {
     if (isSubmitting) {
@@ -84,6 +105,20 @@ export default function NewUserModal({
       ...current,
       [name]: value,
     }))
+  }
+
+  const handleMenuAccessChange = (menuId) => {
+    setInviteForm((current) => {
+      const currentAccess = current.menuAccess || []
+      const isChecked = currentAccess.includes(menuId)
+
+      return {
+        ...current,
+        menuAccess: isChecked
+          ? currentAccess.filter((id) => id !== menuId)
+          : [...currentAccess, menuId],
+      }
+    })
   }
 
   return (
@@ -183,6 +218,23 @@ export default function NewUserModal({
                 />
               </div>
             </label>
+
+            <div className="new-user-menu-access">
+              <span className="new-user-menu-access-label">Menu Access Permissions</span>
+              <div className="new-user-menu-access-grid">
+                {menuAccessOptions.map((option) => (
+                  <label key={option.id} className="new-user-menu-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={(inviteForm.menuAccess || []).includes(option.id)}
+                      onChange={() => handleMenuAccessChange(option.id)}
+                      disabled={!canManageAccess || isSubmitting}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <p className="new-user-modal-note">
               New operators must verify their email first, then sign in with <strong>Password123</strong> and change it immediately.

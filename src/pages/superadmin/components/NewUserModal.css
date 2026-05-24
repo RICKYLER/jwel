@@ -244,6 +244,56 @@
   opacity: 0.65;
 }
 
+.new-user-menu-access {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.new-user-menu-access-label {
+  display: block;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  margin-bottom: 0.8rem;
+}
+
+.new-user-menu-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.new-user-menu-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.new-user-menu-checkbox input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #c51d34;
+}
+
+.new-user-menu-checkbox span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.new-user-menu-checkbox input:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 @media (max-width: 640px) {
   .new-user-modal-panel {
     width: min(100%, 32rem);
@@ -261,6 +311,10 @@
 
   .new-user-cancel {
     text-align: center;
+  }
+
+  .new-user-menu-access-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -330,4 +384,16 @@
 
 [data-theme='light'] .new-user-cancel {
   color: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .new-user-menu-access {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .new-user-menu-access-label {
+  color: rgba(0, 0, 0, 0.62);
+}
+
+[data-theme='light'] .new-user-menu-checkbox span {
+  color: rgba(0, 0, 0, 0.78);
 }

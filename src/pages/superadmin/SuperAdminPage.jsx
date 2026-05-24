@@ -207,9 +207,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const personnelInviteRoles = useMemo(
     () => [
       'mechanics personnel',
-      'inventory personnel',
-      'cashier personnel',
-      'front desk personnel',
+      'staff',
     ],
     []
   )

@@ -16,11 +16,45 @@ export default function SuperAdminSidebar({
   onNavigateHome,
   onSignOut,
   consoleLabel,
+  userMenuAccess = [],
+  isDarkMode = true,
 }) {
   const {
     expandedItem,
     handleItemClick,
   } = useSidebarLogic(onSectionChange)
+
+  // Map menu access IDs to sidebar item IDs
+  const menuAccessMap = {
+    'dashboard': 'dashboard',
+    'user-management': 'user-management',
+    'inventory': 'inventory-management',
+    'services': 'service-management',
+    'bookings': 'financing-applications',
+    'messages': 'chats-management',
+    'reports': 'analytics',
+    'settings': 'profile',
+  }
+
+  // Filter sidebar items based on menu access if provided
+  const visibleItems = userMenuAccess.length > 0
+    ? sidebarItems.filter((item) => {
+        const mappedId = menuAccessMap[item.id] || item.id
+        const isAllowed = userMenuAccess.includes(mappedId) || userMenuAccess.includes(item.id)
+        
+        if (!isAllowed) return false
+        
+        // Filter subitems based on menu access
+        if (item.subitems) {
+          const hasVisibleSubitems = item.subitems.some((sub) =>
+            userMenuAccess.includes(sub.id) || Object.values(menuAccessMap).includes(sub.id)
+          )
+          return hasVisibleSubitems || isAllowed
+        }
+        
+        return true
+      })
+    : sidebarItems
 
   return (
     <>
@@ -72,7 +106,7 @@ export default function SuperAdminSidebar({
         </div>
 
         <nav className="superadmin-nav">
-          {sidebarItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon
 
             const isActive = activeSection === item.id
