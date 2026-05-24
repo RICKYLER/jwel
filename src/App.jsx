@@ -248,6 +248,7 @@ const buildAuthorizedAdminProfile = (
     authorized: true,
     mustChangePassword: Boolean(entry.mustChangePassword),
     firstLoginRequired: Boolean(entry.firstLoginRequired),
+    accessibleSections: entry.accessibleSections || [],
     source,
   }
 }

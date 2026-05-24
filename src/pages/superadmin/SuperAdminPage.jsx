@@ -954,17 +954,42 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       }))
   }, [chatNotifications])
 
-  const sidebarItems = useMemo(() => {
-    return baseSidebarItems.map((item) => {
+  
+
+const sidebarItems = useMemo(() => {
+  const allowedSections =
+    accessProfile?.role === 'superadmin'
+      ? null
+      : (userProfile?.accessibleSections || [])
+
+  return baseSidebarItems
+    .filter((item) => {
+      if (item.id === 'dashboard' || item.id === 'profile') return true
+      if (!allowedSections) return true
+
+      return allowedSections.includes(item.id)
+    })
+    .map((item) => {
       if (item.id === 'chats-management') {
         return {
           ...item,
           badge: unreadChatCount > 0 ? unreadChatCount : null,
         }
       }
-      return item
+
+      return {
+        ...item,
+        subitems:
+          item.subitems && allowedSections
+            ? allowedSections.includes(item.id)
+              ? item.subitems
+              : []
+            : item.subitems,
+      }
     })
-  }, [unreadChatCount])
+}, [unreadChatCount, userProfile?.accessibleSections, accessProfile?.role])
+
+
 
   const metricCards = useMemo(
     () => [
