@@ -113,6 +113,8 @@ const defaultEditUserForm = {
 }
 
 export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', initialFinancingApplicationId = '', onNavigateDashboardPath }) {
+
+  console.log("ACCESS PROFILE:", accessProfile)
   const [activeSection, setActiveSection] = useState(initialFinancingApplicationId ? 'financing-application-detail' : initialSection)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])

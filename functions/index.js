@@ -354,12 +354,13 @@ const getRoleFromEmail = async (email = '', options = {}) => {
     }
   }
 
-  const resolved = buildResolvedAccessProfile(resolvedProfiles, 'customer')
+
+const resolved = buildResolvedAccessProfile(resolvedProfiles, 'customer')
 
 return {
   ...resolved,
   accessibleSections:
-    resolvedProfiles.find(Boolean)?.accessibleSections || [],
+    resolvedProfiles.find(profile => profile?.accessibleSections)?.accessibleSections || [],
 }
 }
 

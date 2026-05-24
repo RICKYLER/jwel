@@ -31,17 +31,21 @@ service cloud.firestore {
           : 'guest';
     }
 
-    function signedInRole() {
-      return tokenRole() != 'guest'
-        ? tokenRole()
+function signedInRole() {
+  return tokenRole() != 'guest'
+    ? tokenRole()
+    : signedInEmail() != ''
+      && exists(/databases/$(database)/documents/authorizedSuperadmin/$(signedInEmail()))
+        ? 'superadmin'
         : signedInEmail() != ''
-          && exists(/databases/$(database)/documents/authorizedSuperadmin/$(signedInEmail()))
-            ? 'superadmin'
+          && exists(/databases/$(database)/documents/authorizedAdmin/$(signedInEmail()))
+            ? 'admin'
             : signedInEmail() != ''
-              && exists(/databases/$(database)/documents/authorizedAdmin/$(signedInEmail()))
-                ? 'admin'
+              && exists(/databases/$(database)/documents/authorizedPersonnel/$(signedInEmail()))
+                ? 'staff personnel'
                 : legacyUserRole();
-    }
+}
+
 
     function isAdminOrHigher() {
       return signedInRole() == 'admin' || signedInRole() == 'superadmin';
@@ -97,10 +101,12 @@ function defaultAccess(role) {
       allow create, update, delete: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
     }
 
+    
     match /authorizedPersonnel/{docId} {
-      allow read: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
-      allow create, update, delete: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
+      allow read: if isSignedIn() && emailMatches(docId);
+      allow create, update, delete: if isAdminOrHigher();
     }
+
 
     match /conversations/{docId} {
     allow read: if isAdminOrHigher() || isSignedIn() || resource.data.isGuest == true;
@@ -175,12 +181,14 @@ function defaultAccess(role) {
       }
     }
 
+   
     match /adminPasswordResetRequests/{docId} {
-      allow read: if isAdminOrHigher();
+      allow read: if isAdminOrHigher() || emailMatches(docId);
       allow create: if isSignedIn();
       allow update: if isAdminOrHigher();
       allow delete: if isAdminOrHigher();
     }
+
 
     match /deleteArchived/{docId} {
       allow read: if isAdminOrHigher();
@@ -196,11 +204,6 @@ function defaultAccess(role) {
     match /services/{docId} {
       allow read: if true;
       allow create, update, delete: if isAdminOrHigher();
-    }
-
-    match /authorizedPersonnel/{docId} {
-      allow read: if isAdminOrHigher();
-      allow create, update, delete: if isAdminOrHigher() || (isSignedIn() && request.auth.token.email == docId);
     }
 
     match /settings/{docId} {

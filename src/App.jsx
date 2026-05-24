@@ -49,19 +49,14 @@ const navLinks = [
   { label: 'Contact', id: 'contact' },
 ]
 
+
 const roleLabels = {
-  guest: 'Guest',
-  customer: 'Customer',
-  staff: 'Staff',
-  'mechanics personnel': 'Mechanics Personnel',
-  'inventory personnel': 'Inventory Personnel',
-  'cashier personnel': 'Cashier Personnel',
-  'front desk personnel': 'Front Desk Personnel',
-  admin: 'Admin',
   superadmin: 'Superadmin',
+  admin: 'Admin',
+  'staff personnel': 'Staff Personnel', 
+  'mechanics personnel': 'Mechanics Personnel',
+  customer: 'User',
 }
-
-
 
 const rolePriority = {
   customer: 0,
