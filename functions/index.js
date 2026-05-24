@@ -2120,34 +2120,5 @@ exports.sendCustomEmailVerification = onCall({ enforceAppCheck: false }, async (
   }
 })
 
-// Update Firebase email template to send verification links directly to our app domain
-exports.configureEmailTemplates = onRequest({ enforceAppCheck: false }, async (req, res) => {
-  const projectId = process.env.GCLOUD_PROJECT || 'bykelink-system'
+const fetch = require('node-fetch')
 
-  try {
-    logger.info('Updating email templates for custom domain')
-
-    const getTemplateUrl = `https://identitytoolkit.googleapis.com/admin/v2/projects/${projectId}/emailTemplates/VERIFY_EMAIL`
-
-    await require('https').get(getTemplateUrl, { 
-      headers: { Authorization: `Bearer ${process.env.FIREBASE_ADMIN_SDK_KEY}` } 
-    })
-
-    logger.info('Email template configuration completed')
-    
-    res.json({
-      success: true,
-      message: 'Email templates configured to use custom app domain',
-    })
-  } catch (error) {
-    logger.error('Failed to update email templates', {
-      errorCode: error.code,
-      errorMessage: error.message,
-    })
-    
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    })
-  }
-})

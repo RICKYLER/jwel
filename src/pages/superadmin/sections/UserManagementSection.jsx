@@ -521,19 +521,17 @@ export default function UserManagementSection({
                   <LockResetRoundedIcon sx={{ fontSize: 16 }} />
                 </button>
 
+                {currentAccessRole?.toLowerCase() === 'superadmin' && (
                 <button
                   type="button"
                   onClick={() => handleConfirmedArchive(user)}
-                  disabled={
-                    !canManageAccess ||
-                    !user.email ||
-                    (currentAccessRole !== 'superadmin' && ['admin', 'superadmin'].includes(String(user.role || '').toLowerCase()))
-                  }
+                  disabled={!canManageAccess || !user.email}
                   className="user-action-icon user-action-icon--danger"
                   aria-label={`Archive ${user.fullName || user.email || user.id}`}
                 >
                   <DeleteOutlineRoundedIcon sx={{ fontSize: 18 }} />
                 </button>
+              )}
               </div>
             </div>
             )
