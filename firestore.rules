@@ -106,7 +106,7 @@ function defaultAccess(role) {
 match /authorizedPersonnel/{docId} {
   allow get: if isSignedIn() && emailMatches(docId);
 
-  allow list: if false; // ✅ prevent listing entire collection
+  allow list: if isAdminOrHigher(); // ✅ allow superadmin/admin to list all personnel
 
   allow create, update, delete: if isAdminOrHigher();
 }

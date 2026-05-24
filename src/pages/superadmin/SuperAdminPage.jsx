@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where } from 'firebase/firestore'
+import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where, orderBy } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
@@ -424,7 +424,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       }
 
       return onSnapshot(
-        query(collection(db, collectionName), limit(30)),
+        query(collection(db, collectionName), orderBy('updatedAt', 'desc'), limit(200)),
         (snapshot) => {
           setter(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
           setLoadingState((current) => ({ ...current, [stateKey]: false }))
