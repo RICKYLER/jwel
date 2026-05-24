@@ -6,14 +6,17 @@ admin.initializeApp()
 
 const DEFAULT_OPERATOR_PASSWORD = 'Password123'
 
+
 const personnelRoles = [
   'mechanics personnel',
-  'staff',
+  'staff personnel',
+  'customer'
 ]
+
 
 const rolePriority = {
   customer: 0,
-  staff: 1,
+  'staff personnel': 1,
   'mechanics personnel': 1,
   admin: 2,
   superadmin: 3,
@@ -530,14 +533,25 @@ exports.createOperatorAccount = onCall(async (request) => {
     )
   }
 
-  if (!['admin', 'superadmin'].includes(inviterAccess.role)) {
-    throw new HttpsError('permission-denied', 'Only admin or superadmin can create operator accounts.')
-  }
+  
+const ROLE_HIERARCHY = {
+  superadmin: ['superadmin', 'admin', ...personnelRoles],
+  admin: personnelRoles,
+}
 
-  const inviterCanCreateRole =
-    inviterAccess.role === 'superadmin'
-      ? ['admin', ...personnelRoles].includes(role)
-      : personnelRoles.includes(role)
+// Already normalized earlier
+const allowedRoles = ROLE_HIERARCHY[inviterAccess.role] || []
+
+if (!allowedRoles.includes(role)) {
+  throw new HttpsError(
+    'permission-denied',
+    inviterAccess.role === 'admin'
+      ? 'Admin can only create non-admin operator accounts.'
+      : 'You are not allowed to assign this role.'
+  )
+}
+
+  const inviterCanCreateRole = allowedRoles.includes(role)
 
   if (!inviterCanCreateRole) {
     throw new HttpsError(

@@ -36,24 +36,21 @@ export default function SuperAdminSidebar({
   }
 
   // Filter sidebar items based on menu access if provided
-  const visibleItems = userMenuAccess.length > 0
-    ? sidebarItems.filter((item) => {
-        const mappedId = menuAccessMap[item.id] || item.id
-        const isAllowed = userMenuAccess.includes(mappedId) || userMenuAccess.includes(item.id)
-        
-        if (!isAllowed) return false
-        
-        // Filter subitems based on menu access
-        if (item.subitems) {
-          const hasVisibleSubitems = item.subitems.some((sub) =>
-            userMenuAccess.includes(sub.id) || Object.values(menuAccessMap).includes(sub.id)
-          )
-          return hasVisibleSubitems || isAllowed
-        }
-        
+const visibleItems = userMenuAccess.length > 0
+  ? sidebarItems.filter((item) => {
+      const mappedId = menuAccessMap[item.id] || item.id
+      const isAllowed = userMenuAccess.includes(mappedId) || userMenuAccess.includes(item.id)
+
+      if (!isAllowed) return false
+
+      // If parent is allowed, keep all its subitems
+      if (item.subitems) {
         return true
-      })
-    : sidebarItems
+      }
+
+      return true
+    })
+  : sidebarItems
 
   return (
     <>

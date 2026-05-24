@@ -222,7 +222,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
 
       
-  useEffect(() => {
+ useEffect(() => {
   if (!currentUser?.uid) return
 
   const unsub = onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
@@ -1449,6 +1449,21 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
       const normalizedInviteRole = normalizeText(inviteForm.role)
 
+      
+      // Define allowed roles dynamically
+      const allowedRolesByUser = {
+        admin: ['staff personnel', 'mechanics personnel', 'customer'],
+        superadmin: [
+          'staff personnel',
+          'mechanics personnel',
+          'customer',
+          'admin',
+          'superadmin',
+        ],
+      }
+
+      const assignableInviteRoles = allowedRolesByUser[currentAccessRole] || []
+
       if (!assignableInviteRoles.includes(normalizedInviteRole)) {
         throw new Error(
           currentAccessRole === 'admin'
@@ -1905,6 +1920,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
         isDarkMode={isDarkMode}
+        currentUserRole={userProfile?.role}
       />
 
       <EditUserModal
@@ -1914,6 +1930,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         setEditUserForm={setEditUserForm}
         onSubmit={handleEditUserSave}
         availableRoles={assignableRoleOptions}
+        currentUserRole={userProfile?.role}
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
         sidebarItems={baseSidebarItems}

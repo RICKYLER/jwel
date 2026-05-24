@@ -51,11 +51,41 @@ service cloud.firestore {
       return signedInRole() == 'superadmin';
     }
 
+function defaultAccess(role) {
+  return role == "superadmin" ? ["dashboard","user-management","inventory","services","bookings","messages","reports","settings"] :
+         role == "admin" ? ["dashboard","user-management","inventory","services","bookings","messages","reports","settings"] :
+         role == "mechanics personnel" ? ["dashboard","services","messages","settings"] :
+         role == "staff personnel" ? ["dashboard","inventory","services","settings"] :
+         role == "customer" ? ["dashboard","bookings","messages","settings"] :
+         [];
+}
+
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
-      allow delete: if isSuperadmin();
-    }
+  allow read: if isSignedIn();
+
+  allow create: if isSignedIn() && (
+    // Superadmin can create any role
+    isSuperadmin() ||
+    // Admin can only create staff, mechanics personnel, or customer
+    (
+      signedInRole() == "admin" &&
+      (
+        request.resource.data.role == "staff personnel" ||
+        request.resource.data.role == "mechanics personnel" ||
+        request.resource.data.role == "customer"
+      )
+    )
+  );
+
+  allow update: if isSignedIn() && (
+    // Users can update their own profile
+    request.auth.uid == userId ||
+    // Admins/superadmins can update others
+    isAdminOrHigher()
+  );
+
+  allow delete: if isSuperadmin();
+}
 
     match /authorizedAdmin/{docId} {
       allow read: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
@@ -178,15 +208,5 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrHigher();
     }
 
-    match /users/{userId} {
-  // allow staff to read their own profile
-  allow read: if isSignedIn() && request.auth.uid == userId;
-
-  // admins/superadmins can read all
-  allow read: if isAdminOrHigher();
-
-  allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
-  allow delete: if isSuperadmin();
-}
   }
 }

@@ -9,31 +9,34 @@ export default function NewUserModal({
   inviteForm,
   setInviteForm,
   onSubmit,
-  availableRoles = [],
   canManageAccess,
   isSubmitting,
   isDarkMode = true,
+  currentUserRole,
 }) {
   const [initialInviteForm, setInitialInviteForm] = useState(null)
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false)
   const hasInitializedRef = useRef(false)
 
-  const roleLabels = {
-    admin: 'Admin',
-    'mechanics personnel': 'Mechanics Personnel',
-    'staff personnel': 'Staff Personnel',
-  }
-
-  const menuAccessOptions = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'user-management', label: 'User Management' },
-    { id: 'inventory', label: 'Inventory' },
-    { id: 'services', label: 'Services' },
-    { id: 'bookings', label: 'Bookings' },
-    { id: 'messages', label: 'Messages' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'settings', label: 'Settings' },
+  const defaultAccessMap = {
+  "superadmin": [
+    "dashboard", "user-management", "inventory", "services",
+    "bookings", "messages", "reports", "settings"
+  ],
+  "admin": [
+    "dashboard", "user-management", "inventory", "services",
+    "bookings", "messages", "reports", "settings"
+  ],
+  "mechanics personnel": [
+    "dashboard", "services", "messages", "settings"
+  ],
+  "staff personnel": [
+    "dashboard", "inventory", "services", "settings"
+  ],
+  "customer": [
+    "dashboard", "bookings", "messages", "settings"
   ]
+}
 
   // Capture initial form state when modal opens to enable dirty-change detection
   useEffect(() => {
@@ -52,8 +55,7 @@ export default function NewUserModal({
           email: inviteForm.email || '',
           role: inviteForm.role || '',
           status: inviteForm.status || '',
-          temporaryPassword: inviteForm.temporaryPassword || '',
-          menuAccess: inviteForm.menuAccess || [],
+          temporaryPassword: inviteForm.temporaryPassword || ''
         })
         setShowUnsavedChangesModal(false)
       }, 0)
@@ -71,10 +73,8 @@ export default function NewUserModal({
       (inviteForm.email || '') !== initialInviteForm.email ||
       (inviteForm.role || '') !== initialInviteForm.role ||
       (inviteForm.status || '') !== initialInviteForm.status ||
-      (inviteForm.temporaryPassword || '') !== initialInviteForm.temporaryPassword ||
-      JSON.stringify(inviteForm.menuAccess || []) !== JSON.stringify(initialInviteForm.menuAccess || [])
-    )
-  }, [initialInviteForm, inviteForm.email, inviteForm.fullName, inviteForm.role, inviteForm.status, inviteForm.temporaryPassword, inviteForm.menuAccess])
+      (inviteForm.temporaryPassword || '') !== initialInviteForm.temporaryPassword)
+  }, [initialInviteForm, inviteForm.email, inviteForm.fullName, inviteForm.role, inviteForm.status, inviteForm.temporaryPassword])
 
   const handleRequestClose = () => {
     if (isSubmitting) {
@@ -98,28 +98,22 @@ export default function NewUserModal({
     return null
   }
 
-  const handleFieldChange = (event) => {
-    const { name, value } = event.target
+const handleFieldChange = (event) => {
+  const { name, value } = event.target
 
-    setInviteForm((current) => ({
-      ...current,
-      [name]: value,
-    }))
-  }
+  setInviteForm((current) => {
+    let updated = { ...current, [name]: value }
 
-  const handleMenuAccessChange = (menuId) => {
-    setInviteForm((current) => {
-      const currentAccess = current.menuAccess || []
-      const isChecked = currentAccess.includes(menuId)
+    // Auto-assign menuAccess when role changes
+    if (name === "role" && defaultAccessMap[value]) {
+      updated.menuAccess = defaultAccessMap[value]
+    }
 
-      return {
-        ...current,
-        menuAccess: isChecked
-          ? currentAccess.filter((id) => id !== menuId)
-          : [...currentAccess, menuId],
-      }
-    })
-  }
+    return updated
+  })
+}
+
+
 
   return (
     <>
@@ -167,21 +161,30 @@ export default function NewUserModal({
                 />
               </label>
 
-              <label className="new-user-field">
-                <span>Role</span>
-                <select
-                  name="role"
-                  value={inviteForm.role}
-                  onChange={handleFieldChange}
-                  disabled={!canManageAccess || isSubmitting}
-                >
-                  {availableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {roleLabels[role] || role}
-                    </option>
-                  ))}
-                </select>
-              </label>
+             <label className="new-user-field">
+            <span>Role</span>
+            <select
+              name="role"
+              value={inviteForm.role}
+              onChange={handleFieldChange}
+              disabled={!canManageAccess || isSubmitting}
+            >
+              {/* Always allow staff and customer */}
+              <option value="staff personnel">Staff Personnel</option>
+              <option value="customer">Customer</option>
+
+              {/* Only allow admin/superadmin if current user is superadmin */}
+              {currentUserRole === "superadmin" && (
+                <>
+                  <option value="admin">Admin</option>
+                  <option value="superadmin">Superadmin</option>
+                </>
+              )}
+
+              {/* Mechanics personnel can be allowed for both admin and superadmin */}
+              <option value="mechanics personnel">Mechanics Personnel</option>
+            </select>
+          </label>
 
               <div className="new-user-field">
                 <span>Initial Status</span>
@@ -218,23 +221,6 @@ export default function NewUserModal({
                 />
               </div>
             </label>
-
-            <div className="new-user-menu-access">
-              <span className="new-user-menu-access-label">Menu Access Permissions</span>
-              <div className="new-user-menu-access-grid">
-                {menuAccessOptions.map((option) => (
-                  <label key={option.id} className="new-user-menu-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={(inviteForm.menuAccess || []).includes(option.id)}
-                      onChange={() => handleMenuAccessChange(option.id)}
-                      disabled={!canManageAccess || isSubmitting}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
 
             <p className="new-user-modal-note">
               New operators must verify their email first, then sign in with <strong>Password123</strong> and change it immediately.
