@@ -956,11 +956,13 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
   
 
+
 const sidebarItems = useMemo(() => {
   const allowedSections =
-    accessProfile?.role === 'superadmin'
+    accessProfile?.role === 'superadmin' ||
+    accessProfile?.role === 'admin'
       ? null
-      : (userProfile?.accessibleSections || [])
+      : (accessProfile?.accessibleSections || [])
 
   return baseSidebarItems
     .filter((item) => {
@@ -985,9 +987,11 @@ const sidebarItems = useMemo(() => {
               ? item.subitems
               : []
             : item.subitems,
+            
       }
     })
-}, [unreadChatCount, userProfile?.accessibleSections, accessProfile?.role])
+}, [unreadChatCount, accessProfile?.accessibleSections, accessProfile?.role])
+
 
 
 

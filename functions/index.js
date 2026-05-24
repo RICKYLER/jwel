@@ -156,7 +156,8 @@ const getAuthorizedCollectionNameForRole = (role = 'customer') => {
 
   if (normalizedRole === 'superadmin') return 'authorizedSuperadmin'
   if (normalizedRole === 'admin') return 'authorizedAdmin'
-  if (normalizedRole === 'staff' || personnelRoles.includes(normalizedRole)) return 'authorizedPersonnel'
+  if (personnelRoles.includes(normalizedRole))
+   return 'authorizedPersonnel'
 
   return null
 }
@@ -254,14 +255,19 @@ const getRoleFromEmail = async (email = '', options = {}) => {
         return null
       }
 
+      
       return {
         role,
         dashboardPath: getDashboardPath(
           role,
           data.dashboardPath || data.assignedPage || data.redirectTo || data.page,
         ),
+        accessibleSections: Array.isArray(data.accessibleSections)
+          ? data.accessibleSections
+          : [],
         source: collectionName,
       }
+
     }
 
     try {
@@ -317,7 +323,7 @@ const getRoleFromEmail = async (email = '', options = {}) => {
   const [superadminProfileResult, adminProfileResult, personnelProfileResult] = await Promise.allSettled([
     findCollectionRole('authorizedSuperadmin', 'superadmin'),
     findCollectionRole('authorizedAdmin', 'admin'),
-    findCollectionRole('authorizedPersonnel', 'staff'),
+    findCollectionRole('authorizedPersonnel', 'staff personnel'),
   ])
 
   resolvedProfiles.push(
@@ -348,7 +354,13 @@ const getRoleFromEmail = async (email = '', options = {}) => {
     }
   }
 
-  return buildResolvedAccessProfile(resolvedProfiles, 'customer')
+  const resolved = buildResolvedAccessProfile(resolvedProfiles, 'customer')
+
+return {
+  ...resolved,
+  accessibleSections:
+    resolvedProfiles.find(Boolean)?.accessibleSections || [],
+}
 }
 
 exports.api = onRequest((request, response) => {
