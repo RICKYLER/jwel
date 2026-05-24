@@ -27,7 +27,7 @@ const normalizeRole = (value = 'customer') => {
 
   if (normalizedValue === 'superadmin') return 'superadmin'
   if (normalizedValue === 'admin') return 'admin'
-  if (normalizedValue === 'staff') return 'staff'
+  if (normalizedValue === 'staffpersonnel') return 'staff personnel'
   if (normalizedValue === 'mechanicspersonnel' || normalizedValue === 'mechanicpersonnel') return 'mechanics personnel'
   return 'customer'
 }
@@ -60,17 +60,22 @@ const getDashboardPath = (role, explicitPath = '') => {
     return normalizedPath
   }
 
-  switch (role) {
+  
+ switch (role) {
     case 'superadmin':
       return '/superadmin'
     case 'admin':
       return '/admin'
-    case 'staff':
-      return '/staff'
+    case 'staff personnel':
+    case 'mechanics personnel':
+      return '/admin' 
+    case 'customer':
+      return '/customer'
     default:
-      return null
+      return '/customer'
   }
 }
+
 
 const getWebApiKey = () =>
   String(
@@ -525,14 +530,6 @@ exports.createOperatorAccount = onCall(async (request) => {
   if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'Enter a valid operator email address.')
   }
-
-  if (!['admin', ...personnelRoles].includes(role)) {
-    throw new HttpsError(
-      'invalid-argument',
-      'Only admin, mechanics personnel, inventory personnel, cashier personnel, or front desk personnel can be created from this modal.',
-    )
-  }
-
   
 const ROLE_HIERARCHY = {
   superadmin: ['superadmin', 'admin', ...personnelRoles],
