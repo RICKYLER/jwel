@@ -61,32 +61,29 @@ const roleLabels = {
   superadmin: 'Superadmin',
 }
 
+
+
 const rolePriority = {
   customer: 0,
-  staff: 1,
+  'staff personnel': 1,
   'mechanics personnel': 1,
-  'inventory personnel': 1,
-  'cashier personnel': 1,
-  'front desk personnel': 1,
   admin: 2,
   superadmin: 3,
 }
 
+
+
 const dashboardByRole = {
   customer: '/customer',
-  staff: '/staff',
-  'mechanics personnel': '/staff',
-  'inventory personnel': '/staff',
-  'cashier personnel': '/staff',
-  'front desk personnel': '/staff',
+  'staff personnel': '/admin',
+  'mechanics personnel': '/admin',
   admin: '/admin',
   superadmin: '/superadmin',
 }
 
 const dashboardRequirements = {
   '/customer': 'customer',
-  '/staff': 'staff',
-  '/admin': 'admin',
+  '/admin': 'staff personnel',
   '/superadmin': 'superadmin',
 }
 
@@ -143,15 +140,17 @@ const formatAuthError = (error) => {
   }
 }
 
+
 const normalizePath = (path) => {
   if (path?.startsWith('/financing/')) return path
   if (path?.startsWith('/superadmin/')) return path
   if (path?.startsWith('/admin/')) return path
-  if (path?.startsWith('/staff/')) return path
   if (path?.startsWith('/customer/')) return path
+
   if (path?.startsWith('/login')) return '/login'
   if (path?.startsWith('/forgot-password')) return '/forgot-password'
   if (path?.startsWith('/password-reset-confirmation')) return '/password-reset-confirmation'
+
   if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
@@ -159,9 +158,10 @@ const normalizePath = (path) => {
   if (path?.startsWith('/financing')) return '/financing'
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
-  if (path?.startsWith('/staff')) return '/staff'
+
   return '/'
 }
+
 
 const getNavLabelForPath = (path, hash = '') => {
   const matchedLink = navLinks.find((link) => link.id === hash)
@@ -179,7 +179,6 @@ const getNavLabelForPath = (path, hash = '') => {
 const getDashboardBasePath = (path = '') => {
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
-  if (path?.startsWith('/staff')) return '/staff'
   return path
 }
 
@@ -187,19 +186,19 @@ const canAccessRole = (currentRole, requiredRole) => {
   return (rolePriority[currentRole] ?? -1) >= (rolePriority[requiredRole] ?? Number.MAX_SAFE_INTEGER)
 }
 
+
 const normalizeAccessRole = (value = 'customer') => {
   const normalizedValue = String(value).trim().toLowerCase().replace(/[\s_-]+/g, '')
 
   if (normalizedValue === 'superadmin') return 'superadmin'
   if (normalizedValue === 'admin') return 'admin'
-  if (normalizedValue === 'staff') return 'staff'
-  if (normalizedValue === 'mechanicspersonnel' || normalizedValue === 'mechanicpersonnel') return 'mechanics personnel'
-  if (normalizedValue === 'inventorypersonnel') return 'inventory personnel'
-  if (normalizedValue === 'cashierpersonnel') return 'cashier personnel'
-  if (normalizedValue === 'frontdeskpersonnel') return 'front desk personnel'
+  if (normalizedValue === 'staffpersonnel') return 'staff personnel'
+  if (normalizedValue === 'mechanicspersonnel') return 'mechanics personnel'
+  if (normalizedValue === 'customer') return 'customer'
 
   return 'customer'
 }
+
 
 const normalizeDashboardPath = (value = '') => {
   const normalizedValue = String(value).trim()
