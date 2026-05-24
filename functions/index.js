@@ -8,7 +8,7 @@ const DEFAULT_OPERATOR_PASSWORD = 'Password123'
 
 const personnelRoles = [
   'mechanics personnel',
-  'staff personnel',
+  'staff',
 ]
 
 const rolePriority = {
@@ -26,7 +26,6 @@ const normalizeRole = (value = 'customer') => {
   if (normalizedValue === 'admin') return 'admin'
   if (normalizedValue === 'staff') return 'staff'
   if (normalizedValue === 'mechanicspersonnel' || normalizedValue === 'mechanicpersonnel') return 'mechanics personnel'
-
   return 'customer'
 }
 
