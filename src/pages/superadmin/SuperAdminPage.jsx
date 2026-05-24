@@ -101,6 +101,7 @@ const defaultInviteForm = {
   role: 'admin',
   status: 'active',
   temporaryPassword: DEFAULT_OPERATOR_PASSWORD,
+  menuAccess: ['dashboard', 'user-management', 'inventory', 'services', 'bookings', 'messages', 'reports', 'settings'],
 }
 
 const defaultEditUserForm = {

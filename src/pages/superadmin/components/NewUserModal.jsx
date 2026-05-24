@@ -3,22 +3,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import ConfirmationModal from './ConfirmationModal'
 import './NewUserModal.css'
 
-export default function NewUserModal({
-  open,
-  onClose,
-  inviteForm,
-  setInviteForm,
-  onSubmit,
-  canManageAccess,
-  isSubmitting,
-  isDarkMode = true,
-  currentUserRole,
-}) {
-  const [initialInviteForm, setInitialInviteForm] = useState(null)
-  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false)
-  const hasInitializedRef = useRef(false)
-
-  const defaultAccessMap = {
+const DEFAULT_MENU_ACCESS_MAP = {
   "superadmin": [
     "dashboard", "user-management", "inventory", "services",
     "bookings", "messages", "reports", "settings"
@@ -37,6 +22,22 @@ export default function NewUserModal({
     "dashboard", "bookings", "messages", "settings"
   ]
 }
+
+export default function NewUserModal({
+  open,
+  onClose,
+  inviteForm,
+  setInviteForm,
+  onSubmit,
+  canManageAccess,
+  isSubmitting,
+  isDarkMode = true,
+  currentUserRole,
+}) {
+  const [initialInviteForm, setInitialInviteForm] = useState(null)
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false)
+  const hasInitializedRef = useRef(false)
+  const previousRoleRef = useRef(null)
 
   // Capture initial form state when modal opens to enable dirty-change detection
   useEffect(() => {
@@ -62,6 +63,29 @@ export default function NewUserModal({
       return () => clearTimeout(timer)
     }
   }, [open, inviteForm])
+
+  // Auto-update menuAccess when role changes (including initial role set from parent)
+  useEffect(() => {
+    if (!open || !inviteForm.role) {
+      previousRoleRef.current = null
+      return
+    }
+    
+    // Only update if role has changed
+    if (previousRoleRef.current === inviteForm.role) {
+      return
+    }
+    
+    previousRoleRef.current = inviteForm.role
+    const defaultForRole = DEFAULT_MENU_ACCESS_MAP[inviteForm.role]
+    
+    if (defaultForRole) {
+      setInviteForm((current) => ({
+        ...current,
+        menuAccess: defaultForRole
+      }))
+    }
+  }, [open, inviteForm.role, setInviteForm])
 
   const isDirty = useMemo(() => {
     if (!initialInviteForm) {
@@ -105,8 +129,8 @@ const handleFieldChange = (event) => {
     let updated = { ...current, [name]: value }
 
     // Auto-assign menuAccess when role changes
-    if (name === "role" && defaultAccessMap[value]) {
-      updated.menuAccess = defaultAccessMap[value]
+    if (name === "role" && DEFAULT_MENU_ACCESS_MAP[value]) {
+      updated.menuAccess = DEFAULT_MENU_ACCESS_MAP[value]
     }
 
     return updated

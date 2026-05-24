@@ -573,6 +573,16 @@ if (!allowedRoles.includes(role)) {
   const targetCollection = isAdminRole ? 'authorizedAdmin' : 'authorizedPersonnel'
   const alternateCollection = isAdminRole ? 'authorizedPersonnel' : 'authorizedAdmin'
   const dashboardPath = getDashboardPath(role)
+
+  // Define default accessible sections based on role
+  const defaultAccessibleSections = {
+    superadmin: ['dashboard', 'user-management', 'inventory', 'services', 'bookings', 'messages', 'reports', 'settings'],
+    admin: ['dashboard', 'user-management', 'inventory', 'services', 'bookings', 'messages', 'reports', 'settings'],
+    'staff personnel': ['dashboard', 'inventory', 'services', 'settings'],
+    'mechanics personnel': ['dashboard', 'services', 'messages', 'settings'],
+  }
+
+  const accessibleSections = request.data?.menuAccess || defaultAccessibleSections[role] || []
   const authApi = admin.auth()
   let operatorUser
 
@@ -627,6 +637,7 @@ if (!allowedRoles.includes(role)) {
           status,
           active,
           dashboardPath,
+          accessibleSections,
           mustChangePassword: true,
           firstLoginRequired: true,
           temporaryPassword,
@@ -1025,6 +1036,19 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
   let firestoreSyncCompleted = false
 
   try {
+    // Get accessible sections from authorized collections
+    let accessibleSections = []
+    for (const collectionName of accessCollectionsToSync) {
+      const doc = await admin.firestore().collection(collectionName).doc(email).get()
+      if (doc.exists) {
+        const data = doc.data() || {}
+        if (Array.isArray(data.accessibleSections)) {
+          accessibleSections = data.accessibleSections
+          break
+        }
+      }
+    }
+
     await Promise.all([
       ...(shouldSyncUsersCollection
         ? [
@@ -1033,6 +1057,7 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
                 mustChangePassword: false,
                 firstLoginRequired: false,
                 temporaryPassword: '',
+                accessibleSections,
                 emailVerified: Boolean(request.auth.token.email_verified),
                 passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
