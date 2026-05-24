@@ -2009,9 +2009,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
                 <h2 className="font-['Epilogue'] text-4xl font-black uppercase italic tracking-tighter sm:text-5xl">
                   Velocity <span className="text-red-600">Pulse</span>
                 </h2>
-                <p className="mt-2 font-medium text-white/40">
-                  Firebase live sync • {consoleLabel} access • Focus: {sectionTitle}
-                </p>
               </div>
 
               <div className="flex flex-wrap gap-4">
