@@ -5,21 +5,21 @@ import './NewUserModal.css'
 
 const DEFAULT_MENU_ACCESS_MAP = {
   "superadmin": [
-    "dashboard", "user-management", "inventory", "services",
-    "bookings", "messages", "reports", "settings"
+    "dashboard", "user-management", "inventory-management", "service-management",
+    "financing-applications", "chats-management", "analytics", "profile"
   ],
   "admin": [
-    "dashboard", "user-management", "inventory", "services",
-    "bookings", "messages", "reports", "settings"
+    "dashboard", "user-management", "inventory-management", "service-management",
+    "financing-applications", "chats-management", "analytics", "profile"
   ],
   "mechanics personnel": [
-    "dashboard", "services", "messages", "settings"
+    "dashboard", "service-management", "chats-management", "profile"
   ],
   "staff personnel": [
-    "dashboard", "inventory", "services", "settings"
+    "dashboard", "inventory-management", "service-management", "profile"
   ],
   "customer": [
-    "dashboard", "bookings", "messages", "settings"
+    "dashboard", "financing-applications", "chats-management", "profile"
   ]
 }
 

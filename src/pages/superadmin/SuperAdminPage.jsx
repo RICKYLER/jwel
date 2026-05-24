@@ -456,11 +456,35 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         stateKey: 'inventory',
         setter: setInventory,
       }),
-      subscribeToCollection({
-        collectionName: 'authorizedPersonnel',
-        stateKey: 'technicians', // keep state name for prop compatibility
-        setter: setTechnicians,
-      }),
+     
+
+currentAccessRole === 'staff personnel' && currentUser?.email
+  ? onSnapshot(
+      doc(db, 'authorizedPersonnel', currentUser.email.toLowerCase()),
+      (snap) => {
+        if (snap.exists()) {
+          setTechnicians([{ id: snap.id, ...snap.data() }])
+        } else {
+          setTechnicians([])
+        }
+
+        setLoadingState((current) => ({
+          ...current,
+          technicians: false,
+        }))
+      },
+      (error) => {
+        console.error('Unable to load authorizedPersonnel (self)', error)
+        setTechnicians([]) 
+      }
+    )
+  : subscribeToCollection({
+      collectionName: 'authorizedPersonnel',
+      stateKey: 'technicians',
+      setter: setTechnicians,
+    }),
+
+
       subscribeToCollection({
         collectionName: 'users',
         stateKey: 'users',
@@ -502,7 +526,14 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     return () => {
       unsubscribers.forEach((unsubscribe) => unsubscribe?.())
     }
-  }, [canEditOperations, consoleLabel])
+  
+}, [
+  canEditOperations,
+  consoleLabel,
+  currentAccessRole, 
+  currentUser?.email 
+])
+
 
   // Load unread user messages in real time across all chat conversations
   const recountUnreadMessages = useCallback(() => {
@@ -960,11 +991,27 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
 
 
 const sidebarItems = useMemo(() => {
-  const allowedSections =
+  const defaultSectionsByRole = {
+    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile'],
+    'mechanics personnel': ['dashboard', 'service-management', 'chats-management', 'profile'],
+  }
+  
+  let allowedSections =
     accessProfile?.role === 'superadmin' ||
     accessProfile?.role === 'admin'
       ? null
       : (accessProfile?.accessibleSections || [])
+
+  // If privileged user has empty sections, provide defaults based on role
+  if (
+    accessProfile?.isPrivileged &&
+    accessProfile?.authorized &&
+    allowedSections &&
+    allowedSections.length === 0 &&
+    defaultSectionsByRole[accessProfile?.role]
+  ) {
+    allowedSections = defaultSectionsByRole[accessProfile?.role]
+  }
 
   return baseSidebarItems
     .filter((item) => {
@@ -992,7 +1039,7 @@ const sidebarItems = useMemo(() => {
             
       }
     })
-}, [unreadChatCount, accessProfile?.accessibleSections, accessProfile?.role])
+}, [unreadChatCount, accessProfile?.accessibleSections, accessProfile?.role, accessProfile?.isPrivileged, accessProfile?.authorized])
 
 
 
@@ -1517,6 +1564,7 @@ const sidebarItems = useMemo(() => {
         temporaryPassword,
         mustChangePassword: true,
         firstLoginRequired: true,
+        accessibleSections: inviteForm.menuAccess || [],
       })
 
       setActionMessage({

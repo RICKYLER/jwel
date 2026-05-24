@@ -232,6 +232,10 @@ const buildAuthorizedAdminProfile = (
     return null
   }
 
+  // Log what we're reading from Firestore for debugging
+  const sectionsFromFirestore = entry.accessibleSections || []
+  console.log('📋 Firestore accessibleSections:', sectionsFromFirestore, 'entry keys:', Object.keys(entry))
+
   return {
     role,
     label: roleLabels[role] || 'Admin',
@@ -243,7 +247,7 @@ const buildAuthorizedAdminProfile = (
     authorized: true,
     mustChangePassword: Boolean(entry.mustChangePassword),
     firstLoginRequired: Boolean(entry.firstLoginRequired),
-    accessibleSections: entry.accessibleSections || [],
+    accessibleSections: sectionsFromFirestore,
     source,
   }
 }
@@ -279,7 +283,9 @@ const getAuthorizedAdminProfile = async (email = '') => {
       const directSnapshot = await getDoc(doc(db, collectionName, normalizedEmail))
 
       if (directSnapshot.exists()) {
-        const directProfile = buildAuthorizedAdminProfile(directSnapshot.data(), {
+        const docData = directSnapshot.data()
+        console.log(`📂 Found document in ${collectionName}:`, docData)
+        const directProfile = buildAuthorizedAdminProfile(docData, {
           fallbackRole,
           source,
         })
@@ -297,7 +303,9 @@ const getAuthorizedAdminProfile = async (email = '') => {
         const matchedDocument = filteredSnapshot.docs[0]
 
         if (matchedDocument) {
-          const matchedProfile = buildAuthorizedAdminProfile(matchedDocument.data(), {
+          const docData = matchedDocument.data()
+          console.log(`📂 Found document in ${collectionName} (via ${fieldName}):`, docData)
+          const matchedProfile = buildAuthorizedAdminProfile(docData, {
             fallbackRole,
             source,
           })
@@ -837,19 +845,31 @@ function App() {
       }
     }
 
-    // If the Cloud Function resolved a privileged role, trust the server result.
-    if (resolvedCloudRole !== 'customer') {
-      return {
-        role: resolvedCloudRole,
-        label: roleLabels[resolvedCloudRole] || 'User',
-        dashboardPath: cloudDashboardPath,
-        isPrivileged: true,
-        authorized: Boolean(cloudData?.authorized ?? true),
-        mustChangePassword: Boolean(cloudData?.mustChangePassword),
-        firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
-        source: cloudData?.source || 'cloud-function',
-      }
-    }
+    // If the Cloud Function resolved a privileged role, trust the server result
+   
+     
+if (resolvedCloudRole !== 'customer') {
+  return {
+    role: resolvedCloudRole,
+    label: roleLabels[resolvedCloudRole] || 'User',
+    dashboardPath: cloudDashboardPath,
+    isPrivileged: true,
+    authorized: Boolean(cloudData?.authorized ?? true),
+    mustChangePassword: Boolean(cloudData?.mustChangePassword),
+    firstLoginRequired: Boolean(
+      cloudData?.firstLoginRequired || cloudData?.mustChangePassword
+    ),
+
+    // 🔥 ✅ THIS IS THE FINAL MISSING LINE
+    accessibleSections: Array.isArray(cloudData?.accessibleSections)
+      ? cloudData.accessibleSections
+      : [],
+
+    source: cloudData?.source || 'cloud-function',
+  }
+}
+
+
 
     // For customer logins without authorized admin profile or privileged server result
     if (requestedRole === 'customer') {

@@ -14,6 +14,7 @@ export async function saveAccessAssignment(email, role, extraData = {}) {
   const normalizedStatus = String(extraData.status || "active").trim().toLowerCase();
 
   const personnelRoles = [
+    "staff personnel",
     "mechanics personnel",
     "inventory personnel",
     "cashier personnel",
@@ -67,4 +68,26 @@ export async function saveAccessAssignment(email, role, extraData = {}) {
   }
 
   await Promise.all(writeOperations);
+}
+
+/**
+ * Update accessible sections for staff personnel if missing or empty
+ * @param {string} email - User email
+ * @param {array} accessibleSections - Sections to set
+ */
+export async function updateAccessibleSections(email, accessibleSections = []) {
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  if (!Array.isArray(accessibleSections)) {
+    accessibleSections = [];
+  }
+  
+  await setDoc(
+    doc(db, "authorizedPersonnel", normalizedEmail),
+    {
+      accessibleSections,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
 }
