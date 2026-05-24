@@ -154,6 +154,9 @@ export default function CustomerMessagesPage({
         updatedAt: serverTimestamp(),
         lastMessage: messageText.trim(),
         lastMessageTime: serverTimestamp(),
+        senderName: currentUser.displayName || 'User',   // 👈 add this
+        senderAvatar: userAvatar || null,                // 👈 add this
+        senderId: currentUser.uid,                       // 👈 add this
       })
 
       setMessageText('')

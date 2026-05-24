@@ -47,10 +47,17 @@ export default function ChatsManagementSection({
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const conversationsList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
+       const conversationsList = snapshot.docs.map((doc) => {
+  const data = doc.data()
+  return {
+    id: doc.id,
+    ...data,
+    // normalize for UI
+    displayName: data.senderName || "Unknown User",
+    otherUserAvatar: data.senderAvatar || data.otherUserAvatar || null,
+    userEmail: data.userEmail || "",
+  }
+})
         setConversations(conversationsList)
         setSelectedConversation((current) => (
           current ? conversationsList.find((conversation) => conversation.id === current.id) ?? null : null
@@ -58,6 +65,7 @@ export default function ChatsManagementSection({
         
         // Set up real-time listeners for last message of each conversation
         conversationsList.forEach((conv) => {
+          
           // Unsubscribe from previous listener if exists
           if (unsubscribersRef.current.has(conv.id)) {
             unsubscribersRef.current.get(conv.id)()
@@ -84,6 +92,7 @@ export default function ChatsManagementSection({
           unsubscribersRef.current.set(conv.id, msgUnsubscribe)
         })
         
+        
         setError(null)
         setIsLoading(false)
       },
@@ -93,6 +102,7 @@ export default function ChatsManagementSection({
         setIsLoading(false)
       }
     )
+    
 
     return () => {
       unsubscribe()
@@ -166,7 +176,7 @@ export default function ChatsManagementSection({
     const searchLower = searchTerm.toLowerCase()
     return baseConversations.filter(
       (conv) =>
-        conv.senderName?.toLowerCase().includes(searchLower) ||
+        conv.displayName?.toLowerCase().includes(searchLower) ||
         conv.userEmail?.toLowerCase().includes(searchLower)
     )
   }, [conversations, searchTerm, viewMode])
@@ -491,12 +501,12 @@ export default function ChatsManagementSection({
                       {conv.otherUserAvatar ? (
                         <img
                           src={conv.otherUserAvatar}
-                          alt={conv.senderName}
+                          alt={conv.displayName}
                           className="w-12 h-12 rounded-full object-cover border border-red-600"
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-700">
-                          {(conv.senderName || 'U').charAt(0).toUpperCase()}
+                          {(conv.displayName || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
                     </div>
@@ -511,7 +521,7 @@ export default function ChatsManagementSection({
                             ? 'text-white'
                             : 'text-white'
                       }`}>
-                        {conv.senderName || 'Unknown User'}
+                        {conv.displayName || 'Unknown User'}
                       </p>
                       <p className={`text-xs truncate mt-1 ${
                         isBulkDeleteMode
