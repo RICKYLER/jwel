@@ -115,6 +115,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [activeSection, setActiveSection] = useState(initialFinancingApplicationId ? 'financing-application-detail' : initialSection)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])
+  const [userProfile, setUserProfile] = useState(null)
   const [serviceRequests, setServiceRequests] = useState([])
   const [financingApplications, setFinancingApplications] = useState([])
   const [selectedFinancingApplication, setSelectedFinancingApplication] = useState(null)
@@ -134,6 +135,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const hasHydratedUnreadRef = useRef(false)
   const unreadConversationCountsRef = useRef({})
   const unreadListenersRef = useRef(new Map())
+
   const [, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
@@ -217,6 +219,20 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     currentAccessRole === 'superadmin'
       ? roleOptions.filter((role) => role !== 'superadmin')
       : roleOptions.filter((role) => !['admin', 'superadmin'].includes(role))
+
+
+      
+  useEffect(() => {
+  if (!currentUser?.uid) return
+
+  const unsub = onSnapshot(doc(db, "users", currentUser.uid), (snap) => {
+    if (snap.exists()) {
+      setUserProfile(snap.data())
+    }
+  })
+
+  return () => unsub()
+}, [currentUser?.uid])
 
   // Load profile data from Firestore
   useEffect(() => {
@@ -1901,6 +1917,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
         sidebarItems={baseSidebarItems}
+        userMenuAccess={userProfile?.accessibleSections ?? []}
       />
 
       <ConfirmationModal
@@ -1949,6 +1966,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         onNavigateHome={onNavigateHome}
         onSignOut={handleLogoutClick}
         consoleLabel={consoleLabel}
+        userMenuAccess={userProfile?.accessibleSections ?? []}
       />
 
       <div className="superadmin-content">

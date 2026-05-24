@@ -8,7 +8,6 @@ export default function EditUserModal({
   editUserForm,
   setEditUserForm,
   onSubmit,
-  availableRoles = [],
   canManageAccess,
   isSubmitting,
   sidebarItems = [],
@@ -124,22 +123,7 @@ export default function EditUserModal({
               </div>
             </div>
             <div className="edit-user-modal-grid">
-              <label className="edit-user-field">
-                <span>Assigned Role</span>
-                <select
-                  name="role"
-                  value={editUserForm.role}
-                  onChange={handleFieldChange}
-                  disabled={!canManageAccess || isSubmitting}
-                >
-                  {availableRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
+          
               <div className="edit-user-field edit-user-field--toggle">
                 <span>Active</span>
                 <label className="edit-user-switch" aria-label="Toggle user active state">

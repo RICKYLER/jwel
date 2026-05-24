@@ -178,10 +178,15 @@ service cloud.firestore {
       allow create, update, delete: if isAdminOrHigher();
     }
 
-    match /users/{userId}/vehicles/{vehicleId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
-      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
-      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
-    }
+    match /users/{userId} {
+  // allow staff to read their own profile
+  allow read: if isSignedIn() && request.auth.uid == userId;
+
+  // admins/superadmins can read all
+  allow read: if isAdminOrHigher();
+
+  allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+  allow delete: if isSuperadmin();
+}
   }
 }

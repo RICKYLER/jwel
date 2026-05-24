@@ -17,7 +17,6 @@ export default function SuperAdminSidebar({
   onSignOut,
   consoleLabel,
   userMenuAccess = [],
-  isDarkMode = true,
 }) {
   const {
     expandedItem,
