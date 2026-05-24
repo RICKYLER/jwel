@@ -8,7 +8,10 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded'
 import CheckboxOutlinedIcon from '@mui/icons-material/CheckboxOutlined'
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
 import DeleteSweepRoundedIcon from '@mui/icons-material/DeleteSweepRounded'
+import ArchiveRoundedIcon from '@mui/icons-material/ArchiveRounded'
 import EmojiEmotionsRoundedIcon from '@mui/icons-material/EmojiEmotionsRounded'
+import UnsubscribeIcon from '@mui/icons-material/Unsubscribe';
+import ChatIcon from '@mui/icons-material/Chat'
 import { db } from '../../../firebase'
 import ConfirmationModal from '../components/ConfirmationModal'
 import './ChatsManagementSection.css'
@@ -364,20 +367,20 @@ export default function ChatsManagementSection({
         <div className="sidebar-header">
           <h3 className="text-lg font-bold text-white">{viewMode === 'archived' ? 'Archived Messages' : 'Active Chats'}</h3>
           <p className="mt-1 text-xs text-neutral-400">{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</p>
-          <div className="mt-3 flex gap-2">
+          <div className="active-archived">
             <button
               type="button"
               onClick={() => switchViewMode('active')}
-              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'active' ? 'bg-red-600 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+              className="conversation-list-active-btn"
             >
-              Active Chats ({activeConversationCount})
+             <ChatIcon sx={{ fontSize: 20 }}/>  {activeConversationCount} Active 
             </button>
             <button
               type="button"
               onClick={() => switchViewMode('archived')}
-              className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] transition ${viewMode === 'archived' ? 'bg-gray-500 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10'}`}
+              className="conversation-list-archive1-btn"
             >
-              Archived Messages ({archivedConversationCount})
+              <ArchiveRoundedIcon sx={{ fontSize: 20 }} />Archived ({archivedConversationCount})
             </button>
           </div>
 
@@ -406,10 +409,10 @@ export default function ChatsManagementSection({
               <button
                 type="button"
                 onClick={handleBulkDeleteClick}
-                className="flex items-center gap-2 rounded-lg bg-red-600/20 px-3 py-2 text-xs font-bold text-red-400 transition hover:bg-red-600/30"
+                className="conversation-list-checkbox-delete-btn"
               >
-                <DeleteSweepRoundedIcon sx={{ fontSize: 16 }} />
-                Delete ({selectedConversationIds.size})
+                <DeleteSweepRoundedIcon sx={{ fontSize: 20 }} /> 
+                 Delete ({selectedConversationIds.size})
               </button>
               <button
                 type="button"
@@ -417,9 +420,9 @@ export default function ChatsManagementSection({
                   setSelectedConversationIds(new Set())
                   setIsBulkDeleteMode(false)
                 }}
-                className="rounded-lg bg-white/5 px-3 py-2 text-xs font-bold text-white/70 transition hover:bg-white/10"
+                className="conversation-list-checkbox-cancel-btn"
               >
-                Cancel
+                <UnsubscribeIcon sx={{ fontSize: 20 }} /> Cancel
               </button>
             </div>
           )}
@@ -432,7 +435,7 @@ export default function ChatsManagementSection({
                   setIsBulkDeleteMode(true)
                   setSelectedConversationIds(new Set())
                 }}
-                className="w-full rounded-lg bg-red-600/20 px-3 py-2 text-xs font-bold text-red-400 transition hover:bg-red-600/30"
+                className="rounded-lg bg-white/5 px-3 py-2 text-xs font-bold text-white/70 transition hover:bg-white/10"
               >
                 Select for Bulk Delete
               </button>
@@ -474,14 +477,14 @@ export default function ChatsManagementSection({
                       setSelectedConversationIds(newSet)
                     }
                   }}
-                  className={`w-full border-b px-4 py-3 transition text-left cursor-pointer ${
+                  className={`conversations-list-item ${
                     isBulkDeleteMode
                       ? isChecked
-                        ? 'bg-red-600/20 border-red-600/50'
-                        : 'hover:bg-red-600/10 border-slate-800'
+                        ? 'bg-red-200 text-black'
+                        : 'hover:bg-red-600/10 border-transparent text-black'
                       : isSelected
-                        ? 'bg-slate-800 border-slate-700'
-                        : 'hover:bg-slate-800/50 border-slate-800'
+                        ? 'bg-slate-700/50 border-red-600 '
+                        : 'hover:bg-slate-700/50 border-transparent'
                   }`}
                   role="button"
                   tabIndex={0}
@@ -490,51 +493,55 @@ export default function ChatsManagementSection({
                     {isBulkDeleteMode && (
                       <div className="mt-1">
                         {isChecked ? (
-                          <CheckboxOutlinedIcon sx={{ fontSize: 20 }} className="text-red-600" />
+                          <CheckboxOutlinedIcon sx={{ fontSize: 20 }} className="text-white" />
                         ) : (
                           <CheckBoxOutlineBlankIcon sx={{ fontSize: 20 }} className="text-white/40" />
                         )}
                       </div>
                     )}
                     
-                    <div className="shrink-0">
-                      {conv.otherUserAvatar ? (
-                        <img
-                          src={conv.otherUserAvatar}
-                          alt={conv.displayName}
-                          className="w-12 h-12 rounded-full object-cover border border-red-600"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-700">
-                          {(conv.displayName || 'U').charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
+               <div className="shrink-0">
+                {conv.otherUserAvatar ? (
+                  <img
+                    src={conv.otherUserAvatar}
+                    alt={conv.displayName}
+                    className="w-12 h-12 rounded-full object-cover conversation-avatar"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold conversation-avatar">
+                    {(conv.displayName || "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${
-                        isBulkDeleteMode
-                          ? isChecked
-                            ? 'text-white'
-                            : 'text-slate-400'
-                          : isSelected
-                            ? 'text-white'
-                            : 'text-white'
-                      }`}>
-                        {conv.displayName || 'Unknown User'}
+                      <p
+                        className={`text-sm font-semibold truncate conversation-name ${
+                          isBulkDeleteMode
+                            ? isChecked
+                              ? "text-white"
+                              : ""
+                            : isSelected
+                            ? "text-white"
+                            : ""
+                        }`}
+                      >
+                        {conv.displayName || "Unknown User"}
                       </p>
-                      <p className={`text-xs truncate mt-1 ${
-                        isBulkDeleteMode
-                          ? isChecked
-                            ? 'text-slate-300'
-                            : 'text-slate-500'
-                          : isSelected
-                            ? 'text-slate-300'
-                            : 'text-slate-400'
-                      }`}>
-                        {lastMessage?.text || 'No messages yet'}
+                      <p
+                        className={`text-xs truncate mt-1 conversation-last ${
+                          isBulkDeleteMode
+                            ? isChecked
+                              ? ""
+                              : ""
+                            : isSelected
+                            ? ""
+                            : ""
+                        }`}
+                      >
+                        {lastMessage?.text || "No messages yet"}
                       </p>
-                      <p className="text-xs mt-1 text-slate-500">
+                      <p className="text-xs mt-1 conversation-date">
                         {formatDate(conv.updatedAt?.toDate?.() || new Date())}
                       </p>
                     </div>
@@ -546,10 +553,10 @@ export default function ChatsManagementSection({
                           e.stopPropagation()
                           handleDeleteChatClick(conv.id, e)
                         }}
-                        className="shrink-0 rounded-lg bg-red-600/10 p-1.5 text-red-400 transition hover:bg-red-600/20"
+                        className="conversation-list-delete-btn"
                         title="Delete conversation"
                       >
-                        <DeleteRoundedIcon sx={{ fontSize: 18 }} />
+                        <DeleteRoundedIcon sx={{ fontSize: 20 }} />
                       </button>
                     )}
                   </div>
@@ -587,24 +594,24 @@ export default function ChatsManagementSection({
                   <button
                     type="button"
                     onClick={() => handleConversationStatusChange(selectedConversation.id, 'archived')}
-                    className="rounded-lg bg-gray-500 px-3 py-2 text-xs font-bold text-white transition hover:bg-gray-600"
+                    className="conversation-list-archive-btn"
                   >
-                    Archive
+                    <ArchiveRoundedIcon sx={{ fontSize: 25 }} />
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => handleConversationStatusChange(selectedConversation.id, 'deleted')}
-                  className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-700"
+                  className="conversation-list-delete-btn1"
                 >
-                  Delete
+                  <DeleteRoundedIcon sx={{ fontSize: 25 }} className="md:hidden" />
                 </button>
-                <button
+                <button                                 
                   type="button"
                   onClick={() => setSelectedConversation(null)}
                   className="rounded-lg p-2 text-white transition hover:bg-white/10 md:hidden"
                 >
-                  <CloseRoundedIcon sx={{ fontSize: 24 }} />
+                  <CloseRoundedIcon sx={{ fontSize: 25 }} />
                 </button>
               </div>
             </div>
@@ -641,20 +648,22 @@ export default function ChatsManagementSection({
                         </div>
                       )}
                       
-                      <div className={`max-w-xs ${isAdminMessage ? 'flex-row-reverse' : ''}`}>
-                        <div
-                          className={`rounded-lg px-4 py-2 ${
-                            isAdminMessage
-                              ? 'bg-red-600 text-white rounded-br-none'
-                              : 'bg-slate-800 text-white rounded-bl-none'
-                          }`}
-                        >
-                          <p className="text-sm">{message.text}</p>
-                        </div>
-                        <p className={`text-xs mt-1 text-slate-500 ${isAdminMessage ? 'text-right' : 'text-left'}`}>
-                          {formatTime(message.timestamp)}
-                        </p>
+                     <div className={`max-w-xs ${isAdminMessage ? 'flex-row-reverse' : ''}`}>
+                      <div
+                        className={`message-bubble ${isDarkMode ? 'dark' : 'light'} ${
+                          isAdminMessage ? 'rounded-br-none' : ''
+                        }`}
+                      >
+                        <p className="text-sm">{message.text}</p>
                       </div>
+                      <p
+                        className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} ${
+                          isAdminMessage ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        {formatTime(message.timestamp)}
+                      </p>
+                    </div>
                     </div>
                   )
                 })

@@ -1,3 +1,156 @@
+/* Light mode avatar */
+.light .conversation-avatar {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #000;              /* black text */
+  border: 2px solid #e5e7eb; /* light gray border */
+}
+
+/* Dark mode avatar */
+.dark .conversation-avatar {
+  background-color: #1e293b; /* slate-800 */
+  color: #fff;               /* white text */
+  border: 2px solid #dc2626; /* red-600 border */
+}
+
+/* Light mode styles */
+.light .conversation-name {
+  color: #111; /* dark text for names */
+}
+.light .conversation-last {
+  color: #555; /* medium gray for last message */
+}
+.light .conversation-date {
+  color: #777; /* lighter gray for date */
+}
+
+/* Dark mode styles */
+.dark .conversation-name {
+  color: #fff; /* white text for names */
+}
+.dark .conversation-last {
+  color: #ccc; /* light gray for last message */
+}
+.dark .conversation-date {
+  color: #aaa; /* softer gray for date */
+}
+
+/* Light mode bubble */
+.message-bubble.light {
+  background-color: #f1f5f9; /* slate-100 */
+  color: #000;              /* black text */
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode bubble */
+.message-bubble.dark {
+  background-color: #1e293b; /* slate-800 */
+  color: #fff;               /* white text */
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.active-archived{
+  grid-template-columns: repeat(2, auto);
+  width: 100%;
+  margin-top: 20px;
+  gap: 10px; 
+  display: flex;
+  position: relative;
+}
+.conversation-list-active-btn{
+  width: 100%;
+ font: 1em sans-serif;
+ background-color: #5f5a5a;
+ font-size: 15px;
+ padding: 0.5rem;
+ border-radius: 5px;
+}
+.conversation-list-archive1-btn{
+  width: 100%;
+ font: 1em sans-serif;
+ background-color: #5f5a5a;
+ font-size: 15px;
+ padding: 0.5rem;
+ border-radius: 5px;
+}
+.conversation-list-delete-btn{
+  color: #C51D34;
+  font: 1em sans-serif;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translate(-50%, -50%);
+}
+.conversation-list-delete-btn1{
+  color: #C51D34;
+  font: 1em sans-serif;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+}
+
+.conversation-list-delete-btn1:hover {
+  background-color: #fff;
+  border-radius: 10%;
+  color: #C51D34;
+}
+
+.conversation-list-checkbox-delete-btn{
+  font: 1em sans-serif;
+  background-color: #C51D34;
+  border-radius: 5px;
+  color: #fff;
+  padding: 0.5rem;
+}
+.conversation-list-checkbox-cancel-btn{
+  font: 1em sans-serif;
+  background-color: #525151;
+  border-radius: 5px;
+  color: #fff;
+  padding: 0.5rem;
+}
+
+.conversation-list-archive-btn{
+  color: #fff;
+  font: 1em sans-serif;
+  transition: all 0.2s ease;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+}
+.conversation-list-archive-btn:hover{
+  background-color: #fff;
+  border-radius: 10%;
+  color: #C51D34;
+}
+
+
+.conversations-list-item{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.conversations-list-item:hover .conversation-list-delete-btn{
+  opacity: 1;
+  visibility: visible;
+}
+
 .chats-management-container {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -379,6 +532,23 @@
 }
 
 /* Light Mode Support */
+.chats-management-container.light-mode .conversation-list-delete-btn{
+  color: #a00707;
+}
+.chats-management-container.light-mode .conversation-list-archive-btn{
+  color: #050505;
+}
+.chats-management-container.light-mode .conversation-list-checkbox-delete-btn{
+  color: #a00707;
+}
+.chats-management-container.light-mode .conversation-list-checkbox-cancel-btn{
+  color: #111111;
+  background-color: #525151;
+}
+.chats-management-container.light-mode .conversations-sidebar button {
+  background: #F5F5F5;
+}
+
 .chats-management-container.light-mode {
   background: #F5F5F5;
 }
