@@ -207,7 +207,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const consoleLabel = accessProfile?.label || 'Superadmin'
   const currentAccessRole = accessProfile?.role || 'guest'
   const canManageAccess = ['admin', 'superadmin'].includes(currentAccessRole)
-  const canEditOperations = ['admin', 'superadmin'].includes(currentAccessRole)
+  const canEditOperations = ['admin', 'superadmin', 'staff personnel'].includes(currentAccessRole)
   const personnelInviteRoles = useMemo(
     () => [
       'mechanics personnel',
