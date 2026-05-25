@@ -114,7 +114,6 @@ const defaultEditUserForm = {
 
 export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', initialFinancingApplicationId = '', onNavigateDashboardPath }) {
 
-  console.log("ACCESS PROFILE:", accessProfile)
   const [activeSection, setActiveSection] = useState(initialFinancingApplicationId ? 'financing-application-detail' : initialSection)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])
@@ -992,7 +991,9 @@ currentAccessRole === 'staff personnel' && currentUser?.email
 
 const sidebarItems = useMemo(() => {
   const defaultSectionsByRole = {
-    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile'],
+    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile', 'chats-management', 'financing-applications',
+      'service-requests','financing-application-detail','approved-applications',
+    ],
     'mechanics personnel': ['dashboard', 'service-management', 'chats-management', 'profile'],
   }
   
@@ -1003,11 +1004,13 @@ const sidebarItems = useMemo(() => {
       : (accessProfile?.accessibleSections || [])
 
   // If privileged user has empty sections, provide defaults based on role
+  const firestoreSections = allowedSections && Array.isArray(allowedSections) ? allowedSections : []
+  const hasEmptySections = firestoreSections.length === 0
+  
   if (
+    hasEmptySections &&
     accessProfile?.isPrivileged &&
     accessProfile?.authorized &&
-    allowedSections &&
-    allowedSections.length === 0 &&
     defaultSectionsByRole[accessProfile?.role]
   ) {
     allowedSections = defaultSectionsByRole[accessProfile?.role]

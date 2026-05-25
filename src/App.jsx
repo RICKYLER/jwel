@@ -234,7 +234,6 @@ const buildAuthorizedAdminProfile = (
 
   // Log what we're reading from Firestore for debugging
   const sectionsFromFirestore = entry.accessibleSections || []
-  console.log('📋 Firestore accessibleSections:', sectionsFromFirestore, 'entry keys:', Object.keys(entry))
 
   return {
     role,
@@ -284,7 +283,6 @@ const getAuthorizedAdminProfile = async (email = '') => {
 
       if (directSnapshot.exists()) {
         const docData = directSnapshot.data()
-        console.log(`📂 Found document in ${collectionName}:`, docData)
         const directProfile = buildAuthorizedAdminProfile(docData, {
           fallbackRole,
           source,
@@ -304,7 +302,6 @@ const getAuthorizedAdminProfile = async (email = '') => {
 
         if (matchedDocument) {
           const docData = matchedDocument.data()
-          console.log(`📂 Found document in ${collectionName} (via ${fieldName}):`, docData)
           const matchedProfile = buildAuthorizedAdminProfile(docData, {
             fallbackRole,
             source,
@@ -424,9 +421,7 @@ function App() {
   useEffect(() => {
     if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
       const emailVerifiedFlag = window.sessionStorage.getItem('email_verified_success')
-      console.log('[EMAIL VERIFIED MODAL] Checking flag on /customer route:', emailVerifiedFlag)
       if (emailVerifiedFlag) {
-        console.log('[EMAIL VERIFIED MODAL] Flag found! Setting modal to true')
         setShowEmailVerifiedModal(true)
         window.sessionStorage.removeItem('email_verified_success')
       }
@@ -501,15 +496,15 @@ function App() {
     // Determine the action type by checking the code
     const detectActionType = async () => {
       try {
-        console.log('[AUTH ACTION] Detecting action type for code:', oobCode.substring(0, 20) + '...')
+       
         const actionInfo = await checkActionCode(auth, oobCode)
-        console.log('[AUTH ACTION] Detected operation:', actionInfo?.operation)
+   
 
         if (actionInfo?.operation === 'VERIFY_EMAIL') {
-          console.log('[EMAIL VERIFY] Setting verification code')
+       
           setEmailVerificationCode(oobCode)
         } else if (actionInfo?.operation === 'PASSWORD_RESET') {
-          console.log('[PASSWORD RESET] Setting reset code')
+          
           setEmailPasswordResetCode(oobCode)
         }
 
@@ -584,34 +579,53 @@ function App() {
     return () => observer.disconnect()
   }, [currentPath])
 
-  useEffect(() => {
-    const requestedRole = dashboardRequirements[currentPath] || 'customer'
+ 
+useEffect(() => {
+  const requestedRole = dashboardRequirements[currentPath] || 'customer';
 
-    if (!currentUser) {
-      setAccessProfile(defaultAccessProfile)
-      setRequiresPasswordChange(false)
-      setPasswordChangeMessage(null)
-      setPasswordChangeForm({
-        password: '',
-        confirmPassword: '',
-      })
-      setIsAccessResolving(false)
-      return
-    }
+  if (!currentUser) {
+    setAccessProfile(defaultAccessProfile);
+    setIsAccessResolving(false);
+    return;
+  }
 
-    const resolveAccessProfile = async () => {
-      setIsAccessResolving(true)
+  let isMounted = true;
 
-      try {
-        const profile = await resolveRoleAfterLogin(currentUser, requestedRole)
-        setAccessProfile(profile)
-      } finally {
-        setIsAccessResolving(false)
+  const resolveAccessProfile = async () => {
+    setIsAccessResolving(true);
+
+    try {
+      const profile = await resolveRoleAfterLogin(currentUser, requestedRole);
+
+      if (isMounted) {
+        setAccessProfile(profile);
+      }
+    } catch (error) {
+      console.error("Access resolve error:", error);
+    } finally {
+      if (isMounted) {
+        setIsAccessResolving(false);
       }
     }
+  };
 
-    resolveAccessProfile()
-  }, [currentPath, currentUser])
+  resolveAccessProfile();
+
+  // ✅ 🔥 FAILSAFE (VERY IMPORTANT)
+  const timeout = setTimeout(() => {
+    if (isMounted) {
+      console.warn("Access resolving timeout - forcing stop");
+      setIsAccessResolving(false);
+    }
+  }, 3000);
+
+  return () => {
+    isMounted = false;
+    clearTimeout(timeout);
+  };
+
+}, [currentUser, currentPath]);
+
 
   useEffect(() => {
     if (
@@ -780,6 +794,11 @@ function App() {
           lastSignInProvider: user.providerData[0]?.providerId || 'password',
           lastLoginAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          
+accessibleSections: Array.isArray(profile?.accessibleSections)
+      ? profile.accessibleSections
+      : [],
+
         },
         { merge: true },
       )
@@ -847,28 +866,48 @@ function App() {
 
     // If the Cloud Function resolved a privileged role, trust the server result
    
-     
+
 if (resolvedCloudRole !== 'customer') {
+
+  // ✅ GET USER DOCUMENT
+  const userDocRef = doc(db, "users", user.uid);
+  const userSnapshot = await getDoc(userDocRef);
+
+  let firestoreSections = [];
+
+  if (userSnapshot.exists()) {
+    const userData = userSnapshot.data();
+
+    firestoreSections = Array.isArray(userData.accessibleSections)
+      ? userData.accessibleSections
+      : [];
+  }
+
+  console.log("🔥 FIRESTORE SECTIONS:", firestoreSections);
+
   return {
     role: resolvedCloudRole,
     label: roleLabels[resolvedCloudRole] || 'User',
-    dashboardPath: cloudDashboardPath,
+
+    dashboardPath:
+      cloudDashboardPath && cloudDashboardPath !== '/'
+        ? cloudDashboardPath
+        : dashboardByRole[resolvedCloudRole],
+
     isPrivileged: true,
-    authorized: Boolean(cloudData?.authorized ?? true),
+    authorized: true,
+
     mustChangePassword: Boolean(cloudData?.mustChangePassword),
     firstLoginRequired: Boolean(
       cloudData?.firstLoginRequired || cloudData?.mustChangePassword
     ),
 
-    // 🔥 ✅ THIS IS THE FINAL MISSING LINE
-    accessibleSections: Array.isArray(cloudData?.accessibleSections)
-      ? cloudData.accessibleSections
-      : [],
+    // ✅ ✅ ✅ FORCE USE FIRESTORE
+    accessibleSections: firestoreSections,
 
-    source: cloudData?.source || 'cloud-function',
-  }
+    source: 'firestore-user-doc',
+  };
 }
-
 
 
     // For customer logins without authorized admin profile or privileged server result
@@ -886,17 +925,25 @@ if (resolvedCloudRole !== 'customer') {
     }
 
     // Handle staff/personnel/admin roles from cloud function
-    return {
-      role: resolvedCloudRole,
-      label: roleLabels[resolvedCloudRole] || 'User',
-      dashboardPath: cloudDashboardPath,
-      isPrivileged: resolvedCloudRole !== 'customer',
-      authorized: true,
-      mustChangePassword: Boolean(cloudData?.mustChangePassword),
-      firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
-      source: cloudData?.source || 'cloud-function',
-    }
+    
+return {
+  role: resolvedCloudRole,
+  label: roleLabels[resolvedCloudRole] || 'User',
+
+  // ✅ FIXED
+  dashboardPath: cloudDashboardPath && cloudDashboardPath !== '/'
+    ? cloudDashboardPath
+    : dashboardByRole[resolvedCloudRole],
+
+  isPrivileged: resolvedCloudRole !== 'customer',
+  authorized: true,
+  mustChangePassword: Boolean(cloudData?.mustChangePassword),
+  firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
+  source: cloudData?.source || 'cloud-function',
+}
+
   }
+
 
   const completeAccessFlow = async (user, requestedRole, successText) => {
     const profile = await resolveRoleAfterLogin(user, requestedRole)
@@ -925,6 +972,8 @@ if (resolvedCloudRole !== 'customer') {
     if (profile.dashboardPath) {
       navigateTo(profile.dashboardPath)
     }
+
+      setIsAccessResolving(false);
 
     return profile
   }
@@ -957,91 +1006,94 @@ if (resolvedCloudRole !== 'customer') {
         }
       }
 
-      if (requestedRole === 'customer' && authMode === 'signup') {
-        const credentials = await createUserWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
+      
+if (requestedRole === 'customer' && authMode === 'signup') {
+  const credentials = await createUserWithEmailAndPassword(
+    auth,
+    authForm.email.trim().toLowerCase(),
+    authForm.password
+  );
 
-        if (authForm.fullName.trim()) {
-          await updateProfile(credentials.user, {
-            displayName: authForm.fullName.trim(),
-          })
-        }
+  if (authForm.fullName.trim()) {
+    await updateProfile(credentials.user, {
+      displayName: authForm.fullName.trim(),
+    });
+  }
 
-        await syncUserDocument(credentials.user, {
-          role: 'customer',
-          source: 'customer-signup',
-        })
-        
-        // Call the custom verification Cloud Function to send verification email
-        try {
-          const sendVerificationEmailFn = httpsCallable(functions, 'sendVerificationEmail')
-          await sendVerificationEmailFn({ email: authForm.email.trim().toLowerCase() })
-          console.log('[SIGNUP] Verification email sent successfully')
-        } catch (emailError) {
-          console.warn('[SIGNUP] Failed to send verification email:', emailError?.message)
-          // Continue with signup even if email fails - user can resend later
-        }
-        
-        // Store user and show success screen, but DON'T sign out yet
-        // This allows user to retry resending email if rate-limited
-        const signupEmail = authForm.email.trim().toLowerCase()
-        setSignupSuccessEmail(signupEmail)
-        setSignupSuccessUser(credentials.user)
-        
-        // Save to sessionStorage so verification link can restore signup screen
-        window.sessionStorage.setItem('signup_email', signupEmail)
-        
-        setAuthForm({
-          fullName: '',
-          phone: '',
-          email: '',
-          password: '',
-          confirmPassword: '',
-        })
-        return
-      } else {
-        const credentials = await signInWithEmailAndPassword(auth, authForm.email.trim().toLowerCase(), authForm.password)
+  await syncUserDocument(credentials.user, {
+    role: 'customer',
+    source: 'customer-signup',
+  });
 
-        if (!credentials.user.emailVerified && requestedRole !== 'superadmin') {
-          try {
-            const sendVerificationEmailFn = httpsCallable(functions, 'sendVerificationEmail')
-            await sendVerificationEmailFn({ email: credentials.user.email })
-            console.log('[LOGIN] Verification email sent successfully')
-          } catch (emailError) {
-            console.warn('[LOGIN] Failed to send verification email:', emailError?.message)
-          }
-          
-          await signOut(auth)
-          setAccessProfile(defaultAccessProfile)
-          throw new Error(
-            'Your email is not verified yet. We sent a fresh verification link—please check your inbox and click the link to verify.',
-          )
-        }
+  const signupEmail = authForm.email.trim().toLowerCase();
+  setSignupSuccessEmail(signupEmail);
+  setSignupSuccessUser(credentials.user);
 
-        await completeAccessFlow(
-          credentials.user,
-          requestedRole,
-          requestedRole === 'customer'
-            ? 'Welcome back. Your account is ready.'
-            : `${roleLabels[requestedRole]} access verified.`,
-        )
-      }
+  window.sessionStorage.setItem('signup_email', signupEmail);
 
-      setAuthForm({
-        fullName: '',
-        phone: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-      })
+  setAuthForm({
+    fullName: '',
+    phone: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  return;
+} else {
+  // ✅ LOGIN FLOW (clean)
+  const credentials = await signInWithEmailAndPassword(
+    auth,
+    authForm.email.trim().toLowerCase(),
+    authForm.password
+  );
+
+  if (!credentials.user.emailVerified && requestedRole !== 'superadmin') {
+    try {
+      const sendVerificationEmailFn = httpsCallable(functions, 'sendVerificationEmail');
+      await sendVerificationEmailFn({ email: credentials.user.email });
+    } catch (emailError) {
+      console.warn('[LOGIN] Failed to send verification email:', emailError?.message);
+    }
+
+    await signOut(auth);
+    setAccessProfile(defaultAccessProfile);
+
+    throw new Error('Email not verified. Check your inbox.');
+  }
+
+  
+let actualRole = requestedRole;
+
+// ✅ Try to read Firestore (optional)
+const userDoc = await getDoc(doc(db, "users", credentials.user.uid));
+
+if (userDoc.exists()) {
+  actualRole = userDoc.data().role?.toLowerCase().trim() || requestedRole;
+}
+
+// ✅ fallback if missing
+if (!actualRole) {
+  actualRole = "customer";
+}
+
+  await completeAccessFlow(
+    credentials.user,
+    actualRole,
+    actualRole === 'customer'
+      ? 'Welcome back.'
+      : `${roleLabels[actualRole] || actualRole} access verified.`,
+  );
+}
+
     } catch (error) {
-      setAuthMessage({
-        type: 'error',
-        text: formatAuthError(error),
-      })
+      setAuthMessage({ type: 'error', text: error.message })
     } finally {
       setAuthLoading(false)
     }
   }
+
+
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
