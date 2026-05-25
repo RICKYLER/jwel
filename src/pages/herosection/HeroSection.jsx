@@ -301,120 +301,129 @@ export default function HeroSection({
     return () => clearInterval(interval)
   }, [liveModels.length])
 
-  // Initialize Google Map with custom marker
-  useEffect(() => {
-    if (!mapRef.current) return
+  
+// Initialize Google Map with custom marker (FIXED)
+useEffect(() => {
+  if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Prevent multiple initializations
-    if (mapInstanceRef.current) return
+  let isMounted = true; // ✅ prevent async issues
 
-    // Fetch flagship location from Firestore
-    const fetchFlagshipLocation = async () => {
-      try {
-        const settingsRef = doc(db, 'settings', 'flagshipLocation')
-        const settingsSnap = await getDoc(settingsRef)
-        
-        let coordinates = { lat: 7.3086, lng: 125.7399 } // Default fallback
-        
-        if (settingsSnap.exists()) {
-          const data = settingsSnap.data()
-          if (data.latitude && data.longitude) {
-            coordinates = { lat: data.latitude, lng: data.longitude }
-          }
+  const initializeMap = (coordinates) => {
+    if (!isMounted) return;
+
+    // Wait until script + DOM are ready
+    if (!window.google?.maps?.Map || !mapRef.current) {
+      setTimeout(() => initializeMap(coordinates), 100);
+      return;
+    }
+
+    // Prevent double init (Strict Mode safe)
+    if (mapInstanceRef.current || !mapRef.current) return;
+
+    const map = new window.google.maps.Map(mapRef.current, {
+      zoom: 15,
+      center: coordinates,
+      disableDefaultUI: false,
+      mapTypeId: 'roadmap',
+    });
+
+    const marker = new window.google.maps.Marker({
+      position: coordinates,
+      map: map,
+      title: 'Bykelink Flagship Location',
+      icon: {
+        url: bykelinkLogo,
+        scaledSize: new window.google.maps.Size(50, 50),
+        origin: new window.google.maps.Point(0, 0),
+        anchor: new window.google.maps.Point(25, 50),
+      },
+    });
+
+    const infoWindow = new window.google.maps.InfoWindow({
+      content: `
+        <div style="color: #000; font-weight: bold; font-size: 14px; padding: 8px;">
+          <p style="margin: 5px 0;">Bykelink Flagship Location</p>
+          <p style="margin: 5px 0; font-size: 12px;">Tagum, Davao del Norte</p>
+          <p style="margin: 5px 0; font-size: 12px;">Mon-Sat: 9AM - 6PM</p>
+        </div>
+      `,
+    });
+
+    marker.addListener('click', () => {
+      infoWindow.open(map, marker);
+    });
+
+    mapInstanceRef.current = map;
+  };
+
+  const fetchFlagshipLocation = async () => {
+    try {
+      const settingsRef = doc(db, 'settings', 'flagshipLocation');
+      const settingsSnap = await getDoc(settingsRef);
+
+      let coordinates = { lat: 7.3086, lng: 125.7399 };
+
+      if (settingsSnap.exists()) {
+        const data = settingsSnap.data();
+        if (data.latitude && data.longitude) {
+          coordinates = {
+            lat: data.latitude,
+            lng: data.longitude,
+          };
         }
-        
-        initializeMap(coordinates)
-      } catch (error) {
-        console.error('Failed to fetch flagship location:', error)
-        initializeMap({ lat: 7.3086, lng: 125.7399 })
-      }
-    }
-
-    const scriptId = 'google-maps-script'
-    const existingScript = document.getElementById(scriptId)
-
-    const initializeMap = (coordinates) => {
-      // Wait for Google Maps to be ready
-      if (!window.google?.maps?.Map) {
-        setTimeout(() => initializeMap(coordinates), 100)
-        return
       }
 
-      const map = new window.google.maps.Map(mapRef.current, {
-        zoom: 15,
-        center: coordinates,
-        disableDefaultUI: false,
-        mapTypeId: 'roadmap',
-      })
-
-      const marker = new window.google.maps.Marker({
-        position: coordinates,
-        map: map,
-        title: 'Bykelink Flagship Location',
-        icon: {
-          url: bykelinkLogo,
-          scaledSize: new window.google.maps.Size(50, 50),
-          origin: new window.google.maps.Point(0, 0),
-          anchor: new window.google.maps.Point(25, 50),
-        },
-      })
-
-      const infoWindow = new window.google.maps.InfoWindow({
-        content: `<div style="color: #000; font-weight: bold; font-size: 14px; padding: 8px;">
-          <p style="margin: 5px 0; font-size: 14px;">Bykelink Flagship Location</p>
-          <p style="margin: 5px 0; font-size: 12px;">National Highway, Visayan Village, Tagum, Davao del Norte</p>
-          <p style="margin: 5px 0; font-size: 12px;">Mon-Sat: 9AM - 6PM | Sun: 10AM - 3PM</p>
-        </div>`,
-      })
-
-      marker.addListener('click', () => {
-        infoWindow.open(map, marker)
-      })
-
-      mapInstanceRef.current = map
+      initializeMap(coordinates);
+    } catch (error) {
+      console.error('Failed to fetch flagship location:', error);
+      initializeMap({ lat: 7.3086, lng: 125.7399 });
     }
+  };
 
-    if (existingScript) {
-      // Script already in DOM
-      fetchFlagshipLocation()
-      return
-    }
+  const scriptId = 'google-maps-script';
+  let script = document.getElementById(scriptId);
 
-    // Create and load the script
-    const script = document.createElement('script')
-    script.id = scriptId
-    script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI&loading=async'
-    script.async = true
-    script.defer = true
+  if (!script) {
+    script = document.createElement('script');
+    script.id = scriptId;
+    script.src =
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyB9lf6IlDnaaWJGOTogJyqheBOO_9q--JI&libraries=places&loading=async';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
 
-    script.onload = () => {
-      setTimeout(fetchFlagshipLocation, 200)
-    }
+  // ✅ Make sure script is REALLY loaded
+  if (window.google?.maps) {
+    fetchFlagshipLocation();
+  } else {
+    script.onload = fetchFlagshipLocation;
+  }
 
-    script.onerror = () => {
-      console.error('Failed to load Google Maps')
-      initializeFallbackMap()
-    }
+  const initializeFallbackMap = () => {
+    if (!mapRef.current) return;
 
-    document.head.appendChild(script)
+    mapRef.current.innerHTML = `
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#1a1a2e;color:#fff;flex-direction:column;">
+        <div style="font-size:48px;">📍</div>
+        <p>Tagum, Davao del Norte</p>
+        <a href="https://maps.google.com/?q=7.3086,125.7399" target="_blank" style="margin-top:10px;color:#fff;">
+          Open in Google Maps
+        </a>
+      </div>
+    `;
+  };
 
-    const initializeFallbackMap = () => {
-      if (mapRef.current) {
-        mapRef.current.innerHTML = `
-          <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #1a1a2e; color: #fff; flex-direction: column;">
-            <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
-            <p style="font-size: 18px; font-weight: bold; margin: 8px 0;">National Highway</p>
-            <p style="font-size: 14px; margin: 4px 0;">Visayan Village, Tagum, Davao del Norte</p>
-            <a href="https://maps.google.com/?q=7.3086,125.7399" target="_blank" rel="noopener noreferrer" style="margin-top: 16px; padding: 10px 20px; background: #dc2626; color: white; text-decoration: none; border-radius: 8px; cursor: pointer;">Open in Google Maps</a>
-          </div>
-        `
-      }
-    }
+  script.onerror = () => {
+    console.error('Failed to load Google Maps');
+    initializeFallbackMap();
+  };
 
-    return () => {
-      // Cleanup on unmount
-    }
-  }, [])
+  return () => {
+    isMounted = false; // ✅ stops delayed retries
+  };
+}, []);
+
 
   const handleNavClick = (link) => {
     if (link.id === 'showroom') {
