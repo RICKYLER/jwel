@@ -27,6 +27,7 @@ const formatRoleLabel = (role = '') => {
   const normalizedRole = String(role || 'customer').trim().toLowerCase()
 
   if (normalizedRole === 'mechanics personnel') return 'Mechanic'
+  if (normalizedRole === 'cashier personnel') return 'Cashier'
   if (normalizedRole === 'staff') return 'Staff'
   if (normalizedRole === 'admin') return 'Admin'
 

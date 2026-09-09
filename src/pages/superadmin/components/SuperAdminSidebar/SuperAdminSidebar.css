@@ -8,7 +8,9 @@
   flex-direction: column;
 
   width: 256px;
+  min-width: 256px;
   height: 100vh;
+  overflow-x: hidden;
 
   padding: 32px 0;
 
@@ -20,7 +22,17 @@
   box-shadow:
     40px 0 60px -15px rgba(0, 0, 0, 0.5);
 
-  transition: transform 0.3s ease;
+  transition: width 0.34s cubic-bezier(.2,.8,.2,1), min-width 0.34s cubic-bezier(.2,.8,.2,1), transform 0.34s cubic-bezier(.2,.8,.2,1), background-color 0.25s ease, color 0.25s ease;
+}
+
+.superadmin-sidebar.is-open {
+  width: 256px;
+  min-width: 256px;
+}
+
+.superadmin-sidebar.is-collapsed {
+  width: 72px;
+  min-width: 72px;
 }
 
 .superadmin-sidebar-overlay {
@@ -42,6 +54,12 @@
 
   margin-bottom: 40px;
   padding: 0 16px;
+}
+
+.superadmin-sidebar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .superadmin-brand-block {
@@ -104,12 +122,35 @@
   cursor: pointer;
 }
 
+.superadmin-sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 8px;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+
+  cursor: pointer;
+}
+
 .superadmin-nav {
   flex: 1;
 
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 
   padding: 0 8px;
+}
+
+.superadmin-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .superadmin-nav-item {
@@ -285,6 +326,12 @@
 
 [data-theme="light"] .superadmin-sidebar-close {
   border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+[data-theme="light"] .superadmin-sidebar-toggle {
+  border-color: rgba(0, 0, 0, 0.1);
   background: rgba(0, 0, 0, 0.05);
   color: #1f2937;
 }

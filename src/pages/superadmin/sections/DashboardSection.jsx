@@ -1,6 +1,33 @@
 import EngineeringRoundedIcon from '@mui/icons-material/EngineeringRounded'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+  Filler,
+} from 'chart.js'
+import { Line, Bar } from 'react-chartjs-2'
+import 'chartjs-adapter-date-fns'
 import './DashboardSection.css'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  Filler,
+)
 
 export default function DashboardSection({
   chartBars,
@@ -10,20 +37,118 @@ export default function DashboardSection({
   getStatusClasses,
   isDarkMode = true,
 }) {
-  // Transform chartBars into data format for recharts
-  const chartData = chartBars.map((value, index) => ({
-    name: `Week ${index + 1}`,
-    value: Math.round(value),
-  }))
+  const mechanicSeries = technicians
+    .filter((member) => (member.role || member.personnelRole || '').toLowerCase().includes('mechanic'))
+    .slice(0, 4)
 
-  const chartColors = {
-    axisStroke: isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-    gridStroke: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-    tooltipBg: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.95)',
-    tooltipBorder: isDarkMode ? 'rgba(197, 29, 52, 0.5)' : 'rgba(197, 29, 52, 0.3)',
-    tooltipText: isDarkMode ? '#fff' : '#000',
-    cursorStroke: isDarkMode ? 'rgba(197, 29, 52, 0.5)' : 'rgba(197, 29, 52, 0.3)',
-    textColor: isDarkMode ? '#fff' : '#1f2937',
+  const mechanicLookup = new Map(mechanicSeries.map((member) => [member.email || member.id || member.name, member]))
+
+  const timelineData = serviceRequests
+    .slice(0, 40)
+    .map((request) => {
+      const mechanicKey = request.assignedTechnician || request.assignedMechanic || request.assignedTo || ''
+      const mechanic = mechanicLookup.get(mechanicKey) || mechanicLookup.get(request.assignedTechnician?.toLowerCase?.() || '')
+      const requestDate = request.createdAt?.toDate ? request.createdAt.toDate() : new Date(request.createdAt || Date.now())
+
+      return {
+        x: requestDate,
+        y: request.status?.toLowerCase() === 'completed' ? 3 : request.status?.toLowerCase() === 'in progress' ? 2 : 1,
+        mechanic: mechanic?.name || 'Unassigned',
+        status: request.status || 'Pending',
+      }
+    })
+    .filter((point) => point.x instanceof Date && !Number.isNaN(point.x.getTime()))
+
+  const perMechanicData = mechanicSeries.map((mechanic, idx) => {
+    const mechanicName = mechanic.name || 'Mechanics Personnel'
+    const color = ['#C51D34', '#22c55e', '#38bdf8', '#fbbf24'][idx % 4]
+    const points = timelineData
+      .filter((row) => row.mechanic === mechanicName)
+      .map((row) => ({ x: row.x, y: row.y }))
+
+    return {
+      label: mechanicName,
+      data: points,
+      borderColor: color,
+      backgroundColor: color + 'AA',
+      borderWidth: 2,
+      fill: false,
+      tension: 0.25,
+      showLine: true,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      type: 'line',
+    }
+  })
+
+  const chartData = {
+    datasets: [
+      ...perMechanicData,
+      {
+        label: 'Service Activity',
+        data: timelineData.map((row) => ({ x: row.x, y: row.y })),
+        type: 'bar',
+        backgroundColor: isDarkMode ? 'rgba(197,29,52,0.18)' : 'rgba(197,29,52,0.10)',
+        borderColor: '#C51D34',
+        borderWidth: 1,
+        borderRadius: 4,
+        barThickness: 12,
+        order: 2,
+      },
+    ],
+  }
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    plugins: {
+      legend: {
+        labels: {
+          color: isDarkMode ? '#fff' : '#111827',
+          usePointStyle: true,
+          boxWidth: 8,
+        },
+      },
+      tooltip: {
+        callbacks: {
+          label(context) {
+            const label = context.dataset.label || ''
+            const value = context.parsed.y
+            return `${label}: ${value}`
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: {
+          unit: 'day',
+          tooltipFormat: 'MMM d, yyyy',
+        },
+        grid: {
+          color: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+        },
+        ticks: {
+          color: isDarkMode ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.65)',
+        },
+      },
+      y: {
+        beginAtZero: true,
+        suggestedMax: 5,
+        grid: {
+          color: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+        },
+        ticks: {
+          color: isDarkMode ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.65)',
+          stepSize: 1,
+        },
+      },
+    },
   }
 
   return (
@@ -43,46 +168,9 @@ export default function DashboardSection({
           </div>
 
           <div className="dashboard-chart-bars relative h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={chartData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#C51D34" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#C51D34" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  stroke={chartColors.axisStroke}
-                  style={{ fontSize: '12px', fill: chartColors.axisStroke }}
-                />
-                <YAxis 
-                  stroke={chartColors.axisStroke}
-                  style={{ fontSize: '12px', fill: chartColors.axisStroke }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: chartColors.tooltipBg,
-                    border: `1px solid ${chartColors.tooltipBorder}`,
-                    borderRadius: '8px',
-                    color: chartColors.tooltipText,
-                  }}
-                  cursor={{ stroke: chartColors.cursorStroke, strokeWidth: 2 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#C51D34"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorValue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="h-64">
+              <Line data={chartData} options={chartOptions} />
+            </div>
           </div>
         </section>
 

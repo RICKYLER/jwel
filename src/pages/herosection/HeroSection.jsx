@@ -28,7 +28,6 @@ import { useState as useLocalState } from 'react'
 
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
-  { label: 'Showroom', href: '/showroom', id: 'showroom', icon: StorefrontRoundedIcon },
   { label: 'Spare Parts', href: '/spare-parts', id: 'spare-parts', icon: StorefrontRoundedIcon },
   { label: 'About', href: '/#about', id: 'about', icon: InfoRoundedIcon },
   { label: 'Contact', href: '/#contact', id: 'contact', icon: CallRoundedIcon },
@@ -88,11 +87,8 @@ export default function HeroSection({
   const [financingApplications, setFinancingApplications] = useState(0)
   const [servicesCompleted, setServicesCompleted] = useState(0)
   const [serviceRating, setServiceRating] = useState(0)
-  const [liveModels, setLiveModels] = useState([])
   const [liveSpareParts, setLiveSpareParts] = useState([])
-  const [isModelsLoading, setIsModelsLoading] = useState(true)
   const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
-  const [carouselIndex, setCarouselIndex] = useState(0)
   const [currentSparePartsPage, setCurrentSparePartsPage] = useState(0)
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
@@ -185,40 +181,6 @@ export default function HeroSection({
 
   // (Removed) Fetch popular categories — showroom was removed so categories not used
 
-  // Fetch featured models (motorcycle units only) from Firestore
-  useEffect(() => {
-    const q = query(
-      collection(db, 'inventory'),
-      orderBy('createdAt', 'desc')
-    )
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
-          .filter((item) => {
-            const isMotoUnit = item.category === 'Motorcycle Units' || item.itemType === 'Motorcycle Units' || item.type === 'Motorcycle'
-            const hasName = item.modelName || item.name
-            return isMotoUnit && hasName
-          })
-          .slice(0, 10)
-        setLiveModels(data)
-        setIsModelsLoading(false)
-      },
-      (error) => {
-        console.error('Unable to load hero featured models', error)
-        setLiveModels([])
-        setIsModelsLoading(false)
-      },
-    )
-
-    return () => unsubscribe()
-  }, [])
-
   // Fetch spare parts from Firestore
   useEffect(() => {
     const q = query(
@@ -290,18 +252,6 @@ export default function HeroSection({
     return () => unsubscribe()
   }, [])
 
-  // Auto-scroll carousel every 5 seconds
-  useEffect(() => {
-    if (liveModels.length === 0) return
-
-    const interval = setInterval(() => {
-      setCarouselIndex((prev) => (prev + 1) % Math.max(1, liveModels.length))
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [liveModels.length])
-
-  
 // Initialize Google Map with custom marker (FIXED)
 useEffect(() => {
   if (!mapRef.current || mapInstanceRef.current) return;
@@ -426,11 +376,6 @@ useEffect(() => {
 
 
   const handleNavClick = (link) => {
-    if (link.id === 'showroom') {
-      onNavigateShowroom()
-      return
-    }
-
     if (link.id === 'spare-parts') {
       onNavigateSpareParts()
       return
@@ -440,7 +385,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1] font-['Manrope']">
+    <div className="min-h-screen overflow-x-clip bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1] font-['Manrope']">
       <style>{`
         [data-reveal] {
           opacity: 0;
@@ -490,8 +435,8 @@ useEffect(() => {
           onAuthClick={onNavigateLogin}
         />
 
-      <main>
-        <section id="home" className="relative overflow-x-hidden pt-28 pb-14 sm:pt-32 lg:pt-28 lg:pb-20" data-reveal-delay="40">
+      <main className="overflow-x-clip">
+        <section id="home" className="relative overflow-x-clip pt-28 pb-14 sm:pt-32 lg:pt-28 lg:pb-20" data-reveal-delay="40">
           <div className="absolute inset-0">
             <img
               src={currentHeroImage}
@@ -523,11 +468,11 @@ useEffect(() => {
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <button
                     type="button"
-                    onClick={onNavigateShowroom}
+                    onClick={onNavigateSpareParts}
                     className="button button--primary inline-flex items-center justify-center gap-3 px-8 py-3 text-sm font-extrabold uppercase tracking-[0.15em] font-['Epilogue']"
                   >
                     <StorefrontRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
-                    <span className="wipe">Explore Showroom</span>
+                    <span className="wipe">Explore Spare Parts</span>
                     <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 16 }} />
                   </button>
 
@@ -583,122 +528,6 @@ useEffect(() => {
 
         {/* Showroom section removed */}
 
-        <section className="bg-linear-to-b from-slate-900/80 to-slate-900/20 py-20 lg:py-24" data-reveal="up" data-reveal-delay="100">
-          <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal="up" data-reveal-delay="140">
-              <div>
-                <h2 className="text-3xl font-black uppercase tracking-tight text-white font-['Epilogue'] sm:text-4xl">
-                  Featured Models
-                </h2>
-                <div className="mt-4 h-1 w-20 bg-red-600" />
-              </div>
-              <button
-                type="button"
-                onClick={onNavigateShowroom}
-                className="button button--ghost inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.24em] text-white font-['Epilogue']"
-              >
-                <span className="link-underline">View All Models</span>
-                <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 18 }} />
-              </button>
-            </div>
-
-            <div className="relative w-full overflow-x-hidden" data-reveal="up" data-reveal-delay="180">
-              {isModelsLoading ? (
-                <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
-                  Loading featured models...
-                </div>
-              ) : liveModels.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
-                  No live featured models available right now.
-                </div>
-              ) : (
-                <>
-                  <div className="flex transition-transform duration-700" style={{ transform: `translateX(calc(-${carouselIndex * 100}%))`, width: '100%' }}>
-                    {liveModels.map((model, index) => (
-                      <div key={model.id || model.name} style={{ flex: '0 0 100%', paddingRight: index === liveModels.length - 1 ? '0' : '1rem' }}>
-                  <article
-                    className="shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 cursor-pointer transition duration-300 hover:border-red-600 hover:shadow-2xl hover:shadow-red-900/20 h-full"
-                    onClick={() => onNavigateShowroom()}
-                  >
-                    <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 overflow-hidden bg-linear-to-b from-slate-800 to-slate-900 flex items-center justify-center">
-                      <img
-                        src={model.imageUrl || model.mainImage || model.image || model.motorcycleImage || getPlaceholderImage(model.modelName || model.name, 400, 300)}
-                        alt={model.modelName || model.name}
-                        className="h-full w-full object-contain transition duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute right-4 top-4 rounded-full bg-blue-500 px-3 py-1 text-[10px] font-black uppercase tracking-tight text-white font-['Epilogue']">
-                        {model.series || 'Premium'}
-                      </div>
-                    </div>
-
-                    <div className="p-6 sm:p-8">
-                      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <h3 className="text-2xl font-black text-white font-['Epilogue'] sm:text-3xl">
-                            {model.modelName || model.name}
-                          </h3>
-                          <p className="text-sm text-neutral-300">{model.variant || model.description || 'Premium motorcycle'}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 grid grid-cols-1 gap-3 lg:grid-cols-2">
-                        <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
-                          <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
-                            Engine
-                          </span>
-                          <span className="block text-sm font-black text-white">{model.engineCC || model.engine || model.engineSize || model.displacement || model.cc || 'N/A'}</span>
-                        </div>
-                        <div className="rounded-xl bg-slate-800 px-4 py-3 text-center">
-                          <span className="block text-[11px] font-bold uppercase tracking-[0.22em] text-neutral-400">
-                            Stock
-                          </span>
-                          <span className="block text-sm font-black text-white">{model.stockQuantity || model.stock || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Carousel navigation buttons */}
-                  <div className="mt-6 flex items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCarouselIndex((prev) => Math.max(0, prev - 1))}
-                      className="button button--outline-light rounded-full p-2 text-white"
-                      aria-label="Previous model"
-                    >
-                      <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20, transform: 'rotate(180deg)' }} />
-                    </button>
-
-                    {liveModels.map((_, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setCarouselIndex(index)}
-                        className={`h-2 rounded-full transition-all ${
-                          carouselIndex === index ? 'w-6 bg-red-600' : 'w-2 bg-white/35'
-                        }`}
-                        aria-label={`Go to model ${index + 1}`}
-                      />
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={() => setCarouselIndex((prev) => (prev + 1) % Math.max(1, liveModels.length))}
-                      className="button button--outline-light rounded-full p-2 text-white"
-                      aria-label="Next model"
-                    >
-                      <ArrowForwardRoundedIcon className="icon-replace" sx={{ fontSize: 20 }} />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-
         {/* Spare Parts Section */}
         <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
           <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
@@ -725,7 +554,7 @@ useEffect(() => {
 
               return (
                 <>
-                  <div className="relative w-full overflow-x-hidden" data-reveal="up" data-reveal-delay="200">
+                  <div className="relative w-full overflow-hidden" data-reveal="up" data-reveal-delay="200">
                     {isSparePartsLoading ? (
                       <div className="rounded-2xl border border-white/10 bg-slate-900 p-10 text-center text-white/70">
                         Loading spare parts...

@@ -15,7 +15,6 @@ import NavHeader from '../../components/NavHeader'
 
 const sparePartsLinks = [
   { label: 'Home', href: '/', id: 'home' },
-  { label: 'Showroom', href: '/showroom', id: 'showroom' },
   { label: 'Spare Parts', href: '/spare-parts', id: 'spare-parts', active: true },
   { label: 'About', href: '/#about', id: 'about' },
   { label: 'Contact', href: '/#contact', id: 'contact' },
@@ -138,11 +137,6 @@ export default function SparePartsPage({ onNavigateHome, onNavigateSection, onNa
 
     if (link.id === 'service') {
       onNavigateService?.()
-      return
-    }
-
-    if (link.id === 'showroom') {
-      onNavigateShowroom?.()
       return
     }
 

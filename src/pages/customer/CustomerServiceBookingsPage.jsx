@@ -54,6 +54,7 @@ export default function CustomerServiceBookingsPage({
   onNavigateToFinancingStatus,
   onNavigateToMessages,
   onNavigateToProfile,
+  onNavigateToServiceBookings,
   onSignOut,
 }) {
   const [bookings, setBookings] = useState([])
@@ -161,7 +162,7 @@ export default function CustomerServiceBookingsPage({
       <NavHeaderCustomer
         currentUser={currentUser}
         isDarkMode={isDarkMode}
-        activePage="service"
+        activePage="service-bookings"
         unreadNotifications={[]}
         onNavigateToShowroom={onNavigateToShowroom}
         onNavigateToService={onNavigateToService}
@@ -169,6 +170,7 @@ export default function CustomerServiceBookingsPage({
         onNavigateToFinancingStatus={onNavigateToFinancingStatus}
         onNavigateToMessages={onNavigateToMessages}
         onNavigateToProfile={onNavigateToProfile}
+        onNavigateToServiceBookings={onNavigateToServiceBookings}
         onSignOut={onSignOut}
       />
 
@@ -317,22 +319,14 @@ export default function CustomerServiceBookingsPage({
                         </div>
                       </div>
 
-                      {/* Duration and Cost */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                            Estimated Duration
-                          </p>
-                          <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {booking.estimatedHours || 'N/A'} hours
-                          </p>
-                        </div>
-                        <div>
-                          <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                            Total Cost
-                          </p>
-                          <p className="text-lg font-black text-red-600">₱{(booking.cost || 0).toFixed(2)}</p>
-                        </div>
+                      {/* Estimated Duration */}
+                      <div>
+                        <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                          Estimated Duration
+                        </p>
+                        <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {booking.estimatedHours || 'N/A'} hours
+                        </p>
                       </div>
 
                       {/* Technician Info */}

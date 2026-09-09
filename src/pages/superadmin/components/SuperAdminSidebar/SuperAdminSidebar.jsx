@@ -3,6 +3,7 @@ import bykelinkLogo from '../../../../assets/bykelinklogo.png'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
+import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
 
 import { useSidebarLogic } from './superAdminSidebarLogic'
@@ -12,6 +13,7 @@ export default function SuperAdminSidebar({
   activeSection,
   onSectionChange,
   isSidebarOpen,
+  onToggleSidebar,
   onCloseSidebar,
   onNavigateHome,
   onSignOut,
@@ -29,7 +31,6 @@ export default function SuperAdminSidebar({
     'user-management': 'user-management',
     'inventory': 'inventory-management',
     'services': 'service-management',
-    'bookings': 'financing-applications',
     'messages': 'chats-management',
     'reports': 'analytics',
     'settings': 'profile',
@@ -65,7 +66,7 @@ const visibleItems = userMenuAccess.length > 0
 
       <aside
         className={`superadmin-sidebar ${
-          isSidebarOpen ? 'is-open' : ''
+          isSidebarOpen ? 'is-open' : 'is-collapsed'
         }`}
       >
         <div className="superadmin-header">
@@ -91,14 +92,26 @@ const visibleItems = userMenuAccess.length > 0
             </span>
           </button>
 
-          <button
-            type="button"
-            onClick={onCloseSidebar}
-            className="superadmin-sidebar-close"
-            aria-label="Close menu"
-          >
-            <CloseRoundedIcon sx={{ fontSize: 18 }} />
-          </button>
+          <div className="superadmin-sidebar-controls">
+            <button
+              type="button"
+              onClick={onToggleSidebar}
+              className="superadmin-sidebar-toggle"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >
+              <MenuRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+
+            <button
+              type="button"
+              onClick={onCloseSidebar}
+              className="superadmin-sidebar-close"
+              aria-label="Close menu"
+            >
+              <CloseRoundedIcon sx={{ fontSize: 18 }} />
+            </button>
+          </div>
         </div>
 
         <nav className="superadmin-nav">
@@ -137,7 +150,7 @@ const visibleItems = userMenuAccess.length > 0
                     className="superadmin-nav-icon"
                   />
 
-                  <span>{item.label}</span>
+                  <span className="superadmin-nav-label">{item.label}</span>
 
                   <div className="superadmin-nav-right">
                     {item.badge && (
@@ -210,7 +223,7 @@ const visibleItems = userMenuAccess.length > 0
               className="superadmin-action-icon"
             />
 
-            Support
+            <span className="superadmin-sidebar-action-label">Support</span>
           </button>
 
           <button
@@ -223,7 +236,7 @@ const visibleItems = userMenuAccess.length > 0
               className="superadmin-action-icon"
             />
 
-            Logout
+            <span className="superadmin-sidebar-action-label">Logout</span>
           </button>
         </div>
       </aside>

@@ -6,20 +6,23 @@ import './NewUserModal.css'
 const DEFAULT_MENU_ACCESS_MAP = {
   "superadmin": [
     "dashboard", "user-management", "inventory-management", "service-management",
-    "financing-applications", "chats-management", "analytics", "profile"
+    "chats-management", "analytics", "profile"
   ],
   "admin": [
     "dashboard", "user-management", "inventory-management", "service-management",
-    "financing-applications", "chats-management", "analytics", "profile"
+    "chats-management", "analytics", "profile"
   ],
   "mechanics personnel": [
     "dashboard", "service-management", "chats-management", "profile"
+  ],
+  "cashier personnel": [
+    "dashboard", "service-management", "profile"
   ],
   "staff personnel": [
     "dashboard", "inventory-management", "service-management", "profile"
   ],
   "customer": [
-    "dashboard", "financing-applications", "chats-management", "profile"
+    "dashboard", "chats-management", "profile"
   ]
 }
 
@@ -207,6 +210,7 @@ const handleFieldChange = (event) => {
 
               {/* Mechanics personnel can be allowed for both admin and superadmin */}
               <option value="mechanics personnel">Mechanics Personnel</option>
+              <option value="cashier personnel">Cashier Personnel</option>
             </select>
           </label>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
@@ -7,29 +8,70 @@ import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
-import FavoriteBorderRoundedIcon from '@mui/icons-material/FavoriteBorderRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import bykelinkLogo from '../../../assets/bykelinklogo.png'
+import { db } from '../../../firebase'
 
 export default function NavHeaderCustomer({
   currentUser,
   isDarkMode,
-  onNavigateToShowroom,
   onNavigateToService,
-  onNavigateToFinancing,
   onNavigateToFinancingStatus,
   onNavigateToMessages,
   onNavigateToProfile,
   onNavigateToServiceBookings,
   onSignOut,
-  activePage = 'showroom',
+  activePage = 'service',
   unreadNotifications = [],
   userAvatar = null,
 }) {
+  const [notifications, setNotifications] = useState([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
   const [isDrawerAnimating, setIsDrawerAnimating] = useState(false)
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setNotifications([])
+      return undefined
+    }
+
+    const bookingQuery = query(
+      collection(db, 'serviceBookings'),
+      where('customerId', '==', currentUser.uid),
+    )
+
+    const unsubscribe = onSnapshot(
+      bookingQuery,
+      (snapshot) => {
+        const liveNotifications = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data()
+          const serviceNames = Array.isArray(data.serviceTitles) && data.serviceTitles.length > 0
+            ? data.serviceTitles
+            : (data.service ? String(data.service).split(',').map((item) => item.trim()).filter(Boolean) : ['Service Booking'])
+          const bookingStatus = String(data.status || 'Pending')
+          const createdAt = data.createdAt?.toDate?.() || new Date()
+
+          return {
+            id: docSnap.id,
+            title: 'Service Booking',
+            message: `${serviceNames.join(', ')} — ${bookingStatus}`,
+            timestamp: createdAt.toLocaleString(),
+            read: false,
+          }
+        })
+
+        setNotifications(liveNotifications)
+      },
+      (error) => {
+        console.error('Unable to load live customer notifications:', error)
+        setNotifications([])
+      },
+    )
+
+    return () => unsubscribe()
+  }, [currentUser?.uid])
 
   // Trigger animation when drawer opens
   useEffect(() => {
@@ -69,9 +111,16 @@ export default function NavHeaderCustomer({
   }
 
   const handleNotificationClick = (notifId) => {
-    // Mark notification as read
-    // This can be enhanced to integrate with your notification system
-    console.log(`Notification ${notifId} clicked`)
+    setNotifications((current) =>
+      current.map((notif) =>
+        notif.id === notifId
+          ? {
+              ...notif,
+              read: true,
+            }
+          : notif,
+      ),
+    )
   }
 
   const handleProfileClick = () => {
@@ -96,7 +145,7 @@ export default function NavHeaderCustomer({
       >
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
           {/* Logo Section */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={onNavigateToShowroom}>
+          <div className="flex items-center gap-3 cursor-pointer">
             <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-red-600 p-1.5" />
             <div>
               <p className="text-sm font-black uppercase tracking-tight text-red-600">BYKELINK</p>
@@ -106,18 +155,6 @@ export default function NavHeaderCustomer({
 
           {/* Desktop Navigation */}
           <nav className={`hidden items-center gap-8 lg:flex`}>
-            <button
-              onClick={onNavigateToShowroom}
-              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
-                isActive('showroom')
-                  ? 'border-red-600 text-red-600'
-                  : isDarkMode
-                    ? 'border-transparent text-slate-400 hover:text-white'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Showroom
-            </button>
             <button
               onClick={onNavigateToService}
               className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
@@ -131,16 +168,28 @@ export default function NavHeaderCustomer({
               Service
             </button>
             <button
-              onClick={onNavigateToFinancing}
+              onClick={onNavigateToServiceBookings}
               className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
-                isActive('financing')
+                isActive('service-bookings')
                   ? 'border-red-600 text-red-600'
                   : isDarkMode
                     ? 'border-transparent text-slate-400 hover:text-white'
                     : 'border-transparent text-slate-600 hover:text-slate-900'
               }`}
             >
-              Financing
+              My Service Bookings
+            </button>
+            <button
+              onClick={onNavigateToFinancingStatus}
+              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                isActive('financing-status')
+                  ? 'border-red-600 text-red-600'
+                  : isDarkMode
+                    ? 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Track My Status
             </button>
             <button
               onClick={onNavigateToMessages}
@@ -175,8 +224,8 @@ export default function NavHeaderCustomer({
                     <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto space-y-0">
-                    {unreadNotifications.length > 0 ? (
-                      unreadNotifications.map((notif) => (
+                    {notifications.length > 0 ? (
+                      notifications.map((notif) => (
                         <div
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif.id)}
@@ -233,14 +282,14 @@ export default function NavHeaderCustomer({
         {/* Mobile Menu */}
         {isMenuOpen && (
           <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-            <button onClick={onNavigateToShowroom} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
-              Showroom
-            </button>
             <button onClick={onNavigateToService} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Service
             </button>
-            <button onClick={onNavigateToFinancing} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
-              Financing
+            <button onClick={onNavigateToServiceBookings} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              My Service Bookings
+            </button>
+            <button onClick={onNavigateToFinancingStatus} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              Track My Status
             </button>
             <button onClick={onNavigateToMessages} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Messages
@@ -343,13 +392,6 @@ export default function NavHeaderCustomer({
               >
                 <BuildRoundedIcon sx={{ fontSize: 20 }} />
                 <span className="text-sm font-medium">My Service Bookings</span>
-              </button>
-
-              <button className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition ${
-                isDarkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'
-              }`}>
-                <FavoriteBorderRoundedIcon sx={{ fontSize: 20 }} />
-                <span className="text-sm font-medium">Favorites</span>
               </button>
 
               <div className={`border-t my-4 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`} />

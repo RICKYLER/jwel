@@ -1,4 +1,3 @@
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import NotificationsRoundedIcon from '@mui/icons-material/NotificationsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
@@ -11,7 +10,6 @@ export default function SuperAdminHeader({
   sectionTitle,
   isDarkMode,
   onToggleTheme,
-  onToggleSidebar,
   onToggleNotifications,
   notificationCount,
   adminName,
@@ -21,15 +19,6 @@ export default function SuperAdminHeader({
 }) {
   return (
     <header className="superadmin-topbar fixed right-0 top-0 z-40 flex h-16 w-[calc(100%-16rem)] items-center justify-end px-4 sm:px-6 lg:px-8">
-      <button
-        type="button"
-        onClick={onToggleSidebar}
-        className="superadmin-mobile-toggle superadmin-topbar-icon mr-3 inline-flex rounded-full border border-white/10 bg-white/5 p-2"
-        aria-label="Toggle menu"
-      >
-        <MenuRoundedIcon sx={{ fontSize: 20 }} />
-      </button>
-
       <div className="relative mr-auto max-w-md flex-1">
         <SearchRoundedIcon sx={{ fontSize: 18 }} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
         <input

@@ -112,10 +112,6 @@ export default function CustomerServicePage({
   const [problemImages, setProblemImages] = useState([])
   const [bookingSubmitting, setBookingSubmitting] = useState(false)
   const [currentBooking, setCurrentBooking] = useState(null)
-  const [unreadNotifications] = useState([
-    { id: 1, title: 'New Service', message: 'New diagnostic tools available', timestamp: 'Just now', read: false },
-    { id: 2, title: 'Promotions', message: '10% off on service packages', timestamp: '2 hours ago', read: true },
-  ])
 
   // Fetch services from Firestore
   useEffect(() => {
@@ -482,14 +478,6 @@ export default function CustomerServicePage({
                         ) : (
                           <CloudUploadRoundedIcon sx={{ fontSize: 24, opacity: 0.55 }} />
                         )}
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                          Starting At
-                        </p>
-                        <p className={`text-2xl sm:text-4xl leading-none font-black italic ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          ₱{service.cost.toFixed(2)}
-                        </p>
                       </div>
                     </div>
 
@@ -915,10 +903,6 @@ export default function CustomerServicePage({
                     {problemImages.length}
                   </span>
                 </div>
-                <div className="border-t border-white/10 pt-3 mt-3 flex justify-between">
-                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total:</span>
-                  <span className="text-2xl font-black text-red-600">₱{estimatedCost}</span>
-                </div>
               </div>
             </div>
 
@@ -1038,10 +1022,6 @@ export default function CustomerServicePage({
                     {formatDuration(currentBooking?.estimatedDurationMinutes || 0)}
                   </span>
                 </div>
-                <div className="border-t border-white/10 pt-3 mt-3 flex justify-between">
-                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total Cost:</span>
-                  <span className="text-2xl font-black text-red-600">₱{(currentBooking?.cost || 0).toFixed(2)}</span>
-                </div>
               </div>
             </div>
 
@@ -1054,7 +1034,7 @@ export default function CustomerServicePage({
                 Back to Services
               </button>
               <button
-                onClick={() => onNavigateToMessages()}
+                onClick={() => onNavigateToServiceBookings()}
                 className="flex-1 bg-red-600 px-6 py-3 sm:py-4 font-black text-white hover:bg-red-700 transition uppercase text-xs sm:text-sm tracking-widest"
               >
                 View Booking
@@ -1078,7 +1058,6 @@ export default function CustomerServicePage({
         currentUser={currentUser}
         isDarkMode={isDarkMode}
         activePage="service"
-        unreadNotifications={unreadNotifications}
         onNavigateToShowroom={onNavigateToShowroom}
         onNavigateToService={onNavigateBack}
         onNavigateToFinancing={onNavigateToFinancing}
@@ -1150,14 +1129,13 @@ export default function CustomerServicePage({
                     return (
                       <div key={serviceId} className="flex items-start justify-between gap-3">
                         <div>
-                        <p className={`text-base font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {service?.title}
-                        </p>
-                        <p className={`text-[11px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                          {formatDuration(service?.durationMinutes ?? 0)}
-                        </p>
+                          <p className={`text-base font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {service?.title}
+                          </p>
+                          <p className={`text-[11px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                            {formatDuration(service?.durationMinutes ?? 0)}
+                          </p>
                         </div>
-                        <p className="text-red-600 font-black">₱{service?.cost.toFixed(2)}</p>
                       </div>
                     )
                   })}
@@ -1202,16 +1180,13 @@ export default function CustomerServicePage({
                 </p>
               </div>
 
-              {/* Total Estimation */}
+              {/* Estimated Duration */}
               <div className={`mb-6 sm:mb-8 pb-6 sm:pb-8 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                 <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
-                  Total Estimation
+                  Estimated Duration
                 </p>
-                <p className="text-4xl sm:text-5xl lg:text-6xl leading-none font-black italic text-red-600">
-                  ₱{estimatedCost.toFixed(2)}
-                </p>
-                <p className={`mt-3 text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                  Estimated Duration: {formatDuration(estimatedDurationMinutes)}
+                <p className={`text-base sm:text-lg font-black uppercase ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {formatDuration(estimatedDurationMinutes)}
                 </p>
               </div>
 

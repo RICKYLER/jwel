@@ -1,6 +1,3 @@
-import { useState, useEffect } from 'react'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
-import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
 import bykelinkLogo from '../assets/bykelinklogo.png'
 
@@ -15,28 +12,9 @@ export default function NavHeader({
   onSignOut,
   onAuthClick,
 }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  // Prevent body scroll when menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isMenuOpen])
-
   const handleNavClick = (event, link) => {
     event.preventDefault()
-    setIsMenuOpen(false)
     onNavigateClick(link)
-  }
-
-  const handleMenuClose = () => {
-    setIsMenuOpen(false)
   }
 
   return (
@@ -263,17 +241,6 @@ export default function NavHeader({
         }
       `}</style>
 
-      {/* Backdrop Overlay */}
-      <div
-        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm mobile-menu-backdrop md:hidden ${isMenuOpen ? 'is-open' : ''}`}
-        onClick={handleMenuClose}
-        style={{
-          opacity: isMenuOpen ? 1 : 0,
-          visibility: isMenuOpen ? 'visible' : 'hidden',
-          pointerEvents: isMenuOpen ? 'auto' : 'none',
-        }}
-      />
-
       <header className="fixed top-0 z-50 w-full border-b border-slate-700/40 nav-header">
         <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           {/* Logo */}
@@ -343,78 +310,6 @@ export default function NavHeader({
             )}
           </div>
 
-          {/* Mobile Menu Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className="inline-flex rounded-lg border border-white/10 bg-white/5 p-2 text-white md:hidden hover:bg-slate-800 transition-colors"
-            aria-label="Toggle menu"
-            aria-expanded={isMenuOpen}
-          >
-            {isMenuOpen ? <CloseRoundedIcon fontSize="small" /> : <MenuRoundedIcon fontSize="small" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu Slide Panel */}
-        <div
-          className={`mobile-menu-panel fixed top-16 left-0 h-[calc(100vh-64px)] w-80 max-w-[calc(100vw-24px)] bg-slate-950/98 backdrop-blur-xl border-r border-white/10 shadow-2xl md:hidden overflow-y-auto z-50 ${isMenuOpen ? 'is-open' : ''}`}
-        >
-          <div className="flex flex-col gap-3 p-4">
-            {navLinks.map((link) => {
-              const isActive = activeNav === link.label || link.active
-              return (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(event) => handleNavClick(event, link)}
-                  className={`rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white transition-all duration-200 mobile-nav-link ${
-                    isActive ? 'active' : ''
-                  }`}
-                >
-                  {link.label}
-                </a>
-              )
-            })}
-
-            <div className="border-t border-white/10 pt-3 mt-3">
-              {currentUser ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleMenuClose()
-                      onUserMenuClick()
-                    }}
-                    className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-bold uppercase tracking-tight text-white transition-all duration-200 mobile-nav-link mb-2"
-                  >
-                    {customerName}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleMenuClose()
-                      onSignOut()
-                    }}
-                      className="w-full rounded-xl border border-red-400/40 bg-red-600/20 px-4 py-3 text-sm font-black uppercase tracking-tight text-red-200 transition nav-user-button"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleMenuClose()
-                    onAuthClick()
-                  }}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black uppercase tracking-tight text-white transition duration-300 nav-user-button get-started-btn"
-                >
-                  <span className="wipe">Get Started</span>
-                  <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'inherit' }} className="icon-replace" />
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       </header>
     </>

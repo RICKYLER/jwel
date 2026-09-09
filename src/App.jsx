@@ -19,12 +19,11 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage'
 import EmailPasswordResetPage from './pages/EmailPasswordResetPage'
 import ServicePage from './pages/herosection/ServicePage'
-import ShowroomPage from './pages/herosection/ShowroomPage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
-import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import CustomerServicePage from './pages/customer/CustomerServicePage'
 import CustomerMessagesPage from './pages/customer/CustomerMessagesPage'
 import CustomerServiceBookingsPage from './pages/customer/CustomerServiceBookingsPage'
+import CashierPanel from './pages/customer/CashierPanel'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
 import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
@@ -43,7 +42,6 @@ import { auth, db, functions, googleProvider } from './firebase'
 
 const navLinks = [
   { label: 'Home', id: 'home' },
-  { label: 'Showroom', id: 'showroom' },
   { label: 'Service', id: 'service' },
   { label: 'About', id: 'about' },
   { label: 'Contact', id: 'contact' },
@@ -53,8 +51,9 @@ const navLinks = [
 const roleLabels = {
   superadmin: 'Superadmin',
   admin: 'Admin',
-  'staff personnel': 'Staff Personnel', 
+  'staff personnel': 'Staff Personnel',
   'mechanics personnel': 'Mechanics Personnel',
+  'cashier personnel': 'Cashier Personnel',
   customer: 'User',
 }
 
@@ -62,16 +61,16 @@ const rolePriority = {
   customer: 0,
   'staff personnel': 1,
   'mechanics personnel': 1,
+  'cashier personnel': 1,
   admin: 2,
   superadmin: 3,
 }
-
-
 
 const dashboardByRole = {
   customer: '/customer',
   'staff personnel': '/admin',
   'mechanics personnel': '/admin',
+  'cashier personnel': '/cashier',
   admin: '/admin',
   superadmin: '/superadmin',
 }
@@ -79,6 +78,7 @@ const dashboardByRole = {
 const dashboardRequirements = {
   '/customer': 'customer',
   '/admin': 'staff personnel',
+  '/cashier': 'cashier personnel',
   '/superadmin': 'superadmin',
 }
 
@@ -147,7 +147,8 @@ const normalizePath = (path) => {
   if (path?.startsWith('/password-reset-confirmation')) return '/password-reset-confirmation'
 
   if (path?.startsWith('/customer')) return '/customer'
-  if (path?.startsWith('/showroom')) return '/showroom'
+  if (path?.startsWith('/cashier')) return '/cashier'
+  if (path?.startsWith('/showroom')) return '/customer/service'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
   if (path?.startsWith('/service')) return '/service'
   if (path?.startsWith('/financing')) return '/financing'
@@ -161,7 +162,6 @@ const normalizePath = (path) => {
 const getNavLabelForPath = (path, hash = '') => {
   const matchedLink = navLinks.find((link) => link.id === hash)
 
-  if (path === '/showroom') return 'Showroom'
   if (path === '/spare-parts') return 'Spare Parts'
   if (path === '/service') return 'Service'
   if (path === '/financing' || path?.startsWith('/financing/')) return 'Financing'
@@ -189,6 +189,7 @@ const normalizeAccessRole = (value = 'customer') => {
   if (normalizedValue === 'admin') return 'admin'
   if (normalizedValue === 'staffpersonnel') return 'staff personnel'
   if (normalizedValue === 'mechanicspersonnel') return 'mechanics personnel'
+  if (normalizedValue === 'cashierpersonnel') return 'cashier personnel'
   if (normalizedValue === 'customer') return 'customer'
 
   return 'customer'
@@ -1317,26 +1318,13 @@ if (!actualRole) {
     )
   }
 
-  if (currentPath === '/showroom') {
-    return withSecurityModal(
-      <ShowroomPage
-        onNavigateHome={() => goToHomeSection('home', 'Home')}
-        onNavigateSection={goToHomeSection}
-        onNavigateService={() => goToHomeSection('service', 'Service')}
-        onNavigateSpareParts={() => navigateTo('/spare-parts')}
-        onOpenSignup={() => openAuthSection('signup', 'customer')}
-        currentUser={currentUser}
-      />,
-    )
-  }
-
   if (currentPath === '/spare-parts') {
     return withSecurityModal(
       <SparePartsPage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onNavigateSection={goToHomeSection}
         onNavigateService={() => goToHomeSection('service', 'Service')}
-        onNavigateShowroom={() => navigateTo('/showroom')}
+        onNavigateShowroom={() => navigateTo('/customer')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
         currentUser={currentUser}
       />,
@@ -1347,7 +1335,7 @@ if (!actualRole) {
     return withSecurityModal(
       <ServicePage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
-        onNavigateShowroom={() => navigateTo('/showroom')}
+        onNavigateShowroom={() => navigateTo('/customer')}
         onNavigateSection={goToHomeSection}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
       />,
@@ -1395,6 +1383,7 @@ if (!actualRole) {
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
         onSignOut={currentUser ? handleSignOut : null}
       />,
     )
@@ -1450,34 +1439,38 @@ if (!actualRole) {
   }
 
   if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
-    const handleNavigateToProduct = (productId) => {
-      setCurrentPath(`/customer/product/${productId}`)
-    }
-    return (
-      <>
-        {showEmailVerifiedModal && (
-          <EmailVerifiedModal onClose={() => setShowEmailVerifiedModal(false)} />
-        )}
-        {withSecurityModal(
-          <CustomerShowroomPage
-            currentUser={currentUser}
-            onNavigateHome={() => goToHomeSection('home', 'Home')}
-            onSignOut={handleSignOut}
-            onNavigateToProduct={handleNavigateToProduct}
-            onNavigateToService={() => navigateTo('/customer/service')}
-            onNavigateToFinancing={() => navigateTo('/financing')}
-            onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
-            onNavigateToMessages={() => navigateTo('/customer/messages')}
-            onNavigateToProfile={() => navigateTo('/customer/profile')}
-            onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
-            onNavigateBack={() => goToHomeSection('home', 'Home')}
-          />, 
-        )}
-      </>
+    return withSecurityModal(
+      <CustomerServicePage
+        currentUser={currentUser}
+        onSignOut={handleSignOut}
+        onNavigateToShowroom={() => navigateTo('/customer/service')}
+        onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToFinancing={() => navigateTo('/financing')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
+        onNavigateBack={() => navigateTo('/customer/service')}
+      />,
     )
   }
 
   // Customer Service Page Route
+  if (currentPath === '/cashier' && currentUser && accessProfile.role === 'cashier personnel') {
+    return withSecurityModal(
+      <CashierPanel
+        currentUser={currentUser}
+        onSignOut={handleSignOut}
+        onNavigateBack={() => navigateTo('/cashier')}
+        onNavigateToService={() => navigateTo('/customer/service')}
+        onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
+        onNavigateToMessages={() => navigateTo('/customer/messages')}
+        onNavigateToProfile={() => navigateTo('/customer/profile')}
+        onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
+      />,
+    )
+  }
+
   if (currentPath === '/customer/service' && currentUser && accessProfile.role === 'customer') {
     return withSecurityModal(
       <CustomerServicePage
@@ -1614,7 +1607,7 @@ if (!actualRole) {
       customerName={customerName}
       onSelectSlide={setActiveSlide}
       onOpenAuthSection={openAuthSection}
-      onNavigateShowroom={() => navigateTo('/showroom')}
+      onNavigateShowroom={() => navigateTo('/customer')}
       onNavigateSpareParts={() => navigateTo('/spare-parts')}
       onNavigateLogin={() => navigateTo('/login')}
       onNavigateSection={goToHomeSection}

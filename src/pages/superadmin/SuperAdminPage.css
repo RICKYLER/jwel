@@ -40,7 +40,20 @@
 .superadmin-sidebar {
   background: var(--superadmin-sidebar-bg);
   color: var(--superadmin-text);
-  transition: transform 0.3s ease, background-color 0.25s ease, color 0.25s ease;
+  transform: translateX(-108%);
+  transition: transform 0.34s cubic-bezier(.2,.8,.2,1), width 0.34s cubic-bezier(.2,.8,.2,1), min-width 0.34s cubic-bezier(.2,.8,.2,1), background-color 0.25s ease, color 0.25s ease;
+}
+
+.superadmin-sidebar.is-open {
+  width: 256px;
+  min-width: 256px;
+  transform: translateX(0);
+}
+
+.superadmin-sidebar.is-collapsed {
+  width: 72px;
+  min-width: 72px;
+  transform: translateX(0);
 }
 
 .superadmin-brand-block {
@@ -100,6 +113,7 @@
 }
 
 .superadmin-sidebar-overlay {
+  display: none;
   position: fixed;
   inset: 0;
   z-index: 45;
@@ -266,10 +280,51 @@
   display: inline-flex !important;
 }
 
+@media (min-width: 1024px) {
+  .superadmin-sidebar.is-collapsed {
+    width: 72px;
+    transform: translateX(0);
+  }
+
+  .superadmin-sidebar.is-collapsed .superadmin-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 0 8px;
+  }
+
+  .superadmin-sidebar.is-collapsed .superadmin-brand-block span,
+  .superadmin-sidebar.is-collapsed .superadmin-nav-label,
+  .superadmin-sidebar.is-collapsed .superadmin-nav-right,
+  .superadmin-sidebar.is-collapsed .superadmin-submenu,
+  .superadmin-sidebar.is-collapsed .superadmin-sidebar-action-label {
+    display: none;
+  }
+
+  .superadmin-sidebar.is-collapsed .superadmin-nav-item {
+    justify-content: center;
+    padding: 12px 0;
+  }
+
+  .superadmin-sidebar.is-collapsed .superadmin-nav-icon,
+  .superadmin-sidebar.is-collapsed .superadmin-action-icon {
+    margin-right: 0;
+  }
+
+  .superadmin-sidebar.is-collapsed .superadmin-sidebar-action {
+    justify-content: center;
+    padding: 12px 0;
+  }
+}
+
 @media (max-width: 1023px) {
   .superadmin-sidebar {
     width: min(18rem, 86vw) !important;
     transform: translateX(-108%);
+  }
+
+  .superadmin-sidebar-overlay {
+    display: block;
   }
 
   .superadmin-topbar {

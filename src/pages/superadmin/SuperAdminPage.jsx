@@ -30,11 +30,7 @@ import DashboardSection from './sections/DashboardSection'
 import InventorySection from './sections/InventorySection'
 import InventoryReportsSection from './sections/InventoryReportsSection'
 import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSection'
-import MasterDataManagementSection from './sections/MasterDataManagementSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
-import FinancingApplicationsSection from './sections/FinancingApplicationsSection'
-import FinancingApplicationDetailSection from './sections/FinancingApplicationDetailSection'
-import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
 import ServiceTypeSection from './sections/ServiceTypeSection'
@@ -67,16 +63,6 @@ const baseSidebarItems = [
       { id: 'inventory-delete-archived', label: 'Inventory Delete Archived' },
     ]
   },
-  {
-    id: 'unit-management',
-    label: 'Unit Management',
-    icon: TwoWheelerRoundedIcon,
-    subitems: [
-      { id: 'master-categories', label: 'Categories' },
-      { id: 'master-models', label: 'Models' },
-      { id: 'master-variants', label: 'Variants' },
-    ]
-  },
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { 
     id: 'service-management', 
@@ -87,8 +73,6 @@ const baseSidebarItems = [
       { id: 'service-logs', label: 'Service Logs' },
     ]
   },
-  { id: 'financing-applications', label: 'Financing Applications', icon: AnalyticsRoundedIcon },
-  { id: 'approved-applications', label: 'Approved Applications', icon: TrendingUpRoundedIcon },
   { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
@@ -198,7 +182,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [pendingSection, setPendingSection] = useState(null)
 
   const sectionTitle = useMemo(() => {
-    if (activeSection === 'financing-application-detail') return 'Financing Application Detail'
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
 
@@ -333,29 +316,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   }, [])
 
   useEffect(() => {
-    if (initialFinancingApplicationId) {
-      setActiveSection('financing-application-detail')
-      return
-    }
-
     setActiveSection(initialSection)
-  }, [initialFinancingApplicationId, initialSection])
-
-  useEffect(() => {
-    if (!initialFinancingApplicationId) {
-      if (!currentPath.includes('/financing-applications/')) {
-        setSelectedFinancingApplication(null)
-      }
-      return
-    }
-
-    const matchedApplication = financingApplications.find((item) => item.id === initialFinancingApplicationId)
-
-    if (matchedApplication) {
-      setSelectedFinancingApplication(matchedApplication)
-      setActiveSection('financing-application-detail')
-    }
-  }, [currentPath, financingApplications, initialFinancingApplicationId])
+  }, [initialSection])
 
   useEffect(() => {
     if (!actionMessage) {
@@ -991,9 +953,7 @@ currentAccessRole === 'staff personnel' && currentUser?.email
 
 const sidebarItems = useMemo(() => {
   const defaultSectionsByRole = {
-    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile', 'chats-management', 'financing-applications',
-      'service-requests','financing-application-detail','approved-applications',
-    ],
+    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile', 'chats-management'],
     'mechanics personnel': ['dashboard', 'service-management', 'chats-management', 'profile'],
   }
   
@@ -1318,33 +1278,15 @@ const sidebarItems = useMemo(() => {
     setActiveSection(sectionId)
 
     // Update URL based on section type
-    if (sectionId === 'financing-applications') {
-      onNavigateDashboardPath?.(`${dashboardPath}/financing-applications`)
-    } else if (sectionId === 'approved-applications') {
-      onNavigateDashboardPath?.(`${dashboardPath}/approved-applications`)
-    } else if (sectionId !== 'financing-application-detail' && sectionId !== 'dashboard') {
-      // For other sections, keep current path structure or update appropriately
+    if (sectionId !== 'dashboard') {
       onNavigateDashboardPath?.(dashboardPath)
-    } else if (sectionId === 'dashboard') {
+    } else {
       onNavigateDashboardPath?.(dashboardPath)
     }
 
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setIsSidebarOpen(false)
     }
-  }
-
-  const handleOpenFinancingApplication = (application) => {
-    setSelectedFinancingApplication(application || null)
-    handleSectionChange('financing-application-detail')
-    if (application?.id) {
-      onNavigateDashboardPath?.(`${dashboardPath}/financing-applications/${encodeURIComponent(application.id)}`)
-    }
-  }
-
-  const handleBackToFinancingApplications = () => {
-    setSelectedFinancingApplication(null)
-    handleSectionChange('financing-applications')
   }
 
   const markConversationNotificationsRead = useCallback((conversationId) => {
@@ -1534,10 +1476,11 @@ const sidebarItems = useMemo(() => {
       
       // Define allowed roles dynamically
       const allowedRolesByUser = {
-        admin: ['staff personnel', 'mechanics personnel', 'customer'],
+        admin: ['staff personnel', 'mechanics personnel', 'cashier personnel', 'customer'],
         superadmin: [
           'staff personnel',
           'mechanics personnel',
+          'cashier personnel',
           'customer',
           'admin',
           'superadmin',
@@ -1799,43 +1742,6 @@ const sidebarItems = useMemo(() => {
             isDarkMode={isDarkMode}
           />
         )
-      case 'financing-applications':
-        return (
-          <FinancingApplicationsSection
-            applications={filteredFinancingApplications}
-            canEditOperations={canEditOperations}
-            financingStatusOptions={financingStatusOptions}
-            handleCollectionUpdate={handleCollectionUpdate}
-            formatCurrency={formatCurrency}
-            formatDate={formatDate}
-            onOpenApplication={handleOpenFinancingApplication}
-            isDarkMode={isDarkMode}
-          />
-        )
-      case 'financing-application-detail':
-        return (
-          <FinancingApplicationDetailSection
-            application={selectedFinancingApplication}
-            canEditOperations={canEditOperations}
-            handleCollectionUpdate={handleCollectionUpdate}
-            formatCurrency={formatCurrency}
-            formatDate={formatDate}
-            onBack={handleBackToFinancingApplications}
-            isDarkMode={isDarkMode}
-          />
-        )
-      case 'approved-applications':
-        return (
-          <ApprovedApplicationsSection
-            applications={filteredFinancingApplications}
-            canEditOperations={canEditOperations}
-            handleCollectionUpdate={handleCollectionUpdate}
-            formatCurrency={formatCurrency}
-            formatDate={formatDate}
-            onOpenApplication={handleOpenFinancingApplication}
-            isDarkMode={isDarkMode}
-          />
-        )
       case 'chats-management':
         return (
           <ChatsManagementSection
@@ -1952,18 +1858,6 @@ const sidebarItems = useMemo(() => {
             currentAccessRole={currentAccessRole}
           />
         )
-      case 'master-categories':
-      case 'master-models':
-      case 'master-variants':
-        return (
-          <MasterDataManagementSection
-            dataType={activeSection}
-            categories={categories}
-            models={models}
-            canEditOperations={canEditOperations}
-            isDarkMode={isDarkMode}
-          />
-        )
       default:
         return (
           <DashboardSection
@@ -2062,6 +1956,7 @@ const sidebarItems = useMemo(() => {
         activeSection={activeSection}
         onSectionChange={handleSectionChange}
         isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onCloseSidebar={() => setIsSidebarOpen(false)}
         onNavigateHome={onNavigateHome}
         onSignOut={handleLogoutClick}
@@ -2076,7 +1971,6 @@ const sidebarItems = useMemo(() => {
           sectionTitle={sectionTitle}
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
-          onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
           onToggleNotifications={handleToggleNotifications}
           notificationCount={unreadChatCount}
           adminName={adminName}
