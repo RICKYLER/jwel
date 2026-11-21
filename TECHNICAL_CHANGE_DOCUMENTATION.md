@@ -3,7 +3,7 @@ COMPLETE TECHNICAL CHANGE AND ARCHITECTURE REPORT
 
 System Name      : Bykelink Motor Inc. Management System (bykelinkmotorinc-system)
 Repository       : RICKYLER/jwel (Branch: main)
-Covered Commits  : 563b94d, f58d8f0, 2501951, 0f38403, afb2a59
+Covered Commits  : 563b94d, f58d8f0, 2501951, 0f38403, afb2a59, 2c6b38c, f64ab9d
 Report Date      : November 21, 2026
 
 
@@ -45,6 +45,16 @@ Overall Engineering Scope:
     resolved a Vite 8 peer dependency conflict so cloud deployments build
     cleanly.
 
+  Phase 5 - Operational Enhancements: Staff Admin Verification, Top Sold Spare
+            Parts Analytics, Returned Damaged Inventory, and Unified Notifications
+            (f64ab9d)
+    Resolved staff product edit verification bottlenecks with server-side on-site
+    admin credentials validation and remote verification queues, introduced sales
+    analytics ranking for most sold spare parts with top-3 podium and visual meters,
+    added full damaged and returned products tracking with disposition status
+    management, and unified system notifications across chats, staff requests,
+    low-stock alerts, and service bookings.
+
 
 ================================================================================
 TABLE OF CONTENTS
@@ -57,8 +67,9 @@ TABLE OF CONTENTS
   5. Phase 3C: Admin-Only System Audit Trail and Access Isolation (2501951)
   6. Phase 3D: POS Itemized Walk-In Breakdown and Bulk Detection (2501951)
   7. Phase 4: Vercel Deployment and Build Pipeline Stabilization
-  8. Firestore Security Rules and Collection Access Summary
-  9. Verification Summary and Deployment Checklist
+  8. Phase 5: Operational Enhancements and Inventory Governance (f64ab9d)
+  9. Firestore Security Rules and Collection Access Summary
+  10. Verification Summary and Deployment Checklist
 
 
 ================================================================================
@@ -359,7 +370,94 @@ sign-off.
 
 
 ================================================================================
-8. FIRESTORE SECURITY RULES AND COLLECTION ACCESS SUMMARY
+8. PHASE 5: OPERATIONAL ENHANCEMENTS AND INVENTORY GOVERNANCE (f64ab9d)
+================================================================================
+
+Date: November 21, 2026 - Afternoon Release (10 Files Changed)
+
+8.1 Staff Product Verification and Direct On-Site Admin Authorization
+
+  - Problem Resolved:
+      Previously, staff personnel editing products encountered permission-denied
+      errors because client-side updates targeted `/inventory` directly, which
+      is restricted to administrator write access under Firestore rules.
+      Additionally, staff could not have an on-site administrator directly
+      authenticate and authorize changes on their workstation without logging out.
+
+  - Implementation Details:
+      - Backend Callable (functions/index.js - authorizeInventoryDirectly):
+          Allows on-site administrators to authenticate via their email and password
+          using Google Identity Toolkit API server-side. The function validates
+          administrative role claims, updates/deletes the target inventory document
+          via an atomic Firestore batch commit, and logs the verified audit event
+          without client-side write permissions issues.
+      - General Product Update Requests (submitInventoryChangeRequest & verifyInventoryChangeRequest):
+          Expanded request types to include 'update' alongside 'rename' and 'delete',
+          storing the full `pendingUpdates` payload (price, stock, color variants,
+          specifications, equipment, description) so that remote administrators can
+          review and approve staff product changes from the Admin Verification Queue.
+      - Dual-Mode Verification Modal (AdminVerificationModal.jsx):
+          Staff users are presented with dedicated Admin Email and Admin Password
+          credentials inputs for immediate on-site authorization, with a one-click
+          fallback to submit the change request into the remote admin approval queue.
+
+8.2 Most Sold Spare Parts Analytics Engine (AnalyticsSection.jsx & AnalyticsSection.css)
+
+  - Dedicated Spare Parts Performance Panel:
+      - Evaluates all completed point-of-sale transactions and extracts itemized
+        spare parts purchases within selected date ranges.
+      - Aggregates metrics including total units sold, distinct orders count, unit
+        pricing, and total gross revenue per spare part item.
+  - Top 3 Podium Cards Display:
+      - Prominently showcases #1 Top Seller, #2 Runner Up, and #3 Third Place
+        spare parts with gold, silver, and bronze gradient styling, SKU badges,
+        unit volume meters, and gross revenue figures.
+  - Filter and Sorting Controls:
+      - Added dynamic sorting toggles ("Sort by Units Sold" vs. "Sort by Revenue").
+      - Integrated real-time search filtering by spare part name or SKU.
+      - Visual percentage progress bars visualizing relative sales volume against
+        the highest-selling item, accompanied by full pagination support.
+
+8.3 Returned and Damaged Products Inventory Log (ReturnDamagedModal.jsx & InventorySection.jsx)
+
+  - Modal Suite & Stock Adjustment (ReturnDamagedModal.jsx):
+      - Created a dedicated modal allowing warehouse and sales personnel to record
+        damaged, defective, or customer-returned products.
+      - Fields include item selection, incident quantity, return condition
+        (Defective, Damaged in Transit, Customer Return, Warranty Claim,
+        Expired/Obsolescence), disposition status, customer/source, and notes.
+      - Optional automatic stock deduction (`deductedFromStock`) adjusts active
+        inventory levels atomically and logs audit records.
+  - Dedicated Inventory Tab & Live Tracking:
+      - Added `{ id: 'returned-damaged', label: 'Returned / Damaged' }` tab with
+        an active counter badge in InventorySection.jsx.
+      - Real-time Firestore subscription to the `/damagedReturns` collection.
+      - Disposition status management (Pending Inspection, Returned to Supplier,
+        Written Off, Repaired & Restocked, Scrapped/Disposed) with in-table
+        dropdown updates and summary KPI metric tiles.
+
+8.4 Unified Operations Notification Hub (SuperAdminPage.jsx & NotificationsDrawer.jsx)
+
+  - Problem Resolved:
+      The header notification bell only reflected unread customer chats,
+      leaving administrators unaware of pending staff inventory requests, critical
+      low-stock warnings, and incoming service bookings.
+
+  - Unified Alert Aggregation:
+      - Consolidates 4 critical operational alert channels into `notificationItems`:
+          1. Customer Live Chats (`chatNotifications`)
+          2. Pending Staff Inventory Verification Requests (`inventoryChangeRequests`)
+          3. Critical Low Stock & Out-of-Stock Warnings (inventory items where stock <= 5)
+          4. New Service Booking Requests (`serviceRequests` with pending/requested status)
+      - Synchronized `unreadNotificationCount` directly powers the header bell badge.
+      - Click-to-navigate routing sends administrators directly to the corresponding
+        management view (`inventory`, `service-scheduling`, `user-management`, or
+        `chats-management`).
+      - Persistent read state and alert dismissal supported via local storage.
+
+
+================================================================================
+9. FIRESTORE SECURITY RULES AND COLLECTION ACCESS SUMMARY
 ================================================================================
 
 Verified directly against firestore.rules:
@@ -370,9 +468,13 @@ Verified directly against firestore.rules:
   Collection: /inventory/{docId}
     Read: Public
     Create / Update / Delete: Admin or Superadmin
-    Note: Staff renames and deletions route through verification callables.
+    Note: Staff renames, updates, and deletions route through verification callables.
 
   Collection: /inventoryChangeRequests/{docId}
+    Read / Create: Admin, Superadmin, or Staff Personnel
+    Update / Delete: Admin or Superadmin
+
+  Collection: /damagedReturns/{docId}
     Read / Create: Admin, Superadmin, or Staff Personnel
     Update / Delete: Admin or Superadmin
 
@@ -411,7 +513,7 @@ Verified directly against firestore.rules:
 
 
 ================================================================================
-9. VERIFICATION SUMMARY AND DEPLOYMENT CHECKLIST
+10. VERIFICATION SUMMARY AND DEPLOYMENT CHECKLIST
 ================================================================================
 
 9.1 Verified Checks
