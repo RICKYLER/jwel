@@ -14,9 +14,12 @@ import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded'
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db, functions, storage } from '../../../firebase'
 import { logSystemAuditEvent } from '../../../services/auditLogService'
+import { exportProfessionalExcel, exportBrandedPdf } from '../../../services/reportExportService'
 import ConfirmationModal from '../components/ConfirmationModal'
 import AdminVerificationModal from '../components/AdminVerificationModal'
 import ReturnDamagedModal from '../components/ReturnDamagedModal'
@@ -193,16 +196,251 @@ export default function InventorySection({
 
   const handleUpdateDisposition = async (recordId, newDisposition) => {
     try {
+      const targetRecord = damagedReturns.find((r) => r.id === recordId)
       await updateDoc(doc(db, 'damagedReturns', recordId), {
         dispositionStatus: newDisposition,
         updatedAt: serverTimestamp(),
         updatedBy: currentUser?.displayName || currentUser?.email || 'Staff',
       })
+
+      // If item was marked repaired_restocked and was originally deducted, restore stock!
+      if (newDisposition === 'repaired_restocked' && targetRecord?.deductedFromStock && targetRecord?.itemId) {
+        const itemDocRef = doc(db, 'inventory', targetRecord.itemId)
+        const currentInvItem = items.find((i) => i.id === targetRecord.itemId)
+        if (currentInvItem) {
+          const restoredStock = Number(currentInvItem.stock ?? 0) + Number(targetRecord.quantity || 1)
+          await updateDoc(itemDocRef, {
+            stock: restoredStock,
+            status: getInventoryStatus({ stock: restoredStock }),
+            updatedAt: serverTimestamp(),
+          })
+          handleCollectionUpdate?.()
+          success(`Updated to Repaired & Restocked. Restored ${targetRecord.quantity} unit(s) back to active inventory!`)
+          return
+        }
+      }
+
       success(`Updated disposition status to ${newDisposition.replace(/_/g, ' ')}`)
     } catch (err) {
       console.error('Failed to update disposition status:', err)
       toastError('Failed to update disposition status.')
     }
+  }
+
+  const handleExportDamagedExcel = () => {
+    const totalQty = filteredDamagedReturns.reduce((sum, r) => sum + Number(r.quantity || 0), 0)
+    const kpis = [
+      { label: 'Total Incidents', value: filteredDamagedReturns.length },
+      { label: 'Units Affected', value: `${totalQty} pcs` },
+      { label: 'Pending Inspection', value: filteredDamagedReturns.filter((r) => r.dispositionStatus === 'pending_inspection').length },
+      { label: 'Supplier Returns', value: filteredDamagedReturns.filter((r) => r.dispositionStatus === 'returned_to_supplier').length },
+      { label: 'Written Off', value: filteredDamagedReturns.filter((r) => ['written_off', 'disposed'].includes(r.dispositionStatus)).length },
+    ]
+
+    const columns = [
+      { header: 'Incident ID', key: 'id', wch: 18 },
+      { header: 'Date Logged', key: 'dateText', wch: 14 },
+      { header: 'Product Name', key: 'itemName', wch: 30 },
+      { header: 'SKU / Code', key: 'itemSku', wch: 16 },
+      { header: 'Qty', key: 'quantity', wch: 8 },
+      { header: 'Condition', key: 'conditionText', wch: 24 },
+      { header: 'Source / Customer', key: 'customerSource', wch: 22 },
+      { header: 'Stock Action', key: 'stockAction', wch: 16 },
+      { header: 'Disposition Status', key: 'dispositionText', wch: 24 },
+      { header: 'Reason Notes', key: 'reasonNotes', wch: 35 },
+      { header: 'Logged By', key: 'loggedByText', wch: 20 },
+    ]
+
+    const exportRows = filteredDamagedReturns.map((r) => {
+      const d = r.createdAt?.toDate ? r.createdAt.toDate() : (r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000) : new Date(r.createdAt || Date.now()))
+      return {
+        id: r.id,
+        dateText: d.toLocaleDateString(),
+        itemName: r.itemName || '—',
+        itemSku: r.itemSku || r.itemId || '—',
+        quantity: r.quantity || 1,
+        conditionText: (r.condition || 'defective').replace(/_/g, ' '),
+        customerSource: r.customerSource || 'Store Return',
+        stockAction: r.deductedFromStock ? 'Deducted' : 'Not Deducted',
+        dispositionText: (r.dispositionStatus || 'pending_inspection').replace(/_/g, ' '),
+        reasonNotes: r.reasonNotes || '—',
+        loggedByText: r.loggedBy?.name || r.loggedBy?.email || 'Staff',
+      }
+    })
+
+    exportProfessionalExcel({
+      filename: 'bykelink-damaged-returns-report',
+      sheetName: 'Damaged & Returns',
+      reportTitle: 'DAMAGED & RETURNED PRODUCTS AUDIT REPORT',
+      subtitle: 'Motorcycle Dealership & Precision Service Center Management System',
+      periodText: damagedFilterStatus === 'all' ? 'All Incidents' : `Status: ${damagedFilterStatus}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+    })
+    success('Professional Excel report downloaded successfully.')
+  }
+
+  const handleExportDamagedPdf = () => {
+    const totalQty = filteredDamagedReturns.reduce((sum, r) => sum + Number(r.quantity || 0), 0)
+    const kpis = [
+      { label: 'Total Incidents', value: filteredDamagedReturns.length },
+      { label: 'Units Affected', value: `${totalQty} pcs` },
+      { label: 'Pending Inspection', value: filteredDamagedReturns.filter((r) => r.dispositionStatus === 'pending_inspection').length },
+      { label: 'Supplier Returns', value: filteredDamagedReturns.filter((r) => r.dispositionStatus === 'returned_to_supplier').length },
+      { label: 'Written Off', value: filteredDamagedReturns.filter((r) => ['written_off', 'disposed'].includes(r.dispositionStatus)).length },
+    ]
+
+    const columns = [
+      { header: 'ID', key: 'id' },
+      { header: 'Date', key: 'dateText' },
+      { header: 'Product Name', key: 'itemName' },
+      { header: 'SKU', key: 'itemSku' },
+      { header: 'Qty', key: 'quantity' },
+      { header: 'Condition', key: 'conditionText' },
+      { header: 'Source', key: 'customerSource' },
+      { header: 'Stock Action', key: 'stockAction' },
+      { header: 'Disposition', key: 'dispositionText' },
+      { header: 'Reason', key: 'reasonNotes' },
+    ]
+
+    const exportRows = filteredDamagedReturns.map((r) => {
+      const d = r.createdAt?.toDate ? r.createdAt.toDate() : (r.createdAt?.seconds ? new Date(r.createdAt.seconds * 1000) : new Date(r.createdAt || Date.now()))
+      return {
+        id: r.id,
+        dateText: d.toLocaleDateString(),
+        itemName: r.itemName || '—',
+        itemSku: r.itemSku || r.itemId || '—',
+        quantity: r.quantity || 1,
+        conditionText: (r.condition || 'defective').replace(/_/g, ' '),
+        customerSource: r.customerSource || 'Store Return',
+        stockAction: r.deductedFromStock ? 'Deducted' : 'Not Deducted',
+        dispositionText: (r.dispositionStatus || 'pending_inspection').replace(/_/g, ' '),
+        reasonNotes: r.reasonNotes || '—',
+      }
+    })
+
+    exportBrandedPdf({
+      filename: 'bykelink-damaged-returns-report',
+      title: 'DAMAGED & RETURNED PRODUCTS AUDIT REPORT',
+      subtitle: 'Motorcycle Dealership & Precision Service Center Management System',
+      periodText: damagedFilterStatus === 'all' ? 'All Incidents' : `Status: ${damagedFilterStatus}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+      orientation: 'landscape',
+    })
+    success('Printable PDF report downloaded successfully.')
+  }
+
+  const handleExportInventoryExcel = () => {
+    const totalUnits = items.reduce((sum, item) => sum + Number(item.stock || 0), 0)
+    const totalValuation = items.reduce((sum, item) => sum + (Number(item.stock || 0) * Number(item.price || 0)), 0)
+    const lowStockCount = items.filter((item) => Number(item.stock || 0) <= 5 && Number(item.stock || 0) > 0).length
+    const outOfStockCount = items.filter((item) => Number(item.stock || 0) <= 0).length
+
+    const kpis = [
+      { label: 'Total Products', value: items.length },
+      { label: 'Units on Hand', value: `${totalUnits} pcs` },
+      { label: 'Asset Valuation', value: formatCurrency(totalValuation) },
+      { label: 'Low Stock Items', value: lowStockCount },
+      { label: 'Out of Stock', value: outOfStockCount },
+    ]
+
+    const columns = [
+      { header: 'SKU / Code', key: 'sku', wch: 18 },
+      { header: 'Product Name', key: 'name', wch: 32 },
+      { header: 'Category', key: 'category', wch: 22 },
+      { header: 'Model / Variant', key: 'model', wch: 24 },
+      { header: 'Available Stock', key: 'stockFormatted', wch: 16 },
+      { header: 'Unit Price', key: 'priceFormatted', wch: 18 },
+      { header: 'Asset Value', key: 'valuationFormatted', wch: 22 },
+      { header: 'Status', key: 'status', wch: 16 },
+    ]
+
+    const exportRows = items.map((item) => {
+      const st = Number(item.stock || 0)
+      const pr = Number(item.price || 0)
+      return {
+        sku: item.sku || item.code || item.id,
+        name: item.name || '—',
+        category: item.category || 'General',
+        model: `${item.model || ''} ${item.variant || ''}`.trim() || '—',
+        stockFormatted: `${st} pcs`,
+        priceFormatted: formatCurrency(pr),
+        valuationFormatted: formatCurrency(st * pr),
+        status: item.status || (st <= 0 ? 'Out of Stock' : st <= 5 ? 'Low Stock' : 'In Stock'),
+      }
+    })
+
+    exportProfessionalExcel({
+      filename: 'bykelink-inventory-valuation-report',
+      sheetName: 'Inventory Valuation',
+      reportTitle: 'LIVE INVENTORY STOCK & ASSET VALUATION AUDIT REPORT',
+      subtitle: 'Warehouse Stock Take, Available Quantities, and Asset Pricing',
+      periodText: `Current Live Inventory (${new Date().toLocaleDateString()})`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+    })
+    success('Inventory valuation Excel downloaded successfully.')
+  }
+
+  const handleExportInventoryPdf = () => {
+    const totalUnits = items.reduce((sum, item) => sum + Number(item.stock || 0), 0)
+    const totalValuation = items.reduce((sum, item) => sum + (Number(item.stock || 0) * Number(item.price || 0)), 0)
+    const lowStockCount = items.filter((item) => Number(item.stock || 0) <= 5 && Number(item.stock || 0) > 0).length
+    const outOfStockCount = items.filter((item) => Number(item.stock || 0) <= 0).length
+
+    const kpis = [
+      { label: 'Total Products', value: items.length },
+      { label: 'Units on Hand', value: `${totalUnits} pcs` },
+      { label: 'Asset Valuation', value: formatCurrency(totalValuation) },
+      { label: 'Low Stock', value: lowStockCount },
+      { label: 'Out of Stock', value: outOfStockCount },
+    ]
+
+    const columns = [
+      { header: 'SKU', key: 'sku' },
+      { header: 'Product Name', key: 'name' },
+      { header: 'Category', key: 'category' },
+      { header: 'Model', key: 'model' },
+      { header: 'Stock', key: 'stockFormatted' },
+      { header: 'Price', key: 'priceFormatted' },
+      { header: 'Total Value', key: 'valuationFormatted' },
+      { header: 'Status', key: 'status' },
+    ]
+
+    const exportRows = items.map((item) => {
+      const st = Number(item.stock || 0)
+      const pr = Number(item.price || 0)
+      return {
+        sku: item.sku || item.code || item.id,
+        name: item.name || '—',
+        category: item.category || 'General',
+        model: `${item.model || ''} ${item.variant || ''}`.trim() || '—',
+        stockFormatted: `${st} pcs`,
+        priceFormatted: formatCurrency(pr),
+        valuationFormatted: formatCurrency(st * pr),
+        status: item.status || (st <= 0 ? 'Out of Stock' : st <= 5 ? 'Low Stock' : 'In Stock'),
+      }
+    })
+
+    exportBrandedPdf({
+      filename: 'bykelink-inventory-valuation-report',
+      title: 'LIVE INVENTORY STOCK & ASSET VALUATION AUDIT REPORT',
+      subtitle: 'Warehouse Stock Take, Available Quantities, and Asset Pricing',
+      periodText: `Current Live Inventory (${new Date().toLocaleDateString()})`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+      orientation: 'landscape',
+    })
+    success('Inventory valuation PDF downloaded successfully.')
   }
 
   const { success, error: toastError } = useToast()
@@ -1389,6 +1627,27 @@ export default function InventorySection({
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportInventoryExcel}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-2 text-xs font-bold text-emerald-300 transition-colors"
+                  title="Export Inventory Asset Valuation to Excel (.xlsx)"
+                >
+                  <FileDownloadRoundedIcon sx={{ fontSize: 16 }} />
+                  Export Valuation (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportInventoryPdf}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-2 text-xs font-bold text-red-300 transition-colors"
+                  title="Download Inventory Valuation PDF"
+                >
+                  <PictureAsPdfRoundedIcon sx={{ fontSize: 16 }} />
+                  Download PDF
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1405,14 +1664,34 @@ export default function InventorySection({
                   Track customer returns, supplier warranties, transit damage, and manage inventory dispositions.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsReturnDamagedModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 px-4 py-2 text-xs font-black text-white transition-all shadow-md"
-              >
-                <ReportProblemRoundedIcon sx={{ fontSize: 16 }} />
-                Record Return / Defect
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportDamagedExcel}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-300 transition-colors"
+                  title="Export to Excel Spreadsheet (.xlsx)"
+                >
+                  <FileDownloadRoundedIcon sx={{ fontSize: 16 }} />
+                  Export Excel (.xlsx)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportDamagedPdf}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-3 py-2 text-xs font-bold text-red-300 transition-colors"
+                  title="Download PDF Report"
+                >
+                  <PictureAsPdfRoundedIcon sx={{ fontSize: 16 }} />
+                  Download PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsReturnDamagedModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 px-4 py-2 text-xs font-black text-white transition-all shadow-md"
+                >
+                  <ReportProblemRoundedIcon sx={{ fontSize: 16 }} />
+                  Record Return / Defect
+                </button>
+              </div>
             </div>
 
             {/* Filter and stats row */}

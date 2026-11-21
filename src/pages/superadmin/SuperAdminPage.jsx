@@ -2210,6 +2210,7 @@ useEffect(() => {
             normalizeText={normalizeText}
             transactionLogs={transactionLogs}
             isDarkMode={isDarkMode}
+            currentUser={currentUser}
           />
         )
       case 'transaction-history':

@@ -3,12 +3,16 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded'
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
 import { summarizeSaleItems } from './superadminUtils'
+import { exportProfessionalExcel, exportBrandedPdf } from '../../../services/reportExportService'
 import './AnalyticsSection.css'
 
 export default function AnalyticsSection({
   transactionLogs = [],
   isDarkMode = true,
+  currentUser = null,
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('all')
@@ -256,6 +260,193 @@ export default function AnalyticsSection({
       )
     : null
 
+  const handleExportTopPartsExcel = () => {
+    const kpis = [
+      { label: 'Top Seller', value: topSoldSpareParts[0]?.name || 'N/A' },
+      { label: 'Total Units Sold', value: `${totalSparePartsUnits} pcs` },
+      { label: 'Total Parts Revenue', value: formatPeso(sparePartsSales) },
+      { label: 'Distinct Parts Sold', value: topSoldSpareParts.length },
+    ]
+
+    const columns = [
+      { header: 'Rank', key: 'rank', wch: 8 },
+      { header: 'Spare Part Name', key: 'name', wch: 32 },
+      { header: 'SKU / Code', key: 'sku', wch: 18 },
+      { header: 'Units Sold', key: 'totalQty', wch: 14 },
+      { header: 'Order Count', key: 'transactionCount', wch: 14 },
+      { header: 'Unit Price', key: 'unitPriceFormatted', wch: 18 },
+      { header: 'Total Revenue', key: 'totalRevenueFormatted', wch: 20 },
+      { header: 'Volume Share', key: 'volumeShare', wch: 16 },
+    ]
+
+    const exportRows = filteredSpareParts.map((part, idx) => {
+      const pct = Math.round((part.totalQty / maxPartQty) * 100)
+      return {
+        rank: `#${idx + 1}`,
+        name: part.name,
+        sku: part.sku,
+        totalQty: `${part.totalQty} pcs`,
+        transactionCount: `${part.transactionCount} order(s)`,
+        unitPriceFormatted: formatPeso(part.unitPrice),
+        totalRevenueFormatted: formatPeso(part.totalRevenue),
+        volumeShare: `${pct}% of #1`,
+      }
+    })
+
+    exportProfessionalExcel({
+      filename: 'bykelink-top-spare-parts-report',
+      sheetName: 'Top Spare Parts',
+      reportTitle: 'MOST SOLD SPARE PARTS PERFORMANCE REPORT',
+      subtitle: 'Motorcycle Dealership Product Velocity & Revenue Tracking',
+      periodText: `${formatReportDate(fromDateFilter)} to ${formatReportDate(toDateFilter)}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+    })
+  }
+
+  const handleExportTopPartsPdf = () => {
+    const kpis = [
+      { label: 'Top Seller', value: topSoldSpareParts[0]?.name || 'N/A' },
+      { label: 'Total Units Sold', value: `${totalSparePartsUnits} pcs` },
+      { label: 'Total Parts Revenue', value: formatPeso(sparePartsSales) },
+      { label: 'Distinct Parts Sold', value: topSoldSpareParts.length },
+    ]
+
+    const columns = [
+      { header: 'Rank', key: 'rank' },
+      { header: 'Spare Part Name', key: 'name' },
+      { header: 'SKU', key: 'sku' },
+      { header: 'Units Sold', key: 'totalQty' },
+      { header: 'Orders', key: 'transactionCount' },
+      { header: 'Unit Price', key: 'unitPriceFormatted' },
+      { header: 'Total Revenue', key: 'totalRevenueFormatted' },
+    ]
+
+    const exportRows = filteredSpareParts.map((part, idx) => ({
+      rank: `#${idx + 1}`,
+      name: part.name,
+      sku: part.sku,
+      totalQty: `${part.totalQty} pcs`,
+      transactionCount: `${part.transactionCount}`,
+      unitPriceFormatted: formatPeso(part.unitPrice),
+      totalRevenueFormatted: formatPeso(part.totalRevenue),
+    }))
+
+    exportBrandedPdf({
+      filename: 'bykelink-top-spare-parts-report',
+      title: 'MOST SOLD SPARE PARTS PERFORMANCE REPORT',
+      subtitle: 'Motorcycle Dealership Product Velocity & Revenue Tracking',
+      periodText: `${formatReportDate(fromDateFilter)} to ${formatReportDate(toDateFilter)}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+      orientation: 'portrait',
+    })
+  }
+
+  const handleExportSalesFinancialExcel = () => {
+    const kpis = [
+      { label: 'Total Sales', value: formatPeso(totalSales) },
+      { label: 'Spare Parts Revenue', value: formatPeso(sparePartsSales) },
+      { label: 'Service Labor Revenue', value: formatPeso(serviceSales) },
+      { label: 'Cash Payments', value: formatPeso(cashSales) },
+      { label: 'Online Payments', value: formatPeso(onlineSales) },
+      { label: 'Total Transactions', value: transactionCount },
+    ]
+
+    const columns = [
+      { header: 'Transaction Date', key: 'dateText', wch: 18 },
+      { header: 'Transaction ID / Order #', key: 'id', wch: 22 },
+      { header: 'Customer', key: 'customerName', wch: 24 },
+      { header: 'Parts Subtotal', key: 'partsFormatted', wch: 18 },
+      { header: 'Service Subtotal', key: 'serviceFormatted', wch: 18 },
+      { header: 'Gross Total', key: 'totalFormatted', wch: 18 },
+      { header: 'Payment Method', key: 'paymentMethod', wch: 16 },
+      { header: 'Cashier / Processed By', key: 'cashier', wch: 22 },
+    ]
+
+    const exportRows = selectedDateTransactions.map((tx) => {
+      const d = getLogDate(tx)
+      const partsAmt = Number(tx.partsSubtotal ?? (tx.hasServices ? (Number(tx.totalAmount || 0) - Number(tx.serviceSubtotal || 0)) : (tx.totalAmount || 0)))
+      const srvAmt = Number(tx.serviceSubtotal ?? 0)
+      return {
+        dateText: d ? d.toLocaleDateString() : '—',
+        id: tx.transactionId || tx.id || '—',
+        customerName: tx.customerName || tx.customerPhone || 'Walk-in Customer',
+        partsFormatted: formatPeso(partsAmt),
+        serviceFormatted: formatPeso(srvAmt),
+        totalFormatted: formatPeso(tx.totalAmount || tx.subtotal || 0),
+        paymentMethod: (tx.paymentMethod || 'cash').toUpperCase(),
+        cashier: tx.cashierEmail || tx.cashierName || tx.recordedBy || 'Cashier',
+      }
+    })
+
+    exportProfessionalExcel({
+      filename: 'bykelink-sales-financial-report',
+      sheetName: 'Sales & Revenue',
+      reportTitle: 'SALES & REVENUE FINANCIAL AUDIT REPORT',
+      subtitle: 'Point-of-Sale Transactions, Parts Revenue, and Labor Breakdown',
+      periodText: `${formatReportDate(fromDateFilter)} to ${formatReportDate(toDateFilter)}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+    })
+  }
+
+  const handleExportSalesFinancialPdf = () => {
+    const kpis = [
+      { label: 'Total Sales', value: formatPeso(totalSales) },
+      { label: 'Parts Revenue', value: formatPeso(sparePartsSales) },
+      { label: 'Service Fees', value: formatPeso(serviceSales) },
+      { label: 'Cash Payments', value: formatPeso(cashSales) },
+      { label: 'Online Payments', value: formatPeso(onlineSales) },
+      { label: 'Transactions', value: transactionCount },
+    ]
+
+    const columns = [
+      { header: 'Date', key: 'dateText' },
+      { header: 'Order #', key: 'id' },
+      { header: 'Customer', key: 'customerName' },
+      { header: 'Parts (₱)', key: 'partsFormatted' },
+      { header: 'Service (₱)', key: 'serviceFormatted' },
+      { header: 'Total (₱)', key: 'totalFormatted' },
+      { header: 'Payment', key: 'paymentMethod' },
+      { header: 'Cashier', key: 'cashier' },
+    ]
+
+    const exportRows = selectedDateTransactions.map((tx) => {
+      const d = getLogDate(tx)
+      const partsAmt = Number(tx.partsSubtotal ?? (tx.hasServices ? (Number(tx.totalAmount || 0) - Number(tx.serviceSubtotal || 0)) : (tx.totalAmount || 0)))
+      const srvAmt = Number(tx.serviceSubtotal ?? 0)
+      return {
+        dateText: d ? d.toLocaleDateString() : '—',
+        id: tx.transactionId || tx.id || '—',
+        customerName: tx.customerName || tx.customerPhone || 'Walk-in Customer',
+        partsFormatted: formatPeso(partsAmt),
+        serviceFormatted: formatPeso(srvAmt),
+        totalFormatted: formatPeso(tx.totalAmount || tx.subtotal || 0),
+        paymentMethod: (tx.paymentMethod || 'cash').toUpperCase(),
+        cashier: tx.cashierEmail || tx.cashierName || tx.recordedBy || 'Cashier',
+      }
+    })
+
+    exportBrandedPdf({
+      filename: 'bykelink-sales-financial-report',
+      title: 'SALES & REVENUE FINANCIAL AUDIT REPORT',
+      subtitle: 'Point-of-Sale Transactions, Parts Revenue, and Labor Breakdown',
+      periodText: `${formatReportDate(fromDateFilter)} to ${formatReportDate(toDateFilter)}`,
+      generatedBy: currentUser?.displayName || currentUser?.email || 'Administrator',
+      kpis,
+      columns,
+      data: exportRows,
+      orientation: 'landscape',
+    })
+  }
+
   return (
     <section className={`analytics-section ${!isDarkMode ? 'light-mode' : ''}`}>
       <header className="analytics-report-header">
@@ -264,9 +455,31 @@ export default function AnalyticsSection({
           <h1>Sales Analytics</h1>
           <p className="analytics-report-subtitle">Spare parts, service fees, and transaction activity for the selected date range</p>
         </div>
-        <div className="analytics-report-date">
-          <span>Reporting period</span>
-          <strong>From: {formatReportDate(fromDateFilter)} To: {formatReportDate(toDateFilter)}</strong>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportSalesFinancialExcel}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-300 transition-colors"
+              title="Export Financial Sales Audit to Excel (.xlsx)"
+            >
+              <FileDownloadRoundedIcon sx={{ fontSize: 16 }} />
+              Export Excel (.xlsx)
+            </button>
+            <button
+              type="button"
+              onClick={handleExportSalesFinancialPdf}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-3 py-2 text-xs font-bold text-red-300 transition-colors"
+              title="Download Financial Sales Statement PDF"
+            >
+              <PictureAsPdfRoundedIcon sx={{ fontSize: 16 }} />
+              Download PDF
+            </button>
+          </div>
+          <div className="analytics-report-date">
+            <span>Reporting period</span>
+            <strong>From: {formatReportDate(fromDateFilter)} To: {formatReportDate(toDateFilter)}</strong>
+          </div>
         </div>
       </header>
 
@@ -315,7 +528,25 @@ export default function AnalyticsSection({
               <h2>Most Sold Spare Parts</h2>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportTopPartsExcel}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-300 transition-colors"
+              title="Download Excel Report"
+            >
+              <FileDownloadRoundedIcon sx={{ fontSize: 15 }} />
+              Export Excel (.xlsx)
+            </button>
+            <button
+              type="button"
+              onClick={handleExportTopPartsPdf}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-300 transition-colors"
+              title="Download PDF Report"
+            >
+              <PictureAsPdfRoundedIcon sx={{ fontSize: 15 }} />
+              Download PDF
+            </button>
             <span className="analytics-record-count">
               {topSoldSpareParts.length} distinct spare part(s) sold
             </span>

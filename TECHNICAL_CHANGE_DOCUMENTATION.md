@@ -630,8 +630,61 @@ Date: November 21, 2026 - Major Operational Release (10 Files Modified / Added)
       bell, wired click-to-navigate routing, and added persistent dismissal.
   - src/pages/cashier/CashierPage.jsx:
       Maintained itemized service fee and parts tracking for POS sales.
-  - src/pages/superadmin/sections/superadminUtils.js:
-      Refined sales aggregation utilities to separate parts and service revenues.
+  - src/services/reportExportService.js:
+      Created universal export service supporting professional Excel (.xlsx) workbooks
+      with merged company headers, KPI blocks, and auto-calculated column widths,
+      plus print-ready, branded PDF documents with management sign-off blocks.
+  - src/pages/superadmin/sections/InventorySection.jsx:
+      Integrated Excel and PDF export buttons for the Returned & Damaged Products log
+      and Live Inventory Valuation, plus restock inventory restoration.
+  - src/pages/superadmin/sections/AnalyticsSection.jsx:
+      Integrated Excel and PDF export buttons for the Most Sold Spare Parts velocity
+      ranking and the Sales & Revenue Financial Breakdown.
+
+
+8.8 Enterprise Downloadable Reports Engine (Excel & PDF)
+
+  8.8.1 Motivation and Business Purpose
+    Dealership management, auditors, and department heads require formal,
+    downloadable documentation for supplier warranty claims, tax accounting,
+    inventory audits, and sales velocity planning. Rather than raw unformatted
+    CSV dumps, management requested executive-ready Excel workbooks and
+    branded printable PDF reports.
+
+  8.8.2 Professional Excel (.xlsx) Template Architecture
+    The new export engine (src/services/reportExportService.js) structures every
+    Excel export into four distinct, polished zones:
+    1. Zone 1 - Official Dealership Company Header:
+       - Row 1: "BYKELINK MOTOR INC." merged across all table columns.
+       - Row 2: "Motorcycle Dealership & Precision Service Center Management System".
+       - Row 3: Official report title in bold uppercase.
+       - Row 4: Audit metadata including generation timestamp, actor identity,
+         and active reporting period.
+    2. Zone 2 - Executive Summary KPI Metrics Block:
+       - Merged section header with formatted Key Performance Indicators
+         (counts, quantities, and financial amounts formatted with PHP currency).
+    3. Zone 3 - Structured Data Table:
+       - Bold uppercase column headers.
+       - Explicit character widths (`!cols` with generous padding) preventing
+         truncated cells or Excel `###` numeric overflow errors.
+    4. Zone 4 - Managerial Audit & Sign-Off Section:
+       - Formal signature lines for "Prepared By: (Staff/Cashier)" and
+         "Verified & Approved By: (Store Management / Branch Auditor)" ensuring
+         audit compliance.
+
+  8.8.3 Branded Print-Ready PDF Documents
+    Generates high-resolution vector PDF reports featuring:
+    - Official Bykelink Crimson brand banner (#c51d34) at the top of page 1.
+    - Executive summary KPI summary cards with rounded borders.
+    - Full AutoTable data presentation with alternating row shading.
+    - Dynamic multi-page pagination ("Page X of Y").
+    - Formal managerial signature block on the concluding page.
+
+  8.8.4 Deployed Modules
+    - Damaged & Returned Products Incident Audit (Excel & PDF)
+    - Most Sold Spare Parts & Product Performance Ranking (Excel & PDF)
+    - Sales & Revenue Financial Audit with Parts vs. Service Fee Isolation (Excel & PDF)
+    - Live Inventory Stock & Asset Valuation Audit (Excel & PDF)
 
 
 ================================================================================
