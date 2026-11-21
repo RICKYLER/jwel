@@ -8,6 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "emulators": "firebase emulators:start --only hosting,functions",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
@@ -45,6 +47,7 @@
     "globals": "^17.4.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^7.0.2",
-    "vite": "^8.0.4"
+    "vite": "^8.0.4",
+    "vitest": "^5.1.1"
   }
 }

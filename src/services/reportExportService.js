@@ -9,17 +9,10 @@ import 'jspdf-autotable'
  */
 
 /**
- * Exports data into a highly organized, professional Excel workbook.
- * Features:
- * - Official Bykelink Motor Inc. merged company header banner
- * - Dealership system subtitle and audit metadata
- * - Executive summary KPI metrics block
- * - Clean data table with auto-fitted column widths
- * - Managerial sign-off and audit verification block
+ * Generates the structured Array-of-Arrays (AOA) data, merge coordinates,
+ * and column specifications for an enterprise Bykelink Excel report.
  */
-export function exportProfessionalExcel({
-  filename = 'bykelink-report',
-  sheetName = 'Report',
+export function buildExcelAoaData({
   reportTitle = 'OPERATIONAL AUDIT REPORT',
   subtitle = 'Motorcycle Dealership & Precision Service Center Management System',
   periodText = 'All Records',
@@ -88,12 +81,9 @@ export function exportProfessionalExcel({
     'Date Signed: ___________________________',
   ])
 
-  // Convert AOA to Sheet
-  const worksheet = XLSX.utils.aoa_to_sheet(wsData)
-
   // Configure Merged Banner Headers
   const colCount = Math.max(columns.length - 1, 5)
-  worksheet['!merges'] = [
+  const merges = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: colCount } }, // Row 1 Company Name
     { s: { r: 1, c: 0 }, e: { r: 1, c: colCount } }, // Row 2 Subtitle
     { s: { r: 2, c: 0 }, e: { r: 2, c: colCount } }, // Row 3 Title
@@ -101,15 +91,54 @@ export function exportProfessionalExcel({
   ]
 
   if (Array.isArray(kpis) && kpis.length > 0) {
-    worksheet['!merges'].push(
+    merges.push(
       { s: { r: 5, c: 0 }, e: { r: 5, c: colCount } }, // Row 6 KPI title
     )
   }
 
   // Set intelligent column widths
-  worksheet['!cols'] = columns.map((col) => ({
+  const cols = columns.map((col) => ({
     wch: col.wch || Math.max(col.header.length + 5, 16),
   }))
+
+  return { wsData, merges, cols }
+}
+
+/**
+ * Exports data into a highly organized, professional Excel workbook.
+ * Features:
+ * - Official Bykelink Motor Inc. merged company header banner
+ * - Dealership system subtitle and audit metadata
+ * - Executive summary KPI metrics block
+ * - Clean data table with auto-fitted column widths
+ * - Managerial sign-off and audit verification block
+ */
+export function exportProfessionalExcel({
+  filename = 'bykelink-report',
+  sheetName = 'Report',
+  reportTitle = 'OPERATIONAL AUDIT REPORT',
+  subtitle = 'Motorcycle Dealership & Precision Service Center Management System',
+  periodText = 'All Records',
+  generatedBy = 'Administrator',
+  kpis = [], // Array of { label: string, value: string | number }
+  columns = [], // Array of { header: string, key: string, wch?: number }
+  data = [], // Array of record objects
+  writer = XLSX.writeFile,
+}) {
+  const { wsData, merges, cols } = buildExcelAoaData({
+    reportTitle,
+    subtitle,
+    periodText,
+    generatedBy,
+    kpis,
+    columns,
+    data,
+  })
+
+  // Convert AOA to Sheet
+  const worksheet = XLSX.utils.aoa_to_sheet(wsData)
+  worksheet['!merges'] = merges
+  worksheet['!cols'] = cols
 
   // Create workbook and write
   const workbook = XLSX.utils.book_new()
@@ -117,7 +146,11 @@ export function exportProfessionalExcel({
   XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName)
 
   const dateSlug = new Date().toISOString().split('T')[0]
-  XLSX.writeFile(workbook, `${filename}-${dateSlug}.xlsx`)
+  const finalFilename = `${filename}-${dateSlug}.xlsx`
+  if (typeof writer === 'function') {
+    writer(workbook, finalFilename)
+  }
+  return { workbook, finalFilename }
 }
 
 /**

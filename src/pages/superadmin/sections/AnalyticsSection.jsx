@@ -6,6 +6,7 @@ import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded'
 import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded'
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded'
 import { summarizeSaleItems } from './superadminUtils'
+import { computeTopSoldSpareParts } from './analyticsUtils'
 import { exportProfessionalExcel, exportBrandedPdf } from '../../../services/reportExportService'
 import './AnalyticsSection.css'
 
@@ -178,53 +179,7 @@ export default function AnalyticsSection({
   }
 
   const topSoldSpareParts = useMemo(() => {
-    const partsMap = new Map()
-
-    selectedDateTransactions.forEach((log) => {
-      const items = Array.isArray(log.items) ? log.items : []
-      items.forEach((entry) => {
-        if (!entry) return
-        const id = String(entry.id || entry.sku || entry.name || '').trim()
-        const sku = String(entry.sku || '').trim()
-        const name = String(entry.name || entry.item || 'Spare Part').trim()
-        const isService =
-          entry.type === 'service' ||
-          id.startsWith('service-') ||
-          sku.toUpperCase() === 'SERVICE'
-        if (isService) return
-
-        const qty = Number(entry.qty || 0)
-        const unitPrice = Number(entry.unitPrice || 0)
-        const subtotal =
-          entry.subtotal !== undefined && entry.subtotal !== null
-            ? Number(entry.subtotal)
-            : Number((qty * unitPrice).toFixed(2))
-
-        const key = (sku && sku !== '—' ? sku : id) || name
-        const existing = partsMap.get(key) || {
-          key,
-          name,
-          sku: sku && sku !== '—' ? sku : 'N/A',
-          totalQty: 0,
-          totalRevenue: 0,
-          transactionCount: 0,
-          unitPrice,
-        }
-        existing.totalQty += qty
-        existing.totalRevenue += subtotal
-        existing.transactionCount += 1
-        if (unitPrice > 0) existing.unitPrice = unitPrice
-        partsMap.set(key, existing)
-      })
-    })
-
-    const list = Array.from(partsMap.values())
-    return list.sort((a, b) => {
-      if (partsSortBy === 'revenue') {
-        return b.totalRevenue - a.totalRevenue
-      }
-      return b.totalQty - a.totalQty
-    })
+    return computeTopSoldSpareParts(selectedDateTransactions, partsSortBy)
   }, [selectedDateTransactions, partsSortBy])
 
   const filteredSpareParts = useMemo(() => {

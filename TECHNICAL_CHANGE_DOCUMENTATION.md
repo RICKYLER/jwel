@@ -749,17 +749,17 @@ Verified directly against firestore.rules:
 
 10.1 Verified Checks
 
-  - Dependency Install (npm install): Passed with exit code 0 and no peer
-    dependency conflicts after removing vite-plugin-pwa.
+  - Automated Test Suite (npm run test using Vitest): 100% passing across 6 test
+    suites (60 tests passed in under 450ms).
+  - Dependency Install (npm install): Passed with exit code 0.
   - Production Bundle Build (npm run build using Vite 8.0.5): Passed cleanly,
-    transforming 1,582 modules and emitting production dist/ bundle in 1.50 seconds.
+    transforming 1,586 modules and emitting production dist/ bundle in 1.45 seconds.
   - Cloud Functions Syntax Check (node --check functions/index.js): Passed
     with exit code 0.
   - Vercel Config Validation (python3 -m json.tool vercel.json): Passed.
   - ESLint & Type Checks: All newly created and modified components verified
     without syntax errors or broken imports.
-  - Git Branch Synchronization: Commits f64ab9d and ba2cd3a cleanly pushed
-    and synchronized with origin/main on GitHub (RICKYLER/jwel).
+  - Git Branch Synchronization: Synchronized with origin/main on GitHub (RICKYLER/jwel).
 
 10.2 Production Deployment Steps
 
@@ -768,3 +768,87 @@ Verified directly against firestore.rules:
 
   2. Deploy or verify automatic Vercel build from branch main of RICKYLER/jwel
      using the Vite preset (build command: vite build, output directory: dist).
+
+
+================================================================================
+11. AUTOMATED TESTING FRAMEWORK AND TEST FILE TREE
+================================================================================
+
+11.1 Testing Architecture Overview
+  An automated testing pipeline was integrated into the project using Vitest,
+  running natively with Vite 8.0.5 and Node v24.19.0.
+
+  To run the test suite at any time from terminal, simply run:
+    npm run test
+
+  To run in continuous watch mode during development:
+    npm run test:watch
+
+11.2 Complete Test File Tree
+  ```
+  jwel2/
+  ├── vitest.config.js                    # Vitest configuration integrated with Vite plugins
+  ├── tests/
+  │   ├── fixtures/
+  │   │   └── testData.js                 # Realistic Bykelink test fixtures (products, sales, change requests, returns)
+  │   ├── superadminUtils.test.js         # Currency (PHP), date parsing, status tones, and sale item summarization
+  │   ├── analyticsEngine.test.js         # Spare parts sales aggregation, labor fee exclusion, volume share & ranking
+  │   ├── damagedReturns.test.js          # Intake schema validation, disposition state machine & auto-restocking triggers
+  │   ├── reportExportService.test.js     # Universal Excel AOA layout, merges, col widths & branded PDF parameters
+  │   ├── unifiedNotifications.test.js    # Multi-stream alert aggregation (4 types), unread badge counts & category filters
+  │   └── staffAuthorization.test.js      # Direct admin credential verification, dual-custody approval & stock adjustments
+  └── src/
+      ├── services/
+      │   └── reportExportService.js      # Enterprise Excel & PDF export service (with testable AOA builder)
+      └── pages/superadmin/sections/
+          ├── superadminUtils.js          # Shared utility functions (currency, date, sale items)
+          ├── analyticsUtils.js           # Spare parts sales velocity & volume share calculation
+          ├── damagedReturnsUtils.js      # Damaged returns validation, restock logic & loss calculation
+          ├── notificationUtils.js        # 4-in-1 alert aggregation & unread calculation
+          └── staffAuthUtils.js           # Administrative authority & inventory update reconciliation
+  ```
+
+11.3 Test Suite Coverage Breakdown
+
+  Suite 1: tests/superadminUtils.test.js (19 Tests Passed)
+    - Currency formatting in PHP format (₱ 1,500, zero handling, large value comma separation).
+    - Date formatting (JS Date, Firestore Timestamp toDate(), null/invalid fallbacks).
+    - Status tone and CSS class mapping (emerald, amber, red, slate).
+    - Service line item detection (by type: 'service', id: 'service-*', sku: 'SERVICE').
+    - Comprehensive sale item summarization (pure parts, pure services, mixed carts, bulk purchase detection >= 5 units, legacy unitemized service fee extraction).
+
+  Suite 2: tests/analyticsEngine.test.js (6 Tests Passed)
+    - Physical spare parts extraction and rigorous exclusion of service labor fees.
+    - Sorting by units sold descending vs gross revenue descending.
+    - Volume market share percentage calculation relative to the #1 top-selling item.
+    - Total units sold and total spare parts gross revenue mathematical integrity.
+    - Graceful handling of empty transaction logs.
+
+  Suite 3: tests/damagedReturns.test.js (13 Tests Passed)
+    - Intake schema validation (mandatory item name, positive quantity, valid condition and disposition codes).
+    - State machine lifecycle transitions (pending_inspection, returned_to_supplier, written_off, repaired_restocked, disposed).
+    - Auto-restocking trigger logic (only restocks when moving to repaired_restocked and was originally deducted).
+    - Idempotency guard preventing duplicate stock restorations.
+    - Accurate restock math (active stock + returned quantity).
+    - Financial loss calculation (sum of quantity * cost for written-off and disposed items).
+
+  Suite 4: tests/reportExportService.test.js (7 Tests Passed)
+    - Excel Zone 1: Official Bykelink header banner rows (company name, subtitle, uppercase report title, audit metadata).
+    - Excel Zone 2: Executive Summary KPI Block (labels and formatted values).
+    - Excel Zone 3: Clean data table with auto-fitted column widths and placeholder formatting for missing values.
+    - Excel Zone 4: Managerial audit and verification sign-off block with printed name and signature lines.
+    - Merged cell configurations (!merges) spanning across all columns.
+    - XLSX workbook generation and file writer invocation with sanitized worksheet names.
+
+  Suite 5: tests/unifiedNotifications.test.js (4 Tests Passed)
+    - Aggregation of 4 distinct alert streams (CHAT, INVENTORY_REQUEST, LOW_STOCK, SERVICE_BOOKING).
+    - Chronological sorting (newest first).
+    - Synchronized unread badge count calculation matching dismissed and read ID sets.
+    - Category tab filtering ('all', 'inventory', 'service', 'messages').
+
+  Suite 6: tests/staffAuthorization.test.js (11 Tests Passed)
+    - Role authority checking (admin/superadmin direct access vs staff dual-custody verification).
+    - Direct override payload validation (admin email format, password minimum length >= 6, target item ID, non-empty changes).
+    - Atomic product update application preserving unchanged fields.
+    - Dynamic stock recalculation from color variants or total quantity.
+    - Automatic inventory status updating ('In Stock', 'Low Stock', 'Out of Stock') based on resulting stock levels.
