@@ -1108,3 +1108,276 @@ Date: November 21, 2026 - Operational Usability Release
        dealership staff to submit requests and log returns without being blocked by custom claims mismatch.
     4. Backend Sanitization (`functions/index.js`): Added `JSON.parse(JSON.stringify(request.data.pendingUpdates))`
        to guarantee safe Firestore document creation on the server as well.
+
+
+================================================================================
+14. FIREBASE CONSOLE & BACKEND DEPLOYMENT GUIDE (FOR FIREBASE PROJECT OWNER / DEVOPS)
+================================================================================
+
+Date: November 21, 2026 - Critical Infrastructure Guide
+
+14.1 Architectural Overview: Why Firebase Console Action Is Required
+  - Separation of Concerns:
+    * Git & GitHub (`git push`): Deploys client-side web application source code
+      (e.g., to Vercel or GitHub Pages). It DOES NOT deploy Google Cloud Firestore
+      security rules or Google Cloud Functions.
+    * Google Cloud Firestore: Enforces security rules directly on Google's cloud
+      servers. When new collections (such as `/damagedReturns` and `/inventoryChangeRequests`)
+      are added, Firestore defaults to blocking all client writes ("Missing or insufficient permissions")
+      until the updated rules file is published in the Firebase Console or deployed
+      via Firebase CLI.
+    * Firebase Cloud Functions: Executes trusted server-side code with Firebase Admin
+      privileges, bypassing client rules to perform atomic operations (e.g., inventory
+      stock deductions, on-site administrator credential verification).
+
+14.2 Step-by-Step Instructions: Publishing Firestore Security Rules (Takes 30 Seconds)
+  The project owner or developer with Firebase Console access must perform these steps:
+  
+  Step 1: Open Firebase Console
+    Navigate to: https://console.firebase.google.com/
+    Log in with the Google Account that owns the Firebase project.
+
+  Step 2: Select the Project
+    Select "bykelink-system" (or your registered Bykelink Motor Inc Firebase project).
+
+  Step 3: Open Firestore Rules Tab
+    In the left-hand navigation sidebar:
+    - Click "Firestore Database" (under Build).
+    - In the top tab navigation, click the "Rules" tab.
+
+  Step 4: Paste the Production-Ready Rules
+    Select all existing text in the Rules editor, delete it, and paste the exact rules
+    below from firestore.rules:
+
+    --------------------------------------------------------------------------------
+    rules_version = '2';
+    service cloud.firestore {
+      match /databases/{database}/documents {
+        function isSignedIn() {
+          return request.auth != null;
+        }
+
+        function signedInEmail() {
+          return isSignedIn() && request.auth.token.email is string
+            ? request.auth.token.email.lower()
+            : '';
+        }
+
+        function emailMatches(value) {
+          return signedInEmail() != ''
+            && value is string
+            && signedInEmail() == value.lower();
+        }
+
+        function tokenRole() {
+          return isSignedIn() && request.auth.token.role is string
+            ? request.auth.token.role.lower()
+            : 'guest';
+        }
+
+        function legacyUserRole() {
+          return isSignedIn()
+            && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role is string
+              ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role.lower()
+              : 'guest';
+        }
+
+        function signedInRole() {
+          return tokenRole() != 'guest'
+            ? tokenRole()
+            : signedInEmail() != ''
+              && exists(/databases/$(database)/documents/authorizedSuperadmin/$(signedInEmail()))
+                ? 'superadmin'
+                : signedInEmail() != ''
+                  && exists(/databases/$(database)/documents/authorizedAdmin/$(signedInEmail()))
+                    ? 'admin'
+                    : signedInEmail() != ''
+                      && exists(/databases/$(database)/documents/authorizedPersonnel/$(signedInEmail()))
+                        ? 'staff personnel'
+                        : legacyUserRole();
+        }
+
+        function isAdminOrHigher() {
+          return signedInRole() == 'admin' || signedInRole() == 'superadmin';
+        }
+
+        function isSuperadmin() {
+          return signedInRole() == 'superadmin';
+        }
+
+        match /users/{userId} {
+          allow read: if isSignedIn();
+          allow create: if isSignedIn();
+          allow update: if isSignedIn() && (request.auth.uid == userId || isAdminOrHigher());
+          allow delete: if isSuperadmin();
+        }
+
+        match /authorizedAdmin/{docId} {
+          allow read: if isAdminOrHigher() || (isSignedIn() && emailMatches(docId));
+          allow create, update, delete: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
+        }
+
+        match /authorizedSuperadmin/{docId} {
+          allow read: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
+          allow create, update, delete: if isSuperadmin() || (isSignedIn() && emailMatches(docId));
+        }
+
+        match /authorizedPersonnel/{docId} {
+          allow get: if isSignedIn() && emailMatches(docId);
+          allow list: if isAdminOrHigher();
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /conversations/{docId} {
+          allow read: if isAdminOrHigher() || isSignedIn() || resource.data.isGuest == true;
+          allow create: if true;
+          allow update: if isAdminOrHigher() || isSignedIn();
+          allow delete: if request.auth.token.role == 'superadmin'
+                        || request.auth.token.role == 'admin'
+                        || request.auth.token.role == 'customer';
+                          
+          match /messages/{messageId} {
+            allow read: if isAdminOrHigher() || isSignedIn() || get(/databases/$(database)/documents/conversations/$(docId)).data.isGuest == true;
+            allow create: if true;
+            allow update: if isAdminOrHigher();
+            allow delete: if request.auth.token.role == 'superadmin'
+                          || request.auth.token.role == 'admin'
+                          || request.auth.token.role == 'customer';
+          }
+        }
+
+        match /serviceBookings/{docId} {
+          allow read, create, update: if isSignedIn();
+          allow delete: if isAdminOrHigher();
+        }
+
+        match /inventory/{docId} {
+          allow read: if true;
+          allow create, update: if isAdminOrHigher();
+          allow delete: if isAdminOrHigher();
+        }
+
+        match /masterData/inventory/categories/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /masterData/inventory/models/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /masterData/inventory/variants/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /masterData/inventory/series/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /technicians/{docId} {
+          allow read, create, update: if isAdminOrHigher();
+          allow delete: if isAdminOrHigher();
+        }
+
+        match /inventoryLogs/{docId} {
+          allow read: if isAdminOrHigher();
+          allow create: if isAdminOrHigher() || (isSignedIn() && signedInRole() == 'staff personnel');
+          allow update, delete: if isAdminOrHigher();
+        }
+
+        match /adminPasswordResetRequests/{docId} {
+          allow read: if isAdminOrHigher() || emailMatches(docId);
+          allow create: if isSignedIn();
+          allow update: if isAdminOrHigher();
+          allow delete: if isAdminOrHigher();
+        }
+
+        match /transactionLogs/{docId} {
+          allow read: if isAdminOrHigher();
+          allow create: if isAdminOrHigher();
+          allow update, delete: if false;
+        }
+
+        match /auditLogs/{docId} {
+          allow read: if isAdminOrHigher();
+          allow create: if isSignedIn();
+          allow update, delete: if false;
+        }
+
+        match /inventoryChangeRequests/{docId} {
+          allow read, create: if isSignedIn();
+          allow update, delete: if isAdminOrHigher();
+        }
+
+        match /damagedReturns/{docId} {
+          allow read, create: if isSignedIn();
+          allow update, delete: if isAdminOrHigher();
+        }
+
+        match /deleteArchived/{docId} {
+          allow read: if isAdminOrHigher();
+          allow create, update: if isAdminOrHigher();
+          allow delete: if isSuperadmin();
+        }
+
+        match /services/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+
+        match /settings/{docId} {
+          allow read: if true;
+          allow create, update, delete: if isAdminOrHigher();
+        }
+      }
+    }
+    --------------------------------------------------------------------------------
+
+  Step 5: Click "Publish"
+    Click the blue "Publish" button at the top of the rules editor.
+    The rules will propagate across Google Cloud Firestore globally within 5 seconds.
+
+14.3 Step-by-Step Instructions: Deploying Backend Cloud Functions (Terminal CLI)
+  If the project owner prefers terminal CLI deployment:
+  
+  1. Authenticate with Firebase:
+     $ npx firebase login
+
+  2. Deploy Firestore Rules:
+     $ npm run deploy:firestore
+     (Alternatively: $ npx firebase deploy --only firestore:rules)
+
+  3. Deploy Backend Cloud Functions:
+     $ npm run deploy:functions
+     (Alternatively: $ npx firebase deploy --only functions)
+
+  4. Full Deployment (Hosting + Functions + Rules):
+     $ npm run deploy
+
+14.4 Newly Added Backend Cloud Functions (functions/index.js)
+  - `recordDamagedReturn`:
+    Handles atomic stock deduction and records returns into `/damagedReturns`
+    and `/auditLogs` on the server using Firebase Admin SDK, ensuring staff
+    users never encounter client-side permission denial.
+  - `submitInventoryChangeRequest`:
+    Updated to handle `update` alongside `rename` and `delete`, with full
+    JSON payload sanitization removing any `undefined` keys that previously
+    caused `internal` error toasts.
+  - `authorizeInventoryDirectly`:
+    Authenticates on-site administrator credentials securely via the Google
+    Identity Toolkit API to apply changes immediately at staff terminals.
+
+14.5 Post-Deployment Verification Checklist
+  [ ] 1. Test Returned / Damaged Product:
+         Open modal -> select product -> input defect details -> click Save.
+         Verify: Successfully creates record in `damagedReturns` with zero errors.
+  [ ] 2. Test Staff Edit Submission:
+         Edit product -> modify details -> click "Submit for Admin Approval".
+         Verify: Submits smoothly, shows green toast, queues under Pending Verifications.
+  [ ] 3. Test Admin Verification Queue:
+         Super Admin opens "Pending Verifications" tab -> confirms request.
+         Verify: Inventory is updated atomically, changes reflected in showroom.
