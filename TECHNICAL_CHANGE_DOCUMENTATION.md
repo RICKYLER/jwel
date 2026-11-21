@@ -1,62 +1,188 @@
 BYKELINK MOTOR INC. MANAGEMENT SYSTEM
-TECHNICAL CHANGE AND ARCHITECTURE DOCUMENTATION
+COMPLETE TECHNICAL CHANGE AND ARCHITECTURE REPORT
 
 System Name      : Bykelink Motor Inc. Management System (bykelinkmotorinc-system)
 Repository       : RICKYLER/jwel (Branch: main)
-Covered Commits  : 2501951, 0f38403, afb2a59
-Date             : November 21, 2026
+Covered Commits  : 563b94d, f58d8f0, 2501951, 0f38403, afb2a59
+Report Date      : November 21, 2026
 
 
 ================================================================================
 EXECUTIVE SUMMARY
 ================================================================================
 
-This document outlines the recent architectural updates, security enhancements,
-feature additions, module removals, and deployment fixes applied to the Bykelink
-Motor Inc. Management System. The primary objective of this release is to focus
-the platform on core dealership, inventory, point-of-sale (POS), and service
-operations while strengthening administrative oversight, auditability, and
-production deployment stability.
+This report documents the full scope of development, architectural refactoring,
+user interface modernization, security hardening, and deployment stabilization
+performed across the Bykelink Motor Inc. Management System from September 2026
+through November 2026.
 
-Summary of Key Changes:
+Overall Engineering Scope:
 
-  1. Complete decommissioning of the Financing module across the customer
-     portal, admin console, backend Cloud Functions, and Firestore rules.
-  2. Two-tier Admin Verification workflow for sensitive inventory actions such
-     as product renaming, archiving/deletion, and permanent deletion.
-  3. Immutable, admin-only System Transaction History (Audit Trail) covering
-     POS, Inventory, Service Bookings, User Management, and Master Data, while
-     isolating raw transaction logs from cashier access.
-  4. Itemized walk-in purchase visibility and bulk-order detection inside
-     Sales Analytics and Transaction History, keeping one clean row per
-     transaction with an on-click purchase breakdown modal.
-  5. Vercel production hosting configuration and resolution of a Vite 8 peer
-     dependency conflict caused by an unused PWA package.
+  Phase 1 - Cashier Role Introduction and Dashboard Analytics Upgrade (563b94d)
+    Introduced the Cashier Personnel role and initial POS workflow, migrated
+    dashboard reporting charts from Recharts to Chart.js for per-mechanic
+    service tracking, and stabilized viewport layout behavior.
+
+  Phase 2 - Dedicated POS Workstation, Showroom, Staff Routing, and Admin UI
+            Overhaul (f58d8f0)
+    Replaced the temporary cashier view with a standalone Cashier POS
+    workstation supporting barcode scanning, price checks, and server-side
+    sale completion. Restored public and customer showroom pages, introduced
+    dedicated staff routing, added role-scoped section enforcement, enforced
+    first-login password changes, and redesigned the administrative console.
+
+  Phase 3 - Financing Decommissioning, Admin Verification, Immutable Audit
+            Trail, and Walk-In Item Breakdown (2501951)
+    Retired all customer and admin financing workflows, introduced two-tier
+    administrator verification for sensitive inventory edits and deletions,
+    established an immutable admin-only system audit trail, isolated
+    transaction logs from cashier screens, and added itemized walk-in purchase
+    and bulk-order reporting.
+
+  Phase 4 - Vercel Production Deployment and Vite 8 Stabilization
+            (0f38403, afb2a59)
+    Configured Vercel SPA routing and authentication popup headers, and
+    resolved a Vite 8 peer dependency conflict so cloud deployments build
+    cleanly.
 
 
 ================================================================================
 TABLE OF CONTENTS
 ================================================================================
 
-  1. Decommissioning of the Financing Subsystem
-  2. Inventory Governance and Admin Verification
-  3. Admin-Only System Audit Trail and Access Isolation
-  4. Point-of-Sale Itemized Walk-In Breakdown and Bulk Order Detection
-  5. Vercel Deployment Configuration and Build Pipeline Fix
-  6. Firestore Security Rules and Collection Access Summary
-  7. Summary of Added, Modified, and Removed Files
-  8. Verification Results and Deployment Checklist
+  1. Phase 1: Cashier Role Introduction and Dashboard Modernization (563b94d)
+  2. Phase 2: Dedicated Cashier POS, Showroom, and Console Overhaul (f58d8f0)
+  3. Phase 3A: Decommissioning of the Financing Subsystem (2501951)
+  4. Phase 3B: Inventory Governance and Admin Verification (2501951)
+  5. Phase 3C: Admin-Only System Audit Trail and Access Isolation (2501951)
+  6. Phase 3D: POS Itemized Walk-In Breakdown and Bulk Detection (2501951)
+  7. Phase 4: Vercel Deployment and Build Pipeline Stabilization
+  8. Firestore Security Rules and Collection Access Summary
+  9. Verification Summary and Deployment Checklist
 
 
 ================================================================================
-1. DECOMMISSIONING OF THE FINANCING SUBSYSTEM
+1. PHASE 1: CASHIER ROLE INTRODUCTION AND DASHBOARD MODERNIZATION (563b94d)
 ================================================================================
 
-The financing application and approval workflow was retired across the entire
-stack to remove unused code paths, simplify navigation, reduce production bundle
-size, and block legacy client writes to financing collections.
+Date: September 9, 2026 (28 Files Changed)
 
-1.1 Removed Modules
+1.1 Role-Based Cashier Onboarding
+
+  - Added the cashier personnel role to user creation (NewUserModal.jsx) and
+    application routing (src/App.jsx), mapping authenticated cashiers to /cashier.
+  - Built the initial cashier workspace (CashierPanel.jsx and CashierPanel.css)
+    as the foundation for in-store spare parts billing.
+
+1.2 Dashboard Charting Migration (DashboardSection.jsx)
+
+  - Replaced Recharts area charts with Chart.js (chart.js, react-chartjs-2,
+    and chartjs-adapter-date-fns) in DashboardSection.jsx.
+  - Built dynamic mechanic performance datasets (timelineData and
+    perMechanicData) mapped against active service requests and technicians so
+    administrators can monitor per-mechanic workload over time.
+
+1.3 Layout Stability
+
+  - Updated #root horizontal overflow handling in src/index.css to
+    overflow-x: clip, eliminating unwanted horizontal scrollbars while
+    preserving sticky positioning.
+
+
+================================================================================
+2. PHASE 2: DEDICATED CASHIER POS, SHOWROOM, AND CONSOLE OVERHAUL (f58d8f0)
+================================================================================
+
+Date: November 21, 2026 - Morning Release (72 Files Changed)
+
+2.1 Standalone Cashier POS Workstation
+
+  Replaced the early customer-folder CashierPanel with a modular POS suite
+  under src/pages/cashier/:
+
+    - CashierPage.jsx and CashierPage.css
+      Full spare-parts POS register supporting item search, cart quantity
+      editing, payment method selection (cash and online methods), amount
+      tendered and change computation, service fee integration, and receipt
+      generation.
+
+    - CashierLayout.jsx and CashierTopbar.jsx
+      Dedicated POS shell with collapsible navigation sidebar, session
+      controls, and shortcut access.
+
+    - BarcodeScanner.jsx
+      Dedicated barcode scanning modal allowing rapid SKU and barcode lookup
+      directly into the active POS cart.
+
+    - PriceCheck.jsx
+      Read-only price inquiry utility enabling cashiers to verify unit prices
+      and stock availability without altering the current transaction cart.
+
+2.2 Server-Side POS Cloud Functions (functions/index.js)
+
+  - generateTransactionId: Issues unique transaction identifiers (TX-) for
+    receipt tracking.
+  - printReceipt: Accepts structured receipt print jobs server-side.
+  - completeSaleTransaction: Persists finalized sale records to the
+    transactionLogs collection and runs atomic batched stock updates against
+    physical inventory documents.
+
+2.3 Showroom Restoration and Role Routing Updates (src/App.jsx)
+
+  - Restored dedicated motorcycle and unit showroom interfaces via
+    ShowroomPage.jsx (public) and CustomerShowroomPage.jsx (authenticated
+    portal), dynamically loading categories, models, and stock availability
+    from Firestore inventory and masterData collections.
+  - Separated /staff routing for staff personnel from /admin, while enforcing
+    role-based access guards via dashboardRequirements.
+  - Updated NavHeaderCustomer.jsx, HeroSection.jsx, SparePartsPage.jsx, and
+    ProductDetailsPage.jsx for consistent storefront navigation.
+
+2.4 Administrative Console Redesign and Security Controls
+
+  - Admin Office Styling and Section Access Enforcement
+    Introduced AdminOfficeTheme.css and redesigned SuperAdminPage.jsx,
+    SuperAdminSidebar, DashboardSection, AnalyticsSection,
+    ServiceRequestsSection, UserManagementSection, InventoryReportsSection,
+    InventorySection, ChatsManagementSection, and NotificationsDrawer.
+
+  - Granular Section Filtering (SuperAdminPage.jsx)
+    Implemented expandAccessibleSections and sectionAliases so sidebar menus
+    and active views strictly honor both role ceilings and per-user
+    accessibleSections assignments stored in Firestore.
+
+  - First-Login Password Policy
+    Activated PasswordChangeRequiredModal.jsx and supporting re-authentication
+    flows in src/App.jsx to require password updates on newly provisioned
+    operator accounts.
+
+  - Sales Analytics Register (AnalyticsSection.jsx)
+    Built date-range KPI reporting cards (total sales, cash sales, online
+    sales, transaction count), payment-method filters, and paginated sales
+    activity tables backed by transactionLogs.
+
+2.5 Core Platform Refinements
+
+  - ChatBox.jsx: Enriched conversation metadata updates (senderId,
+    senderAvatar, lastMessage, lastMessageTime, and status open) and fixed
+    floating window z-index layering for mobile and desktop viewports.
+  - GlobalLoadingScreen.jsx: Added autoComplete control and safer timer cleanup.
+  - index.html: Updated application document title to BYEKLINK MOTOR INC.| TAGUM.
+  - package.json and vite.config.js: Upgraded frontend tooling to Vite 8.0.4
+    with TypeScript 7.0.2 support and COOP/COEP dev/preview headers.
+
+
+================================================================================
+3. PHASE 3A: DECOMMISSIONING OF THE FINANCING SUBSYSTEM (2501951)
+================================================================================
+
+Date: November 21, 2026 - Afternoon Release
+
+The financing application and approval workflow was fully retired across the
+frontend, backend, and database security layer to streamline the system around
+core dealership operations.
+
+3.1 Deleted Customer and Admin Modules
 
   Customer Portal (src/pages/customer/):
     - FinancingPage.jsx
@@ -65,372 +191,248 @@ size, and block legacy client writes to financing collections.
     - ApprovedApplicationPage.jsx
     - FinancingStatusPage.jsx and FinancingStatusPage.css
 
-  Admin and Superadmin Console (src/pages/superadmin/sections/):
+  Admin Console (src/pages/superadmin/sections/):
     - FinancingApplicationsSection.jsx and FinancingApplicationsSection.css
     - ApprovedApplicationsSection.jsx and ApprovedApplicationsSection.css
     - FinancingApplicationDetailSection.jsx
 
-1.2 Routing, Navigation, and Interface Updates
+3.2 Navigation, Route, and Prop Cleanup
 
-  - src/App.jsx
-    Removed all customer financing routes (/financing, /financing/:productId,
-    /financing/confirm, /financing/submitted/:id, /financing/approved/:id,
-    /financing/status, /financing/status/:id), admin financing routes
-    (/(superadmin|admin|staff)/financing-applications*), and financing props.
+  - Removed all /financing routes and admin /financing-applications routes from
+    src/App.jsx, along with unused navigation callback props across
+    CashierPage.jsx, CustomerProfilePage.jsx, CustomerServicePage.jsx,
+    CustomerMessagesPage.jsx, and CustomerServiceBookingsPage.jsx.
+  - Removed Financing and Track My Status links and the financingApplications
+    Firestore listener from NavHeaderCustomer.jsx.
+  - Removed financing buttons from HeroSection.jsx, ShowroomPage.jsx,
+    ProductDetailsPage.jsx, and CustomerShowroomPage.jsx, replacing the hero
+    financing metric with Showroom Units.
+  - Removed financing sidebar entries, subscriptions, and financingStatusOptions
+    from SuperAdminPage.jsx, SuperAdminSidebar.jsx, and superadminUtils.js.
 
-  - Customer Navigation and Showroom Pages
-    Removed Financing and Track My Status links and the financingApplications
-    listener from NavHeaderCustomer.jsx. Removed financing buttons and labels
-    from HeroSection.jsx, ShowroomPage.jsx, ProductDetailsPage.jsx, and
-    CustomerShowroomPage.jsx. In HeroSection.jsx, the financing counter was
-    replaced with Showroom Units.
+3.3 Backend and Firestore Lockdown
 
-  - Shared Page Prop Cleanup
-    Removed unused financing navigation callbacks from CashierPage.jsx,
-    CustomerProfilePage.jsx, CustomerServicePage.jsx, CustomerMessagesPage.jsx,
-    and CustomerServiceBookingsPage.jsx.
-
-  - Admin Console Navigation
-    Removed financing-applications and approved-applications menu items,
-    state listeners, and financingStatusOptions from SuperAdminPage.jsx,
-    SuperAdminSidebar.jsx, and superadminUtils.js.
-
-1.3 Backend and Security Lockdown
-
-  - functions/index.js
-    Removed the Cloud Functions submitFinancingApplication,
-    getFinancingApplicationStatus, approveFinancingApplication, and
-    updateFinancingApplicationStatus.
-
-  - firestore.rules
-    Locked down financingApplications and its nested messages subcollection by
-    setting both read and write permissions to false. Historical records remain
-    preserved in the database while preventing client-side access.
+  - Removed submitFinancingApplication, getFinancingApplicationStatus,
+    approveFinancingApplication, and updateFinancingApplicationStatus from
+    functions/index.js.
+  - Locked /financingApplications/{docId} and nested /messages/{messageId} in
+    firestore.rules to deny all reads and writes (false), preserving historical
+    database documents safely offline from client access.
 
 
 ================================================================================
-2. INVENTORY GOVERNANCE AND ADMIN VERIFICATION
+4. PHASE 3B: INVENTORY GOVERNANCE AND ADMIN VERIFICATION (2501951)
 ================================================================================
 
-To protect inventory integrity, product name changes, product deletions, and
-permanent archive deletions now enforce role-based approval and administrator
-identity verification.
+Sensitive inventory actions—product renaming, archiving/deletion, and
+permanent deletion—now enforce role-based approval and verified administrator
+sign-off.
 
-2.1 Role-Based Change Workflow
+4.1 Role-Aware Mutation Routing (InventorySection.jsx)
 
-  - Accurate Role Resolution (InventorySection.jsx)
-    Updated inventory permission checks to read from currentAccessRole instead
-    of currentUser?.role so access rights accurately reflect assigned roles.
+  - Standardized role resolution using currentAccessRole rather than
+    currentUser?.role.
+  - Staff Personnel: Product rename and delete actions cannot modify live
+    inventory directly; instead, they submit pending requests via
+    submitInventoryChangeRequest.
+  - Admin and Superadmin: Direct product renames, deletions, and decisions
+    inside the Pending Verifications tab require AdminVerificationModal
+    confirmation.
+  - InventoryDeleteArchivedSection.jsx: Filters out archived user accounts to
+    keep archives separated, requires AdminVerificationModal confirmation for
+    permanent deletes, and records restore/delete audit events.
 
-  - Staff Personnel Flow
-    Staff personnel can no longer rename or delete live inventory products
-    directly. Instead, their edits or deletions submit a pending verification
-    request through the submitInventoryChangeRequest Cloud Function.
+4.2 Admin Verification Modal (AdminVerificationModal.jsx)
 
-  - Admin and Superadmin Flow
-    Direct product renames, product deletions, and approvals or rejections under
-    the Pending Verifications tab require confirmation via the Admin
-    Verification Modal.
+  Supports five modes: rename, delete, approve-rename, approve-delete, and
+  permanent-delete.
 
-  - Archive Domain Protection (InventoryDeleteArchivedSection.jsx)
-    Filtered out archived user records from the inventory archive view, gated
-    permanent deletion behind AdminVerificationModal (permanent-delete mode),
-    and recorded restore and permanent-delete events in the audit trail.
+  - Password-Authenticated Admins: Validates credentials through Firebase Auth
+    reauthenticateWithCredential before executing or approving the change
+    (recorded as admin-password).
+  - Federated (Google) Admins: Enforces exact typed confirmation matching the
+    product name (recorded as admin-phrase-confirmation).
 
-2.2 Admin Verification Modal (AdminVerificationModal.jsx)
+4.3 Verification Cloud Functions (functions/index.js)
 
-  Located at src/pages/superadmin/components/AdminVerificationModal.jsx, this
-  component handles five verification modes: rename, delete, approve-rename,
-  approve-delete, and permanent-delete.
-
-  - Email/Password Admins
-    Requires password re-authentication via Firebase Auth
-    (reauthenticateWithCredential with EmailAuthProvider.credential) and tags
-    the verification record as admin-password.
-
-  - Google-Authenticated Admins
-    Requires exact manual entry of the target product name as a confirmation
-    phrase and tags the verification record as admin-phrase-confirmation.
-
-2.3 Server-Side Request and Approval Callables (functions/index.js)
-
-  - submitInventoryChangeRequest
-    Permitted for staff personnel, admin, and superadmin. Validates the itemId
-    and requestType (rename or delete), saves a snapshot of the product into
-    the inventoryChangeRequests collection with status pending, and logs a
-    PRODUCT_RENAME_REQUESTED or PRODUCT_DELETE_REQUESTED audit entry.
-
-  - verifyInventoryChangeRequest
-    Restricted strictly to admin and superadmin. Supports approve or reject
-    decisions on pending requests:
-      * Reject: Updates request status to rejected, stores verifier details
-        and note, and logs PRODUCT_CHANGE_REJECTED.
-      * Approve (Rename): Atomically updates the product name and pendingUpdates
-        in inventory via a Firestore batch write, records lastVerifiedBy and
-        lastVerifiedAt, and logs PRODUCT_RENAMED.
-      * Approve (Delete): Atomically moves the product snapshot into
-        deleteArchived (marked as recordType inventory), removes the active
-        document from inventory, and logs PRODUCT_DELETED.
+  - submitInventoryChangeRequest: Permitted for staff personnel, admin, and
+    superadmin. Stores product snapshots and proposed changes in
+    inventoryChangeRequests (status pending) and logs audit events.
+  - verifyInventoryChangeRequest: Restricted strictly to admin and superadmin.
+    Atomically applies approved renames to inventory or archives deleted
+    products into deleteArchived using Firestore batches, updating request
+    status and emitting PRODUCT_RENAMED, PRODUCT_DELETED, or
+    PRODUCT_CHANGE_REJECTED audit records.
 
 
 ================================================================================
-3. ADMIN-ONLY SYSTEM AUDIT TRAIL AND ACCESS ISOLATION
+5. PHASE 3C: ADMIN-ONLY SYSTEM AUDIT TRAIL AND ACCESS ISOLATION (2501951)
 ================================================================================
 
-An append-only audit trail was implemented across client services and backend
-Cloud Functions so administrators have full visibility into system activity
-while sensitive logs remain hidden from non-admin staff.
+5.1 Dual Audit Trail Instrumentation
 
-3.1 Audit Logging Architecture
-
-  - Client Audit Service (src/services/auditLogService.js)
-    Provides logSystemAuditEvent, which writes structured event documents
-    (prefixed AUD-) to the auditLogs collection. Each record captures module,
-    action, summary, targetType, targetId, targetName, previousData, newData,
-    amount, performedBy (uid, email, name, role), verifiedBy, metadata, and
-    serverTimestamp. Errors are logged as warnings so primary business actions
-    are never blocked.
-
-  - Server Audit Helper (functions/index.js)
-    Provides recordAuditLog, called across completeSaleTransaction
-    (SALE_COMPLETED), submitInventoryChangeRequest, verifyInventoryChangeRequest,
-    and user management callables (createOperatorAccount,
+  - Client Service (src/services/auditLogService.js): Exports
+    logSystemAuditEvent, writing structured AUD- records to auditLogs with
+    module, action, summary, target metadata, before/after state
+    (previousData and newData), amount, actor details (performedBy), verifier
+    details (verifiedBy), and serverTimestamp.
+  - Backend Helper (functions/index.js): Provides recordAuditLog across
+    completeSaleTransaction (SALE_COMPLETED), inventory verification callables,
+    and operator lifecycle callables (createOperatorAccount,
     archiveOperatorAccount, deleteArchivedUserPermanently, updateUserAccess,
     and resetUserPassword).
+  - Client Module Coverage: POS, Inventory, Inventory Archive, Service Bookings
+    and Service Types (CustomerServicePage.jsx, ServiceRequestsSection.jsx,
+    ServiceTypeSection.jsx), User Management, and Master Data
+    (MasterDataManagementSection.jsx).
 
-  - Instrumented System Modules
-    POS, Inventory, Inventory Archive, Service Bookings and Service Types
-    (CustomerServicePage.jsx, ServiceRequestsSection.jsx, ServiceTypeSection.jsx),
-    User Management, and Master Data (MasterDataManagementSection.jsx).
+5.2 Transaction History Console (TransactionHistorySection.jsx)
 
-3.2 Transaction History Console (TransactionHistorySection.jsx)
+  - Enabled exclusively for admin and superadmin inside SuperAdminPage.jsx and
+    EditUserModal.jsx.
+  - Merges auditLogs with legacy transactionLogs while deduplicating POS sales
+    already tracked by SALE_COMPLETED target IDs.
+  - Provides module, action, date-range, and search filters, a before/after diff
+    inspection modal, and Excel (.xlsx) and PDF export using xlsx and jspdf.
 
-  - Restricted to admin and superadmin roles inside SuperAdminPage.jsx and
-    EditUserModal.jsx under the Transaction History section.
-  - Combines auditLogs with legacy transactionLogs while deduplicating POS
-    sales already captured as SALE_COMPLETED events.
-  - Supports filtering by module (POS, Inventory, Service, User Management,
-    Master Data), action type, date range, and text search.
-  - Includes a detail inspection modal displaying before-and-after change
-    values as well as Excel (.xlsx) and PDF report export via xlsx and jspdf.
-
-3.3 Cashier Log Removal and Immutability Rules
+5.3 Cashier Isolation and Rule Hardening
 
   - Removed transactionLogs Firestore queries and the F3 Transaction Logs modal
-    from src/pages/cashier/CashierPage.jsx.
-  - Hardened firestore.rules so auditLogs and transactionLogs allow read access
-    only to admin and superadmin, while update and delete operations are
-    blocked entirely (false) to preserve audit immutability.
+    from CashierPage.jsx.
+  - Updated firestore.rules so both auditLogs and transactionLogs restrict read
+    access strictly to admin and superadmin while disabling all updates and
+    deletes (false).
 
 
 ================================================================================
-4. POS ITEMIZED WALK-IN BREAKDOWN AND BULK ORDER DETECTION
+6. PHASE 3D: POS ITEMIZED WALK-IN BREAKDOWN AND BULK DETECTION (2501951)
 ================================================================================
 
-POS sales records were enhanced so administrators can see exact purchased
-products, quantities, and bulk orders without cluttering the transaction table.
+6.1 Server-Side Cart Persistence (completeSaleTransaction)
 
-4.1 Server-Side Transaction Payload (completeSaleTransaction)
+  - Normalizes every line item in cartItems with id, name, sku, type (service
+    or product), qty, unitPrice, and subtotal.
+  - Computes itemCount, totalQuantity, and isBulkOrder (true when
+    totalQuantity is 5 or more) and persists them to both transactionLogs and
+    the SALE- audit log document.
+  - Deducts inventory stock only for physical products, automatically ignoring
+    service items.
 
-  - Normalizes all cartItems in functions/index.js with id, name, sku, type
-    (service or product), qty, unitPrice, and subtotal.
-  - Computes itemCount, totalQuantity, and isBulkOrder (true when totalQuantity
-    is 5 or more) and stores them on both transactionLogs and the corresponding
-    SALE- audit record.
-  - Deducts inventory stock (stock, quantity, onHand) only for physical product
-    items, automatically skipping service entries (IDs starting with service-).
+6.2 Shared Summarization Helper (superadminUtils.js)
 
-4.2 Shared Sale Summarization Utility (superadminUtils.js)
+  - Defines BULK_PURCHASE_THRESHOLD = 5 and exports summarizeSaleItems to
+    calculate totalQuantity, itemCount, isBulk (true if totalQuantity >= 5 or
+    any item qty >= 5), compact summaryLabel, and SKU/product searchableText.
 
-  - Defines BULK_PURCHASE_THRESHOLD = 5.
-  - Exports summarizeSaleItems, which computes normalized items, totalQuantity,
-    itemCount, isBulk (true when totalQuantity >= 5 or any single item qty >= 5),
-    a compact summaryLabel (primary item name, quantity, and extra item count),
-    and searchableText containing product names and SKUs.
+6.3 Click-to-Inspect UI Integration
 
-4.3 Sales Analytics and Audit UI Updates
-
-  - AnalyticsSection.jsx and AnalyticsSection.css
-    Keeps one row per transaction while adding a Products / Qty column showing
-    the primary product name, piece count badge, and a Bulk badge when
-    applicable. Search matching now includes product names and SKUs. Clicking
-    any row opens the Walk-in Purchase Breakdown Modal with an itemized table
-    (Product / Item, SKU, Qty, Unit Price, Subtotal) and full receipt totals.
-
-  - TransactionHistorySection.jsx and TransactionHistorySection.css
-    Displays the item summary, piece count, and Bulk badge on POS audit rows
-    and renders the itemized purchase table inside the audit detail modal.
+  - AnalyticsSection.jsx and AnalyticsSection.css: Keeps one row per
+    transaction while adding a Products / Qty column showing the primary item,
+    piece count badge, and Bulk indicator. Search matching includes product
+    names and SKUs, and clicking any row opens the Walk-in Purchase Breakdown
+    Modal with itemized unit pricing and full receipt totals.
+  - TransactionHistorySection.jsx and TransactionHistorySection.css: Surfaces
+    the same item/quantity/bulk summary on POS rows and displays the itemized
+    table inside the audit detail modal.
 
 
 ================================================================================
-5. VERCEL DEPLOYMENT CONFIGURATION AND BUILD PIPELINE FIX
+7. PHASE 4: VERCEL DEPLOYMENT AND BUILD PIPELINE STABILIZATION
 ================================================================================
 
-5.1 Vercel Configuration (vercel.json - Commit 0f38403)
+7.1 Vercel Hosting Configuration (vercel.json - Commit 0f38403)
 
-  Added vercel.json at the project root to match Firebase Hosting behavior:
-    - Applies Cross-Origin-Opener-Policy: same-origin-allow-popups and
-      Cross-Origin-Embedder-Policy: unsafe-none across all routes so popup-based
-      authentication flows operate reliably.
-    - Configures an SPA rewrite from /(.*) to /index.html so direct page loads
-      and browser refreshes on client-side routes do not return 404 errors.
+  - Applies Cross-Origin-Opener-Policy: same-origin-allow-popups and
+    Cross-Origin-Embedder-Policy: unsafe-none across all routes for reliable
+    popup authentication.
+  - Configures SPA rewrite from /(.*) to /index.html so client routes and page
+    reloads resolve cleanly.
 
-5.2 Vite 8 Peer Dependency Resolution (Commit afb2a59)
+7.2 Vite 8 Dependency Resolution (Commit afb2a59)
 
-  - Root Cause
-    Vercel deployments failed during npm install because package.json included
-    vite-plugin-pwa (^1.2.0), whose peer dependency range only supports Vite
-    versions 3 through 7, conflicting with the project's Vite 8 (^8.0.4).
-
-  - Resolution
-    Verified that VitePWA was imported in vite.config.js but never registered
-    in the active plugins array (which only uses react() and tailwindcss()).
-    Removed vite-plugin-pwa from package.json, removed the unused import from
-    vite.config.js, and regenerated package-lock.json cleanly.
+  - Resolved a Vercel npm install peer dependency failure caused by
+    vite-plugin-pwa (^1.2.0) supporting only Vite 3 through 7 while the
+    project runs Vite 8 (^8.0.4).
+  - Confirmed VitePWA was imported in vite.config.js but unused in plugins,
+    removed vite-plugin-pwa from package.json and vite.config.js, and
+    regenerated package-lock.json cleanly.
 
 
 ================================================================================
-6. FIRESTORE SECURITY RULES AND COLLECTION ACCESS SUMMARY
+8. FIRESTORE SECURITY RULES AND COLLECTION ACCESS SUMMARY
 ================================================================================
 
 Verified directly against firestore.rules:
 
   Collection: /financingApplications/{docId} (and /messages/{messageId})
-    Read: Disabled (false)
-    Create/Update/Delete: Disabled (false)
+    Read / Write: Disabled (false)
 
   Collection: /inventory/{docId}
     Read: Public
-    Create/Update/Delete: Admin or Superadmin
-    Note: Staff renames and deletions are submitted via Cloud Functions.
+    Create / Update / Delete: Admin or Superadmin
+    Note: Staff renames and deletions route through verification callables.
 
   Collection: /inventoryChangeRequests/{docId}
-    Read/Create: Admin, Superadmin, or Staff Personnel
-    Update/Delete: Admin or Superadmin
+    Read / Create: Admin, Superadmin, or Staff Personnel
+    Update / Delete: Admin or Superadmin
 
   Collection: /inventoryLogs/{docId}
-    Read/Update/Delete: Admin or Superadmin
+    Read / Update / Delete: Admin or Superadmin
     Create: Admin, Superadmin, or Staff Personnel
 
   Collection: /auditLogs/{docId}
     Read: Admin or Superadmin
     Create: Signed-in users
-    Update/Delete: Disabled (false) - immutable append-only log
+    Update / Delete: Disabled (false) - immutable append-only trail
 
   Collection: /transactionLogs/{docId}
-    Read/Create: Admin or Superadmin
-    Update/Delete: Disabled (false) - hidden from cashier, append-only
+    Read / Create: Admin or Superadmin
+    Update / Delete: Disabled (false) - restricted from cashier access
 
   Collection: /deleteArchived/{docId}
-    Read/Create/Update: Admin or Superadmin
+    Read / Create / Update: Admin or Superadmin
     Delete: Superadmin only
 
   Collection: /masterData/inventory/{categories,models,variants,series}/{docId}
     Read: Public
-    Create/Update/Delete: Admin or Superadmin
+    Create / Update / Delete: Admin or Superadmin
 
   Collection: /technicians/{docId}
-    Read/Create/Update/Delete: Admin or Superadmin
+    Read / Create / Update / Delete: Admin or Superadmin
 
   Collection: /services/{docId} and /settings/{docId}
     Read: Public
-    Create/Update/Delete: Admin or Superadmin
+    Create / Update / Delete: Admin or Superadmin
 
   Collection: /adminPasswordResetRequests/{docId}
     Read: Admin, Superadmin, or matching user email
     Create: Signed-in users
-    Update/Delete: Admin or Superadmin
+    Update / Delete: Admin or Superadmin
 
 
 ================================================================================
-7. SUMMARY OF ADDED, MODIFIED, AND REMOVED FILES
+9. VERIFICATION SUMMARY AND DEPLOYMENT CHECKLIST
 ================================================================================
 
-7.1 Added Files
+9.1 Verified Checks
 
-  - src/pages/superadmin/components/AdminVerificationModal.jsx
-  - src/services/auditLogService.js
-  - src/pages/superadmin/sections/TransactionHistorySection.jsx
-  - src/pages/superadmin/sections/TransactionHistorySection.css
-  - src/pages/superadmin/sections/AnalyticsSection.css
-  - vercel.json
-
-7.2 Modified Core Files
-
-  Backend and Rules:
-    - firestore.rules
-    - functions/index.js
-
-  Routing, Build, and Deployment Configuration:
-    - src/App.jsx
-    - package.json
-    - package-lock.json
-    - vite.config.js
-
-  POS and Customer Modules:
-    - src/pages/cashier/CashierPage.jsx
-    - src/pages/customer/components/NavHeaderCustomer.jsx
-    - src/pages/customer/CustomerServicePage.jsx
-    - src/pages/customer/CustomerShowroomPage.jsx
-    - src/pages/customer/CustomerProfilePage.jsx
-    - src/pages/customer/CustomerMessagesPage.jsx
-    - src/pages/customer/CustomerServiceBookingsPage.jsx
-    - src/pages/customer/ProductDetailsPage.jsx
-    - src/pages/herosection/HeroSection.jsx
-    - src/pages/herosection/ShowroomPage.jsx
-
-  Admin Console Modules:
-    - src/pages/superadmin/SuperAdminPage.jsx
-    - src/pages/superadmin/components/SuperAdminSidebar/SuperAdminSidebar.jsx
-    - src/pages/superadmin/components/EditUserModal.jsx
-    - src/pages/superadmin/sections/InventorySection.jsx
-    - src/pages/superadmin/sections/InventoryDeleteArchivedSection.jsx
-    - src/pages/superadmin/sections/AnalyticsSection.jsx
-    - src/pages/superadmin/sections/MasterDataManagementSection.jsx
-    - src/pages/superadmin/sections/ServiceRequestsSection.jsx
-    - src/pages/superadmin/sections/ServiceTypeSection.jsx
-    - src/pages/superadmin/sections/ChatsManagementSection.jsx
-    - src/pages/superadmin/sections/superadminUtils.js
-
-7.3 Removed Files
-
-  - src/pages/customer/FinancingPage.jsx
-  - src/pages/customer/ConfirmApplicationPage.jsx
-  - src/pages/customer/FinancingSubmittedPage.jsx
-  - src/pages/customer/ApprovedApplicationPage.jsx
-  - src/pages/customer/FinancingStatusPage.jsx
-  - src/pages/customer/FinancingStatusPage.css
-  - src/pages/superadmin/sections/FinancingApplicationsSection.jsx
-  - src/pages/superadmin/sections/FinancingApplicationsSection.css
-  - src/pages/superadmin/sections/ApprovedApplicationsSection.jsx
-  - src/pages/superadmin/sections/ApprovedApplicationsSection.css
-  - src/pages/superadmin/sections/FinancingApplicationDetailSection.jsx
-
-
-================================================================================
-8. VERIFICATION RESULTS AND DEPLOYMENT CHECKLIST
-================================================================================
-
-8.1 Checks Verified
-
-  - Dependency Install (npm install): Passed with exit code 0 and zero peer
-    dependency errors after removing vite-plugin-pwa.
-  - Vite Production Build (npm run build using Vite 8.0.5): Passed cleanly,
+  - Dependency Install (npm install): Passed with exit code 0 and no peer
+    dependency conflicts after removing vite-plugin-pwa.
+  - Production Bundle Build (npm run build using Vite 8.0.5): Passed cleanly,
     transforming 1,578 modules and emitting dist/ in 2.52 seconds.
   - Cloud Functions Syntax Check (node --check functions/index.js): Passed
     with exit code 0.
   - Vercel Config Validation (python3 -m json.tool vercel.json): Passed.
-  - ESLint Checks: Targeted ESLint checks on modified and newly added files
+  - ESLint Checks: Targeted ESLint checks on modified and newly added modules
     passed (vite.config.js after the latest edit; core commit 2501951 modules
-    prior to push). Full-repository npm run lint still surfaces pre-existing
-    errors in untouched legacy files such as ChatBox.jsx and
+    prior to push). Repo-wide npm run lint continues to report pre-existing
+    lint issues in untouched files such as ChatBox.jsx and
     GlobalLoadingScreen.jsx.
 
-8.2 Production Deployment Steps
+9.2 Production Deployment Steps
 
   1. Deploy updated Firestore security rules and Cloud Functions to Firebase:
        firebase deploy --only firestore:rules,functions
 
-  2. Redeploy or confirm automatic deployment on Vercel from branch main of
-     RICKYLER/jwel (commit afb2a59 or newer) using the Vite preset (vite build,
-     output directory dist).
+  2. Deploy or verify automatic Vercel build from branch main of RICKYLER/jwel
+     using the Vite preset (build command: vite build, output directory: dist).
