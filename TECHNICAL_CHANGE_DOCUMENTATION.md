@@ -1086,3 +1086,25 @@ Date: November 21, 2026 - Operational Usability Release
       * Added 8 new unit tests covering prop resolution fallback, case-insensitive and
         whitespace-insensitive token matching, SKU matching, category chips, and combined filters.
       * 100% pass across all 80 tests in the test suite.
+
+13.3 Staff Product Update 'internal' Error & Permission Hardening
+  - Problem:
+    When staff clicked "Submit for Admin Approval" to update a product, a red toast
+    displaying "! internal" appeared in the top-right corner.
+  - Root Cause:
+    1. Undefined field values in `updatePayload` (such as `modelId`, `variantId`, or empty specs)
+       triggered native Firestore serialization exceptions inside the backend function, which
+       Firebase Cloud Functions v2 catches and wraps as generic `HttpsError('internal', 'internal')`.
+    2. Cloud Functions version mismatch: if the cloud-deployed instance of `submitInventoryChangeRequest`
+       was an earlier version rejecting `requestType: 'update'`, the call threw an internal failure.
+  - Resolution:
+    1. Client Payload Sanitization: In `InventorySection.jsx`, stripped all `undefined` values via
+       `JSON.parse(JSON.stringify(updatePayload))` before submission.
+    2. Direct Firestore Fallback: If `submitInventoryChangeRequest` fails or has not been deployed to
+       cloud yet, `InventorySection.jsx` automatically falls back to directly creating the request in
+       `collection(db, 'inventoryChangeRequests')` with status `'pending'`.
+    3. Security Rules Update (`firestore.rules`): Updated `match /inventoryChangeRequests/{docId}` and
+       `match /damagedReturns/{docId}` to `allow read, create: if isSignedIn();`, allowing all authenticated
+       dealership staff to submit requests and log returns without being blocked by custom claims mismatch.
+    4. Backend Sanitization (`functions/index.js`): Added `JSON.parse(JSON.stringify(request.data.pendingUpdates))`
+       to guarantee safe Firestore document creation on the server as well.

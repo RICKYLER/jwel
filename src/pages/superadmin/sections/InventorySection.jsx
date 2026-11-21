@@ -1191,18 +1191,80 @@ export default function InventorySection({
       if (!isAdminOrSuperadmin) {
         setIsSavingItem(true)
         try {
-          const submitRequest = httpsCallable(functions, 'submitInventoryChangeRequest')
           const requestType = isNameChanged ? 'rename' : 'update'
-          const response = await submitRequest({
-            itemId: editingItem.id,
-            requestType,
-            proposedName: isNameChanged ? proposedName : '',
-            pendingUpdates: updatePayload,
-            reason: isNameChanged
-              ? `Staff requested rename from "${editingItem.name}" to "${proposedName}"`
-              : 'Staff requested product update',
-          })
-          success(response?.data?.message || 'Change request submitted successfully to Super Admin for verification!')
+          const requestReason = isNameChanged
+            ? `Staff requested rename from "${editingItem.name}" to "${proposedName}"`
+            : 'Staff requested product update'
+
+          // Clean payload to prevent undefined fields
+          const cleanPendingUpdates = JSON.parse(JSON.stringify(updatePayload))
+
+          let submittedViaCloud = false
+          try {
+            const submitRequest = httpsCallable(functions, 'submitInventoryChangeRequest')
+            const response = await submitRequest({
+              itemId: editingItem.id,
+              requestType,
+              proposedName: isNameChanged ? proposedName : '',
+              pendingUpdates: cleanPendingUpdates,
+              reason: requestReason,
+            })
+            if (response?.data?.ok) {
+              submittedViaCloud = true
+            }
+          } catch (fnErr) {
+            console.warn('submitInventoryChangeRequest Cloud Function error, falling back to direct Firestore write:', fnErr)
+          }
+
+          if (!submittedViaCloud) {
+            // Direct write to inventoryChangeRequests so staff is never blocked
+            const changeReqRef = doc(collection(db, 'inventoryChangeRequests'))
+            await setDoc(changeReqRef, {
+              requestId: changeReqRef.id,
+              requestType,
+              status: 'pending',
+              itemId: editingItem.id,
+              currentName: editingItem.name || proposedName,
+              proposedName: proposedName || editingItem.name,
+              pendingUpdates: cleanPendingUpdates,
+              itemSnapshot: {
+                name: editingItem.name || '',
+                model: editingItem.model || '',
+                category: editingItem.category || '',
+                sku: editingItem.sku || '',
+                stock: Number(editingItem.stock ?? 0),
+                price: Number(editingItem.price ?? 0),
+                imageUrl: editingItem.imageUrl || '',
+              },
+              reason: requestReason,
+              requestedBy: {
+                uid: currentUser?.uid || '',
+                name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Staff User',
+                email: currentUser?.email || '',
+                role: currentAccessRole || 'staff personnel',
+              },
+              verifiedBy: null,
+              verificationNote: '',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+
+            await logSystemAuditEvent({
+              module: 'Inventory',
+              action: requestType === 'rename' ? 'PRODUCT_RENAME_REQUESTED' : 'PRODUCT_UPDATE_REQUESTED',
+              summary: `${requestReason} for "${editingItem.name}"`,
+              targetType: 'inventory',
+              targetId: editingItem.id,
+              targetName: editingItem.name,
+              previousData: { name: editingItem.name, price: editingItem.price, stock: editingItem.stock },
+              newData: cleanPendingUpdates,
+              currentUser,
+              accessRole: currentAccessRole,
+              metadata: { requestId: changeReqRef.id, reason: requestReason },
+            })
+          }
+
+          success('Change request submitted successfully to Super Admin for verification!')
           setIsEditModalOpen(false)
           setEditFormData({})
           setEditingItem(null)

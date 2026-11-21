@@ -628,7 +628,7 @@ exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) =>
   const reason = String(request.data?.reason || '').trim()
   const pendingUpdates =
     request.data?.pendingUpdates && typeof request.data.pendingUpdates === 'object'
-      ? request.data.pendingUpdates
+      ? JSON.parse(JSON.stringify(request.data.pendingUpdates))
       : null
 
   if (!itemId || !['rename', 'delete', 'update'].includes(requestType)) {
@@ -1019,6 +1019,98 @@ exports.authorizeInventoryDirectly = onCall({ cors: true }, async (request) => {
   })
 
   return { ok: true, message: `Product "${resolvedName}" verified and updated successfully.` }
+})
+
+exports.recordDamagedReturn = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to record returned or damaged products.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const callerAccess = await getRoleFromEmail(requesterEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  const payload = request.data || {}
+  const itemId = String(payload.itemId || '').trim()
+  const itemName = String(payload.itemName || 'Unnamed Product').trim()
+  const quantity = Math.max(1, Number(payload.quantity || 1))
+  const condition = String(payload.condition || 'Customer Return - Defective').trim()
+  const disposition = String(payload.disposition || 'Pending Inspection').trim()
+  const customerOrSource = String(payload.customerOrSource || 'Direct Store Return').trim()
+  const reason = String(payload.reason || '').trim()
+  const deductStock = Boolean(payload.deductStock)
+
+  const db = admin.firestore()
+  const returnId = `RET-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+  const timestamp = admin.firestore.FieldValue.serverTimestamp()
+
+  const returnRecord = {
+    returnId,
+    itemId,
+    itemName,
+    itemSku: String(payload.itemSku || ''),
+    itemCategory: String(payload.itemCategory || ''),
+    quantity,
+    condition,
+    disposition,
+    customerOrSource,
+    reason,
+    deductedFromStock: deductStock,
+    reportedBy: {
+      uid: request.auth.uid || '',
+      email: requesterEmail,
+      name: request.auth.token.name || requesterEmail.split('@')[0] || 'Staff Personnel',
+      role: callerAccess.role || 'staff personnel',
+    },
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+
+  const batch = db.batch()
+  const returnDocRef = db.collection('damagedReturns').doc(returnId)
+  batch.set(returnDocRef, returnRecord)
+
+  if (deductStock && itemId) {
+    const itemRef = db.collection('inventory').doc(itemId)
+    const itemSnap = await itemRef.get()
+    if (itemSnap.exists) {
+      const currentStock = Number(itemSnap.data()?.stock ?? itemSnap.data()?.quantity ?? 0)
+      const nextStock = Math.max(0, currentStock - quantity)
+      batch.update(itemRef, {
+        stock: nextStock,
+        quantity: nextStock,
+        updatedAt: timestamp,
+      })
+    }
+  }
+
+  await batch.commit()
+
+  await recordAuditLog(db, {
+    module: 'Inventory',
+    action: 'DAMAGED_RETURN_RECORDED',
+    summary: `Recorded ${quantity} returned/damaged units of "${itemName}" (${condition})`,
+    targetType: 'damagedReturn',
+    targetId: returnId,
+    targetName: itemName,
+    amount: null,
+    performedBy: {
+      uid: request.auth.uid,
+      email: requesterEmail,
+      name: requesterEmail.split('@')[0],
+      role: callerAccess.role || 'staff personnel',
+    },
+    verifiedBy: null,
+    metadata: { returnId, itemId, condition, disposition, quantity, deductStock },
+  })
+
+  return {
+    ok: true,
+    returnId,
+    message: `Recorded returned/damaged item ${returnId} successfully.`,
+  }
 })
 
 exports.api = onRequest((request, response) => {

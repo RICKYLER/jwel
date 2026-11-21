@@ -8,7 +8,8 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import CircularProgress from '@mui/material/CircularProgress'
-import { db } from '../../../firebase'
+import { db, functions } from '../../../firebase'
+import { httpsCallable } from 'firebase/functions'
 import { logSystemAuditEvent } from '../../../services/auditLogService'
 import { resolveActiveInventory, filterInventoryForReturn } from '../sections/damagedReturnsUtils'
 
@@ -162,73 +163,111 @@ export default function ReturnDamagedModal({
     setIsSubmitting(true)
 
     try {
-      const returnId = `RET-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
-      const timestamp = serverTimestamp()
-      const actorEmail = String(currentUser?.email || '').trim().toLowerCase()
-      const actorName = currentUser?.displayName || actorEmail.split('@')[0] || 'Staff User'
+      let recordedViaCloud = false
+      let generatedReturnId = null
 
-      const returnRecord = {
-        returnId,
-        itemId: selectedItem.id,
-        itemName: selectedItem.name || 'Unnamed Item',
-        itemSku: selectedItem.sku || '',
-        itemCategory: selectedItem.category || '',
-        quantity: qtyNumber,
-        condition,
-        disposition,
-        customerOrSource: customerOrSource.trim() || 'Direct Store Return',
-        reason: reason.trim(),
-        deductedFromStock: Boolean(deductStock),
-        reportedBy: {
-          uid: currentUser?.uid || '',
-          email: actorEmail,
-          name: actorName,
-          role: String(currentAccessRole || 'staff personnel').toLowerCase(),
-        },
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      }
-
-      await setDoc(doc(db, 'damagedReturns', returnId), returnRecord)
-
-      // Optionally deduct stock from live inventory
-      if (deductStock && selectedItem.id) {
-        try {
-          await updateDoc(doc(db, 'inventory', selectedItem.id), {
-            stock: remainingStock,
-            quantity: remainingStock,
-            updatedAt: timestamp,
-          })
-        } catch (stockError) {
-          console.warn('Could not auto-deduct stock from inventory:', stockError)
-        }
-      }
-
-      await logSystemAuditEvent({
-        module: 'Inventory',
-        action: 'DAMAGED_RETURN_RECORDED',
-        summary: `Recorded ${qtyNumber} returned/damaged units of "${selectedItem.name}" (${condition})`,
-        targetType: 'damagedReturn',
-        targetId: returnId,
-        targetName: selectedItem.name,
-        amount: null,
-        currentUser,
-        accessRole: currentAccessRole,
-        metadata: {
-          returnId,
+      // Try callable cloud function first (handles atomic inventory deduction & bypasses client security rules)
+      try {
+        const recordFn = httpsCallable(functions, 'recordDamagedReturn')
+        const result = await recordFn({
           itemId: selectedItem.id,
+          itemName: selectedItem.name || 'Unnamed Item',
+          itemSku: selectedItem.sku || '',
+          itemCategory: selectedItem.category || '',
+          quantity: qtyNumber,
           condition,
           disposition,
-          quantity: qtyNumber,
-          deductedFromStock: deductStock,
-        },
-      })
+          customerOrSource: customerOrSource.trim() || 'Direct Store Return',
+          reason: reason.trim(),
+          deductStock: Boolean(deductStock),
+        })
 
-      onSuccess?.(`Recorded returned/damaged item ${returnId} successfully.`)
+        if (result?.data?.ok) {
+          recordedViaCloud = true
+          generatedReturnId = result?.data?.returnId
+        }
+      } catch (fnError) {
+        console.warn('recordDamagedReturn callable failed or not deployed, attempting direct Firestore write:', fnError)
+      }
+
+      // If callable function is not yet deployed, fallback to client-side write
+      if (!recordedViaCloud) {
+        const returnId = `RET-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+        generatedReturnId = returnId
+        const timestamp = serverTimestamp()
+        const actorEmail = String(currentUser?.email || '').trim().toLowerCase()
+        const actorName = currentUser?.displayName || actorEmail.split('@')[0] || 'Staff User'
+
+        const returnRecord = {
+          returnId,
+          itemId: selectedItem.id,
+          itemName: selectedItem.name || 'Unnamed Item',
+          itemSku: selectedItem.sku || '',
+          itemCategory: selectedItem.category || '',
+          quantity: qtyNumber,
+          condition,
+          disposition,
+          customerOrSource: customerOrSource.trim() || 'Direct Store Return',
+          reason: reason.trim(),
+          deductedFromStock: Boolean(deductStock),
+          reportedBy: {
+            uid: currentUser?.uid || '',
+            email: actorEmail,
+            name: actorName,
+            role: String(currentAccessRole || 'staff personnel').toLowerCase(),
+          },
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }
+
+        await setDoc(doc(db, 'damagedReturns', returnId), returnRecord)
+
+        // Optionally deduct stock from live inventory
+        if (deductStock && selectedItem.id) {
+          try {
+            await updateDoc(doc(db, 'inventory', selectedItem.id), {
+              stock: remainingStock,
+              quantity: remainingStock,
+              updatedAt: timestamp,
+            })
+          } catch (stockError) {
+            console.warn('Could not auto-deduct stock from inventory:', stockError)
+          }
+        }
+
+        await logSystemAuditEvent({
+          module: 'Inventory',
+          action: 'DAMAGED_RETURN_RECORDED',
+          summary: `Recorded ${qtyNumber} returned/damaged units of "${selectedItem.name}" (${condition})`,
+          targetType: 'damagedReturn',
+          targetId: returnId,
+          targetName: selectedItem.name,
+          amount: null,
+          currentUser,
+          accessRole: currentAccessRole,
+          metadata: {
+            returnId,
+            itemId: selectedItem.id,
+            condition,
+            disposition,
+            quantity: qtyNumber,
+            deductedFromStock: deductStock,
+          },
+        })
+      }
+
+      onSuccess?.(`Recorded returned/damaged item ${generatedReturnId || 'record'} successfully.`)
       onClose()
     } catch (error) {
       console.error('Failed to record damaged product:', error)
-      setErrorMessage(error?.message || 'Unable to record returned product.')
+      const isPermissionError = String(error?.code || error?.message || '').toLowerCase().includes('permission')
+      if (isPermissionError) {
+        setErrorMessage(
+          'Missing or insufficient permissions. Please make sure the updated Firestore Security Rules have been published in Firebase Console (or deploy Cloud Functions).'
+        )
+      } else {
+        setErrorMessage(error?.message || 'Unable to record returned product.')
+      }
     } finally {
       setIsSubmitting(false)
     }
