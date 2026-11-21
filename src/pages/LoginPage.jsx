@@ -38,6 +38,7 @@ export default function LoginPage({
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [rememberSession, setRememberSession] = useState(false)
+  const [dataPrivacyAccepted, setDataPrivacyAccepted] = useState(false)
   const [activeModal, setActiveModal] = useState(null) // 'help' | 'privacy' | 'terms'
   const isSignup = authMode === 'signup'
 
@@ -142,6 +143,7 @@ export default function LoginPage({
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!isSignup && !dataPrivacyAccepted) return
     onAuthSubmit(e)
   }
 
@@ -515,11 +517,40 @@ export default function LoginPage({
               </div>
             )}
 
+            {/* Data Privacy Consent (Login only) */}
+            {!isSignup && (
+              <div className="space-y-2 px-4">
+                <div className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    id="data-privacy-consent"
+                    required
+                    checked={dataPrivacyAccepted}
+                    onChange={(e) => setDataPrivacyAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                  />
+                  <label htmlFor="data-privacy-consent" className="text-xs leading-relaxed text-slate-300 cursor-pointer">
+                    I agree to the processing of my personal and vehicle data in accordance with the Data Privacy Act of 2012 and Bykelink's
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal('privacy')}
+                  className="ml-6 text-xs font-semibold text-red-300 hover:text-red-200 transition-colors"
+                >
+                  Privacy Policy
+                </button>
+                <p className="ml-6 text-[11px] leading-relaxed text-slate-500">
+                  Your credentials and telematics data are encrypted to securely manage your garage logbooks and technical service records.
+                </p>
+              </div>
+            )}
+
             {/* Submit Button */}
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={authLoading || googleLoading}
+                disabled={authLoading || googleLoading || (!isSignup && !dataPrivacyAccepted)}
                 className="w-full flex items-center justify-center gap-3 bg-linear-to-r from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 disabled:opacity-50 py-4 rounded-xl transition-all border border-slate-600/60 shadow-lg shadow-black/20 active:scale-[0.98] font-bold uppercase tracking-wider text-sm group"
               >
                 {isSignup && <PersonAddAlt1RoundedIcon sx={{ fontSize: 18 }} />}

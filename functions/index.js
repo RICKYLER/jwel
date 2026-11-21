@@ -1,6 +1,7 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https')
 const logger = require('firebase-functions/logger')
 const admin = require('firebase-admin')
+const { randomUUID } = require('crypto')
 
 admin.initializeApp()
 
@@ -10,14 +11,15 @@ const DEFAULT_OPERATOR_PASSWORD = 'Password123'
 const personnelRoles = [
   'mechanics personnel',
   'staff personnel',
-  'customer'
+  'cashier personnel',
+  'customer',
 ]
-
 
 const rolePriority = {
   customer: 0,
   'staff personnel': 1,
   'mechanics personnel': 1,
+  'cashier personnel': 1,
   admin: 2,
   superadmin: 3,
 }
@@ -27,8 +29,14 @@ const normalizeRole = (value = 'customer') => {
 
   if (normalizedValue === 'superadmin') return 'superadmin'
   if (normalizedValue === 'admin') return 'admin'
-  if (normalizedValue === 'staffpersonnel') return 'staff personnel'
-  if (normalizedValue === 'mechanicspersonnel' || normalizedValue === 'mechanicpersonnel') return 'mechanics personnel'
+  if (normalizedValue === 'staff' || normalizedValue === 'staffpersonnel') return 'staff personnel'
+  if (
+    normalizedValue === 'mechanic' ||
+    normalizedValue === 'mechanics' ||
+    normalizedValue === 'mechanicspersonnel' ||
+    normalizedValue === 'mechanicpersonnel'
+  ) return 'mechanics personnel'
+  if (normalizedValue === 'cashier' || normalizedValue === 'cashierpersonnel') return 'cashier personnel'
   return 'customer'
 }
 
@@ -60,22 +68,21 @@ const getDashboardPath = (role, explicitPath = '') => {
     return normalizedPath
   }
 
-  
- switch (role) {
+  switch (role) {
     case 'superadmin':
       return '/superadmin'
     case 'admin':
       return '/admin'
     case 'staff personnel':
+      return '/staff'
     case 'mechanics personnel':
-      return '/admin' 
-    case 'customer':
-      return '/customer'
+      return '/admin'
+    case 'cashier personnel':
+      return '/cashier'
     default:
       return '/customer'
   }
 }
-
 
 const getWebApiKey = () =>
   String(
@@ -156,8 +163,9 @@ const getAuthorizedCollectionNameForRole = (role = 'customer') => {
 
   if (normalizedRole === 'superadmin') return 'authorizedSuperadmin'
   if (normalizedRole === 'admin') return 'authorizedAdmin'
-  if (personnelRoles.includes(normalizedRole))
-   return 'authorizedPersonnel'
+  if (['staff personnel', 'mechanics personnel', 'cashier personnel'].includes(normalizedRole)) {
+    return 'authorizedPersonnel'
+  }
 
   return null
 }
@@ -363,6 +371,121 @@ return {
     resolvedProfiles.find(profile => profile?.accessibleSections)?.accessibleSections || [],
 }
 }
+
+exports.generateTransactionId = onCall({ cors: true }, async () => {
+  const timestampPart = Date.now().toString().slice(-8)
+  const randomPart = randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()
+
+  return {
+    transactionId: `TX-${timestampPart}-${randomPart}`,
+  }
+})
+
+exports.printReceipt = onCall({ cors: true }, async (request) => {
+  const receipt = request.data?.receipt || {}
+  const receiptId = receipt.id || `TX-${Date.now()}`
+  const payload = {
+    receiptId,
+    customer: receipt.customer || 'Walk-in Customer',
+    paymentMethod: receipt.paymentMethod || 'Cash',
+    subtotal: Number(receipt.subtotal || 0),
+    vat: Number(receipt.vat || 0),
+    grandTotal: Number(receipt.grandTotal || 0),
+    amountTendered: Number(receipt.amountTendered || 0),
+    change: Number(receipt.change || 0),
+    itemCount: Array.isArray(receipt.items) ? receipt.items.length : 0,
+    printedAt: new Date().toISOString(),
+  }
+
+  logger.info('Receipt print queued for backend processing', {
+    structuredData: true,
+    payload,
+  })
+
+  return {
+    ok: true,
+    receiptId,
+    message: 'Receipt print job accepted successfully.',
+  }
+})
+
+exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
+  const receipt = request.data?.receipt || {}
+  const cartItems = Array.isArray(request.data?.cartItems) ? request.data.cartItems : []
+
+  const inventoryUpdates = cartItems.filter((entry) => {
+    const id = String(entry?.id || '')
+    return id && !id.startsWith('service-')
+  })
+
+  const paymentMethodKey = String(receipt.paymentMethodKey || receipt.paymentMethod || 'cash').toLowerCase().trim()
+
+  const transactionLog = {
+    transactionId: receipt.id || `TX-${Date.now()}`,
+    customer: receipt.customer || 'Walk-in Customer',
+    paymentMethod: receipt.paymentMethod || 'Cash',
+    paymentMethodKey,
+    subtotal: Number(receipt.subtotal || 0),
+    discount: Number(receipt.discount || 0),
+    vat: Number(receipt.vat || 0),
+    grandTotal: Number(receipt.grandTotal || 0),
+    amountTendered: Number(receipt.amountTendered || 0),
+    change: Number(receipt.change || 0),
+    notes: receipt.notes || '',
+    timestamp: receipt.timestamp || new Date().toLocaleString('en-PH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    items: inventoryUpdates.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      sku: entry.sku || '',
+      qty: Number(entry.qty || 0),
+      unitPrice: Number(entry.unitPrice || 0),
+      subtotal: Number((Number(entry.qty || 0) * Number(entry.unitPrice || 0)).toFixed(2)),
+    })),
+  }
+
+  const inventoryBatch = admin.firestore().batch()
+
+  for (const entry of inventoryUpdates) {
+    const inventoryRef = admin.firestore().collection('inventory').doc(entry.id)
+    const snapshot = await inventoryRef.get()
+
+    if (!snapshot.exists) {
+      continue
+    }
+
+    const currentData = snapshot.data() || {}
+    const currentStock = Number(currentData.stock ?? currentData.quantity ?? currentData.onHand ?? 0)
+    const quantitySold = Number(entry.qty || 0)
+    const nextStock = Math.max(0, currentStock - quantitySold)
+
+    inventoryBatch.update(inventoryRef, {
+      stock: nextStock,
+      quantity: nextStock,
+      onHand: nextStock,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+  }
+
+  const transactionRef = admin.firestore().collection('transactionLogs').doc(transactionLog.transactionId)
+  inventoryBatch.set(transactionRef, transactionLog)
+  await inventoryBatch.commit()
+
+  logger.info('Sale transaction completed server-side', {
+    structuredData: true,
+    transactionId: transactionLog.transactionId,
+    itemCount: inventoryUpdates.length,
+  })
+
+  return {
+    ok: true,
+    transactionId: transactionLog.transactionId,
+    message: 'Inventory deducted and transaction recorded successfully.',
+  }
+})
 
 exports.api = onRequest((request, response) => {
   logger.info('Bykelink Motor Inc system function called', {
@@ -1656,6 +1779,191 @@ exports.approveFinancingApplication = onCall({ cors: true }, async (request) => 
   }
 })
 
+exports.updateFinancingApplicationStatus = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to update applications.')
+  }
+
+  const applicationId = String(request.data?.applicationId || '').trim()
+  const status = String(request.data?.status || '').trim().toLowerCase()
+  const reviewNote = String(request.data?.reviewNote || '').trim()
+
+  if (!applicationId) {
+    throw new HttpsError('invalid-argument', 'Application ID is required.')
+  }
+
+  if (!['approved', 'rejected', 'completed'].includes(status)) {
+    throw new HttpsError('invalid-argument', 'Status must be approved, rejected, or completed.')
+  }
+
+  const email = String(request.auth.token.email || '').trim().toLowerCase()
+  const accessProfile = await getRoleFromEmail(email, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (!['admin', 'superadmin'].includes(accessProfile.role)) {
+    throw new HttpsError('permission-denied', 'Only administrators can update application status.')
+  }
+
+  try {
+    const db = admin.firestore()
+    const applicationRef = db.collection('financingApplications').doc(applicationId)
+    const applicationDoc = await applicationRef.get()
+
+    if (!applicationDoc.exists) {
+      throw new HttpsError('not-found', 'Application not found.')
+    }
+
+    const applicationData = applicationDoc.data() || {}
+    const reviewer = {
+      uid: request.auth.uid,
+      email,
+    }
+    const timestamp = admin.firestore.FieldValue.serverTimestamp()
+
+    if (status === 'completed') {
+      if (String(applicationData.status || '').toLowerCase() !== 'approved') {
+        throw new HttpsError('failed-precondition', 'Only approved applications can be finalized.')
+      }
+
+      const inventoryId = String(
+        applicationData.motorcycle?.id ||
+        applicationData.inventoryId ||
+        applicationData.inventoryItemId ||
+        '',
+      ).trim()
+
+      if (!inventoryId) {
+        throw new HttpsError('failed-precondition', 'This application is missing its inventory item reference.')
+      }
+
+      const inventoryRef = db.collection('inventory').doc(inventoryId)
+      const transactionResult = await db.runTransaction(async (transaction) => {
+        const [currentApplicationDoc, inventoryDoc] = await Promise.all([
+          transaction.get(applicationRef),
+          transaction.get(inventoryRef),
+        ])
+
+        if (!currentApplicationDoc.exists) {
+          throw new HttpsError('not-found', 'Application not found.')
+        }
+
+        const currentApplication = currentApplicationDoc.data() || {}
+        if (String(currentApplication.status || '').toLowerCase() !== 'approved') {
+          throw new HttpsError('failed-precondition', 'Only approved applications can be finalized.')
+        }
+
+        if (!inventoryDoc.exists) {
+          throw new HttpsError('not-found', 'The selected motorcycle inventory item was not found.')
+        }
+
+        const inventoryData = inventoryDoc.data() || {}
+        const currentStock = Number(inventoryData.stock ?? inventoryData.quantity ?? inventoryData.onHand ?? 0)
+
+        if (!Number.isFinite(currentStock) || currentStock < 1) {
+          throw new HttpsError('failed-precondition', 'The selected motorcycle is out of stock.')
+        }
+
+        const nextStock = currentStock - 1
+        const completionData = {
+          status: 'completed',
+          finalizedAt: timestamp,
+          finalizedBy: reviewer,
+          inventoryDeducted: true,
+          inventoryId,
+          updatedAt: timestamp,
+        }
+
+        transaction.update(applicationRef, completionData)
+        transaction.update(inventoryRef, {
+          stock: nextStock,
+          quantity: nextStock,
+          onHand: nextStock,
+          updatedAt: timestamp,
+        })
+
+        const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
+        transaction.set(approvedApplicationRef, completionData, { merge: true })
+
+        return { nextStock }
+      })
+
+      logger.info('Approved financing application finalized and inventory deducted.', {
+        applicationId,
+        inventoryId,
+        remainingStock: transactionResult.nextStock,
+        uid: request.auth.uid,
+        structuredData: true,
+      })
+
+      return {
+        ok: true,
+        applicationId,
+        referenceId: applicationData.referenceId,
+        status,
+        inventoryId,
+        message: 'Application finalized and motorcycle inventory deducted successfully.',
+      }
+    }
+
+    const updateData = {
+      status,
+      reviewNote,
+      reviewedAt: timestamp,
+      reviewedBy: reviewer,
+      updatedAt: timestamp,
+    }
+    const batch = db.batch()
+
+    batch.update(applicationRef, updateData)
+
+    if (status === 'approved') {
+      const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
+      batch.set(approvedApplicationRef, {
+        ...applicationData,
+        ...updateData,
+        approvedAt: timestamp,
+        approvedBy: reviewer,
+        originalApplicationId: applicationId,
+      })
+    }
+
+    await batch.commit()
+
+    logger.info('Financing application status updated.', {
+      applicationId,
+      status,
+      referenceId: applicationData.referenceId,
+      uid: request.auth.uid,
+      structuredData: true,
+    })
+
+    return {
+      ok: true,
+      applicationId,
+      referenceId: applicationData.referenceId,
+      status,
+      message: `Application ${status} successfully.`,
+    }
+  } catch (error) {
+    logger.error('Error updating financing application status.', {
+      applicationId,
+      status,
+      uid: request.auth.uid,
+      errorCode: error.code,
+      errorMessage: error.message,
+      structuredData: true,
+    })
+
+    if (error instanceof HttpsError) {
+      throw error
+    }
+
+    throw new HttpsError('internal', `Failed to update application: ${error.message}`)
+  }
+})
+
 exports.checkEmailExists = onCall(async (request) => {
   // No authentication required - this is for the forgot password page
   const email = String(request.data?.email || '').trim().toLowerCase()
@@ -2083,9 +2391,8 @@ exports.contactAdministrator = onCall(async (request) => {
   })
 
   try {
-    // Store the admin contact request in a collection
     const adminRequestsRef = admin.firestore().collection('adminPasswordResetRequests').doc(email)
-    
+
     await adminRequestsRef.set({
       email,
       fullName: fullName || email,
@@ -2114,29 +2421,24 @@ exports.contactAdministrator = onCall(async (request) => {
   }
 })
 
-// Send custom email verification link to user's app domain (not Firebase's default domain)
+// Send custom email verification link to the app domain
 exports.sendCustomEmailVerification = onCall({ enforceAppCheck: false }, async (request) => {
-  const { email } = request.data
+  const email = String(request.data?.email || '').trim().toLowerCase()
 
-  if (!email || typeof email !== 'string') {
+  if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'Email is required')
   }
 
   try {
-    const emailLower = String(email).trim().toLowerCase()
-    
-    logger.info('Generating custom email verification link', { email: emailLower })
+    logger.info('Generating custom email verification link', { email })
 
-    // Generate a verification link that points to our app domain
-    // Firebase will append ?oobCode=... automatically
-    // The app will detect this and use checkActionCode() to determine it's a VERIFY_EMAIL operation
-    const verificationLink = await admin.auth().generateEmailVerificationLink(emailLower, {
+    const verificationLink = await admin.auth().generateEmailVerificationLink(email, {
       url: process.env.APP_URL || 'https://bykelink-system.web.app',
       handleCodeInApp: true,
     })
 
     logger.info('Custom email verification link generated', {
-      email: emailLower,
+      email,
       linkPrefix: verificationLink?.substring(0, 50),
     })
 

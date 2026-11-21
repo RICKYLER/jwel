@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { updateProfile as updateAuthProfile } from 'firebase/auth'
-import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where, orderBy } from 'firebase/firestore'
+import { collection, doc, limit, onSnapshot, query, serverTimestamp, setDoc, getDocs, where, orderBy, updateDoc } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
-import EngineeringRoundedIcon from '@mui/icons-material/EngineeringRounded'
 import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
@@ -30,6 +29,10 @@ import DashboardSection from './sections/DashboardSection'
 import InventorySection from './sections/InventorySection'
 import InventoryReportsSection from './sections/InventoryReportsSection'
 import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSection'
+import MasterDataManagementSection from './sections/MasterDataManagementSection'
+import FinancingApplicationsSection from './sections/FinancingApplicationsSection'
+import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
+import FinancingApplicationDetailSection from './sections/FinancingApplicationDetailSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
 import TechniciansSection from './sections/TechniciansSection'
 import UserManagementSection from './sections/UserManagementSection'
@@ -49,6 +52,7 @@ import {
   technicianStatusOptions,
 } from './sections/superadminUtils'
 import './SuperAdminPage.css'
+import './AdminOfficeTheme.css'
 
 const baseSidebarItems = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardRoundedIcon },
@@ -63,6 +67,18 @@ const baseSidebarItems = [
       { id: 'inventory-delete-archived', label: 'Inventory Delete Archived' },
     ]
   },
+  {
+    id: 'unit-management',
+    label: 'Unit Management',
+    icon: TwoWheelerRoundedIcon,
+    subitems: [
+      { id: 'master-categories', label: 'Categories' },
+      { id: 'master-models', label: 'Models' },
+      { id: 'master-variants', label: 'Variants' },
+    ],
+  },
+  { id: 'financing-applications', label: 'Financing Applications', icon: TrendingUpRoundedIcon },
+  { id: 'approved-applications', label: 'Approved Applications', icon: TrendingUpRoundedIcon },
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { 
     id: 'service-management', 
@@ -70,12 +86,52 @@ const baseSidebarItems = [
     icon: TuneRoundedIcon,
     subitems: [
       { id: 'service-type', label: 'Service Type' },
-      { id: 'service-logs', label: 'Service Logs' },
+      { id: 'service-logs', label: 'Service Booking' },
     ]
   },
-  { id: 'analytics', label: 'Analytics', icon: AnalyticsRoundedIcon },
+  { id: 'analytics', label: 'Sales Analytics', icon: AnalyticsRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
+
+const normalizeSectionKey = (value = '') => String(value).trim().toLowerCase().replace(/[\s_-]+/g, '')
+
+const sectionAliases = {
+  services: ['service-management'],
+  bookings: ['service-logs'],
+  servicebooking: ['service-logs'],
+  messages: ['chats-management'],
+  settings: ['profile'],
+  reports: ['inventory-reports', 'analytics'],
+}
+
+const expandAccessibleSections = (sections = []) => {
+  const sectionIdsByKey = new Map()
+
+  baseSidebarItems.forEach((item) => {
+    sectionIdsByKey.set(normalizeSectionKey(item.id), item.id)
+    sectionIdsByKey.set(normalizeSectionKey(item.label), item.id)
+    item.subitems?.forEach((subitem) => {
+      sectionIdsByKey.set(normalizeSectionKey(subitem.id), subitem.id)
+      sectionIdsByKey.set(normalizeSectionKey(subitem.label), subitem.id)
+    })
+  })
+
+  const allowedSections = new Set()
+
+  sections.forEach((section) => {
+    const sectionKey = normalizeSectionKey(section)
+    const matchedSectionId = sectionIdsByKey.get(sectionKey)
+    const sectionIds = sectionAliases[sectionKey] || (matchedSectionId ? [matchedSectionId] : [])
+
+    sectionIds.forEach((sectionId) => {
+      allowedSections.add(sectionId)
+      const parent = baseSidebarItems.find((item) => item.id === sectionId)
+      parent?.subitems?.forEach((subitem) => allowedSections.add(subitem.id))
+    })
+  })
+
+  return allowedSections
+}
 
 const DEFAULT_OPERATOR_PASSWORD = 'Password123'
 
@@ -114,6 +170,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [models, setModels] = useState([])
   const [variants, setVariants] = useState([])
   const [inventoryLogs, setInventoryLogs] = useState([])
+  const [transactionLogs, setTransactionLogs] = useState([])
   const [deletedItems, setDeletedItems] = useState([])
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [previousUnreadCount, setPreviousUnreadCount] = useState(0)
@@ -122,7 +179,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const unreadConversationCountsRef = useRef({})
   const unreadListenersRef = useRef(new Map())
 
-  const [, setLoadingState] = useState({
+  const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
     financingApplications: true,
@@ -135,6 +192,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     models: true,
     variants: true,
     inventoryLogs: true,
+    transactionLogs: true,
     conversations: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
@@ -147,6 +205,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
     typeof window === 'undefined' ? true : window.innerWidth >= 1024,
   )
+  const profileReturnSectionRef = useRef(initialSection === 'profile' ? 'dashboard' : initialSection)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [notificationConfirmation, setNotificationConfirmation] = useState(null)
   const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState(null)
@@ -182,6 +241,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [pendingSection, setPendingSection] = useState(null)
 
   const sectionTitle = useMemo(() => {
+    if (activeSection === 'financing-application-detail') return 'Financing Application Detail'
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
 
@@ -377,6 +437,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       stateKey,
       setter,
       shouldSubscribe = true,
+      orderField = 'updatedAt',
+      limitCount = 200,
     }) => {
       if (!shouldSubscribe) {
         setLoadingState((current) => ({ ...current, [stateKey]: false }))
@@ -384,8 +446,17 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         return () => {}
       }
 
+      const collectionRef = collection(db, collectionName)
+      const baseQuery = orderField
+        ? limitCount === null
+          ? query(collectionRef, orderBy(orderField, 'desc'))
+          : query(collectionRef, orderBy(orderField, 'desc'), limit(limitCount))
+        : limitCount === null
+          ? query(collectionRef)
+          : query(collectionRef, limit(limitCount))
+
       return onSnapshot(
-        query(collection(db, collectionName), orderBy('updatedAt', 'desc'), limit(200)),
+        baseQuery,
         (snapshot) => {
           setter(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })))
           setLoadingState((current) => ({ ...current, [stateKey]: false }))
@@ -395,7 +466,7 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
           setLoadingState((current) => ({ ...current, [stateKey]: false }))
           setActionMessage({
             type: 'error',
-            text: `Unable to load ${collectionName} from Firebase. Check Firestore rules for ${consoleLabel.toLowerCase()} access.`,
+            text: `Unable to load ${collectionName}. Check the access rules for ${consoleLabel.toLowerCase()} access.`,
           })
         },
       )
@@ -406,6 +477,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         collectionName: 'serviceBookings',
         stateKey: 'serviceRequests',
         setter: setServiceRequests,
+        orderField: null,
+        limitCount: null,
       }),
       subscribeToCollection({
         collectionName: 'financingApplications',
@@ -450,37 +523,47 @@ currentAccessRole === 'staff personnel' && currentUser?.email
         collectionName: 'users',
         stateKey: 'users',
         setter: setUsers,
-        shouldSubscribe: canEditOperations,
+        shouldSubscribe: canManageAccess,
       }),
       subscribeToCollection({
         collectionName: 'authorizedAdmin',
         stateKey: 'authorizedAdmins',
         setter: setAuthorizedAdmins,
-        shouldSubscribe: canEditOperations,
+        shouldSubscribe: canManageAccess,
       }),
       subscribeToCollection({
         collectionName: 'authorizedPersonnel',
         stateKey: 'authorizedPersonnel',
         setter: setAuthorizedPersonnel,
-        shouldSubscribe: canEditOperations,
+        shouldSubscribe: canManageAccess,
       }),
       subscribeToCollection({
         collectionName: 'deleteArchived',
         stateKey: 'archivedUsers',
         setter: setArchivedUsers,
-        shouldSubscribe: canEditOperations,
+        shouldSubscribe: canManageAccess,
       }),
       subscribeToCollection({
         collectionName: 'inventoryLogs',
         stateKey: 'inventoryLogs',
         setter: setInventoryLogs,
+        shouldSubscribe: canManageAccess,
+        orderField: null,
+        limitCount: null,
+      }),
+      subscribeToCollection({
+        collectionName: 'transactionLogs',
+        stateKey: 'transactionLogs',
+        setter: setTransactionLogs,
         shouldSubscribe: canEditOperations,
+        orderField: 'createdAt',
+        limitCount: null,
       }),
       subscribeToCollection({
         collectionName: 'deleteArchived',
         stateKey: 'deletedItems',
         setter: setDeletedItems,
-        shouldSubscribe: canEditOperations,
+        shouldSubscribe: canManageAccess,
       }),
     ]
 
@@ -490,6 +573,7 @@ currentAccessRole === 'staff personnel' && currentUser?.email
   
 }, [
   canEditOperations,
+  canManageAccess,
   consoleLabel,
   currentAccessRole, 
   currentUser?.email 
@@ -504,6 +588,41 @@ currentAccessRole === 'staff personnel' && currentUser?.email
     )
     setUnreadChatCount(totalUnread)
   }, [])
+
+  const refreshUnreadCountsFromFirestore = useCallback(async () => {
+    try {
+      const conversationsSnap = await getDocs(collection(db, 'conversations'))
+      const nextCounts = {}
+
+      await Promise.all(
+        conversationsSnap.docs.map(async (conversationDoc) => {
+          const unreadSnap = await getDocs(
+            query(
+              collection(db, 'conversations', conversationDoc.id, 'messages'),
+              where('read', '==', false),
+            ),
+          )
+
+          const customerUnreadMessages = unreadSnap.docs.filter((messageDoc) => {
+            const messageData = messageDoc.data()
+            return (
+              messageData.type === 'user' ||
+              messageData.sender === 'user' ||
+              Boolean(messageData.senderId) ||
+              (messageData.senderName && messageData.senderName !== 'BYKELINK Admin')
+            )
+          })
+
+          nextCounts[conversationDoc.id] = customerUnreadMessages.length
+        }),
+      )
+
+      unreadConversationCountsRef.current = nextCounts
+      recountUnreadMessages()
+    } catch (error) {
+      console.error('Error refreshing unread chat counts:', error)
+    }
+  }, [recountUnreadMessages])
 
   useEffect(() => {
     if (!canEditOperations || !currentUser?.uid) {
@@ -543,32 +662,37 @@ currentAccessRole === 'staff personnel' && currentUser?.email
           const unreadMessagesQuery = query(
             collection(db, `conversations/${conversationId}/messages`),
             where('read', '==', false),
-            where('type', '==', 'user'),
           )
 
           const stopUnreadListener = onSnapshot(
             unreadMessagesQuery,
             (unreadSnapshot) => {
-              unreadConversationCountsRef.current[conversationId] = unreadSnapshot.size
+              const customerUnreadMessages = unreadSnapshot.docs.filter((messageDoc) => {
+                const messageData = messageDoc.data()
+                return (
+                  messageData.type === 'user' ||
+                  messageData.sender === 'user' ||
+                  messageData.senderId ||
+                  messageData.senderName && messageData.senderName !== 'BYKELINK Admin'
+                )
+              })
 
-              unreadSnapshot.docChanges().forEach((change) => {
-                if (change.type !== 'added') {
-                  return
-                }
+              unreadConversationCountsRef.current[conversationId] = customerUnreadMessages.length
 
-                const messageData = change.doc.data()
+              customerUnreadMessages.forEach((messageDoc) => {
+                const messageData = messageDoc.data()
                 const createdAt = messageData.timestamp?.toDate?.() || new Date()
-                const notificationId = `${conversationId}-${change.doc.id}`
+                const notificationId = `${conversationId}-${messageDoc.id}`
 
                 setChatNotifications((current) => {
                   const existingIndex = current.findIndex((item) => item.id === notificationId)
                   const nextNotification = {
                     id: notificationId,
                     type: 'CHAT',
-                    title: `${conversationData.userName || 'Guest User'} sent a message`,
+                    title: `${conversationData.senderName || conversationData.userName || 'Customer'} sent a message`,
                     description: messageData.text || 'New customer message received.',
                     conversationId,
-                    messageId: change.doc.id,
+                    messageId: messageDoc.id,
                     read: false,
                     createdAt: createdAt.toISOString(),
                   }
@@ -833,6 +957,8 @@ currentAccessRole === 'staff personnel' && currentUser?.email
 
   // Load admin contact requests from Firestore
   useEffect(() => {
+    if (!canManageAccess) return undefined
+
     const loadAdminRequests = async () => {
       try {
         const requestsSnapshot = await getDocs(
@@ -913,7 +1039,7 @@ currentAccessRole === 'staff personnel' && currentUser?.email
         unsubscribe()
       }
     }
-  }, [])
+  }, [canManageAccess])
 
   const activeServices = filteredServiceRequests.filter(
     (item) => !['completed', 'cancelled'].includes(normalizeText(item.status)),
@@ -951,39 +1077,93 @@ currentAccessRole === 'staff personnel' && currentUser?.email
   
 
 
+const allowedSectionIds = useMemo(() => {
+  if (['admin', 'superadmin'].includes(accessProfile?.role)) return null
+
+  const roleSections = {
+    'staff personnel': ['dashboard', 'inventory', 'service-type', 'service-logs', 'chats-management', 'profile'],
+    'mechanics personnel': ['dashboard', 'service-logs', 'chats-management', 'profile'],
+  }
+  const roleSectionCap = roleSections[accessProfile?.role]
+
+  if (!roleSectionCap) return new Set(['dashboard'])
+
+  const assignedSections = Array.isArray(accessProfile?.accessibleSections)
+    ? accessProfile.accessibleSections.filter(Boolean)
+    : []
+  const requestedSections = assignedSections.length ? assignedSections : roleSectionCap
+  const roleAllowedSections = expandAccessibleSections(roleSectionCap)
+  const resolvedSections = expandAccessibleSections(requestedSections)
+  const allowedSections = new Set(
+    [...resolvedSections].filter((sectionId) => roleAllowedSections.has(sectionId)),
+  )
+
+  allowedSections.add('dashboard')
+  baseSidebarItems.forEach((item) => {
+    if (item.subitems?.some((subitem) => allowedSections.has(subitem.id))) {
+      allowedSections.add(item.id)
+    }
+  })
+
+  return allowedSections
+}, [accessProfile?.accessibleSections, accessProfile?.role])
+
+useEffect(() => {
+  if (!allowedSectionIds) return
+
+  const requiredSection = activeSection === 'financing-application-detail'
+    ? 'financing-applications'
+    : activeSection
+
+  if (!allowedSectionIds.has(requiredSection)) {
+    setActiveSection('dashboard')
+  }
+}, [activeSection, allowedSectionIds])
+
 const sidebarItems = useMemo(() => {
-  const defaultSectionsByRole = {
-    'staff personnel': ['dashboard', 'inventory-management', 'service-management', 'profile', 'chats-management'],
-    'mechanics personnel': ['dashboard', 'service-management', 'chats-management', 'profile'],
-  }
-  
-  let allowedSections =
-    accessProfile?.role === 'superadmin' ||
-    accessProfile?.role === 'admin'
-      ? null
-      : (accessProfile?.accessibleSections || [])
-
-  // If privileged user has empty sections, provide defaults based on role
-  const firestoreSections = allowedSections && Array.isArray(allowedSections) ? allowedSections : []
-  const hasEmptySections = firestoreSections.length === 0
-  
-  if (
-    hasEmptySections &&
-    accessProfile?.isPrivileged &&
-    accessProfile?.authorized &&
-    defaultSectionsByRole[accessProfile?.role]
-  ) {
-    allowedSections = defaultSectionsByRole[accessProfile?.role]
-  }
-
   return baseSidebarItems
-    .filter((item) => {
-      if (item.id === 'dashboard' || item.id === 'profile') return true
-      if (!allowedSections) return true
-
-      return allowedSections.includes(item.id)
-    })
     .map((item) => {
+      const visibleSubitems = item.subitems?.filter(
+        (subitem) => !allowedSectionIds || allowedSectionIds.has(subitem.id),
+      ).map((subitem) => subitem.id === 'service-logs'
+        ? {
+            ...subitem,
+            badge: serviceRequests.filter(
+              (request) => String(request.status || 'pending').toLowerCase() === 'pending',
+            ).length || null,
+          }
+        : subitem)
+
+      return item.subitems ? { ...item, subitems: visibleSubitems } : item
+    })
+    .filter((item) =>
+      !allowedSectionIds ||
+      allowedSectionIds.has(item.id) ||
+      item.subitems?.length > 0,
+    )
+    .map((item) => {
+      if (item.id === 'financing-applications') {
+        const upcomingApplicationsCount = financingApplications.filter(
+          (application) => String(application.status || 'submitted').toLowerCase() === 'submitted',
+        ).length
+
+        return {
+          ...item,
+          badge: upcomingApplicationsCount > 0 ? upcomingApplicationsCount : null,
+        }
+      }
+
+      if (item.id === 'approved-applications') {
+        const applicationsToFinalizeCount = financingApplications.filter(
+          (application) => String(application.status || '').toLowerCase() === 'approved',
+        ).length
+
+        return {
+          ...item,
+          badge: applicationsToFinalizeCount > 0 ? applicationsToFinalizeCount : null,
+        }
+      }
+
       if (item.id === 'chats-management') {
         return {
           ...item,
@@ -991,18 +1171,9 @@ const sidebarItems = useMemo(() => {
         }
       }
 
-      return {
-        ...item,
-        subitems:
-          item.subitems && allowedSections
-            ? allowedSections.includes(item.id)
-              ? item.subitems
-              : []
-            : item.subitems,
-            
-      }
+      return item
     })
-}, [unreadChatCount, accessProfile?.accessibleSections, accessProfile?.role, accessProfile?.isPrivileged, accessProfile?.authorized])
+  }, [allowedSectionIds, financingApplications, serviceRequests, unreadChatCount])
 
 
 
@@ -1062,7 +1233,7 @@ const sidebarItems = useMemo(() => {
 
       setActionMessage({
         type: 'success',
-        text: `${collectionName} updated successfully in Firebase.`,
+        text: `${collectionName} updated successfully.`,
       })
     } catch (error) {
       console.error(`Unable to update ${collectionName}`, error)
@@ -1071,6 +1242,20 @@ const sidebarItems = useMemo(() => {
         text: `Unable to update ${collectionName}. ${error.message}`,
       })
     }
+  }
+
+  const handleFinancingStatusUpdate = async (applicationId, status) => {
+    if (!canEditOperations) {
+      throw new Error('Your current role can view this data but cannot change it.')
+    }
+
+    const updateFinancingApplicationStatus = httpsCallable(functions, 'updateFinancingApplicationStatus')
+    const response = await updateFinancingApplicationStatus({ applicationId, status })
+
+    setActionMessage({
+      type: 'success',
+      text: response?.data?.message || 'Financing application status updated successfully.',
+    })
   }
 
   const handleOpenNewUserModal = () => {
@@ -1242,7 +1427,34 @@ const sidebarItems = useMemo(() => {
     }
   }
 
+  const handleOpenFinancingApplication = (application) => {
+    setSelectedFinancingApplication(application || null)
+    setActiveSection('financing-application-detail')
+    onNavigateDashboardPath?.(`${dashboardPath}/financing-applications/${encodeURIComponent(application?.id || '')}`)
+  }
+
+  const handleBackToFinancingApplications = () => {
+    setSelectedFinancingApplication(null)
+    handleSectionChange('financing-applications')
+  }
+
+  useEffect(() => {
+    if (!initialFinancingApplicationId) return
+
+    const matchedApplication = financingApplications.find((application) => application.id === initialFinancingApplicationId)
+    if (matchedApplication) {
+      setSelectedFinancingApplication(matchedApplication)
+      setActiveSection('financing-application-detail')
+    }
+  }, [financingApplications, initialFinancingApplicationId])
+
   const handleSectionChange = (sectionId) => {
+    const requiredSection = sectionId === 'financing-application-detail'
+      ? 'financing-applications'
+      : sectionId
+
+    if (allowedSectionIds && !allowedSectionIds.has(requiredSection)) return
+
     // If navigating away from profile and there are unsaved changes, confirm
     const hasUnsaved = (() => {
       if (!savedProfileSnapshot) return false
@@ -1275,6 +1487,10 @@ const sidebarItems = useMemo(() => {
       return
     }
 
+    if (sectionId === 'profile' && activeSection !== 'profile') {
+      profileReturnSectionRef.current = activeSection
+    }
+
     setActiveSection(sectionId)
 
     // Update URL based on section type
@@ -1289,7 +1505,45 @@ const sidebarItems = useMemo(() => {
     }
   }
 
-  const markConversationNotificationsRead = useCallback((conversationId) => {
+  const handleProfileToggle = () => {
+    handleSectionChange(
+      activeSection === 'profile' ? profileReturnSectionRef.current : 'profile',
+    )
+  }
+
+  const markConversationNotificationsRead = useCallback(async (conversationId) => {
+    if (!conversationId) {
+      return
+    }
+
+    try {
+      const unreadMessagesQuery = query(
+        collection(db, 'conversations', conversationId, 'messages'),
+        where('read', '==', false),
+      )
+
+      const unreadMessagesSnap = await getDocs(unreadMessagesQuery)
+
+      const updates = unreadMessagesSnap.docs
+        .filter((messageDoc) => {
+          const messageData = messageDoc.data()
+          return (
+            messageData.type === 'user' ||
+            messageData.sender === 'user' ||
+            Boolean(messageData.senderId) ||
+            (messageData.senderName && messageData.senderName !== 'BYKELINK Admin')
+          )
+        })
+        .map((messageDoc) => updateDoc(messageDoc.ref, { read: true }))
+
+      await Promise.all(updates)
+    } catch (error) {
+      console.error('Error marking conversation messages as read:', error)
+    }
+
+    unreadConversationCountsRef.current[conversationId] = 0
+    await refreshUnreadCountsFromFirestore()
+
     setChatNotifications((current) =>
       current.map((item) =>
         item.conversationId === conversationId
@@ -1297,7 +1551,73 @@ const sidebarItems = useMemo(() => {
           : item,
       ),
     )
-  }, [])
+  }, [refreshUnreadCountsFromFirestore])
+
+  useEffect(() => {
+    if (activeSection !== 'chats-management') {
+      return
+    }
+
+    let isCancelled = false
+
+    const syncAllUnreadChats = async () => {
+      try {
+        const conversationsSnap = await getDocs(collection(db, 'conversations'))
+        const nextCounts = {}
+        let totalUnread = 0
+
+        for (const conversationDoc of conversationsSnap.docs) {
+          const conversationId = conversationDoc.id
+          const unreadMessagesQuery = query(
+            collection(db, 'conversations', conversationId, 'messages'),
+            where('read', '==', false),
+          )
+          const unreadMessagesSnap = await getDocs(unreadMessagesQuery)
+
+          const customerUnreadMessages = unreadMessagesSnap.docs.filter((messageDoc) => {
+            const messageData = messageDoc.data()
+            return (
+              messageData.type === 'user' ||
+              messageData.sender === 'user' ||
+              Boolean(messageData.senderId) ||
+              (messageData.senderName && messageData.senderName !== 'BYKELINK Admin')
+            )
+          })
+
+          nextCounts[conversationId] = customerUnreadMessages.length
+          totalUnread += customerUnreadMessages.length
+
+          if (customerUnreadMessages.length > 0) {
+            await Promise.all(
+              customerUnreadMessages.map((messageDoc) => updateDoc(messageDoc.ref, { read: true })),
+            )
+          }
+        }
+
+        if (isCancelled) {
+          return
+        }
+
+        unreadConversationCountsRef.current = nextCounts
+        setUnreadChatCount(totalUnread)
+        setChatNotifications((current) =>
+          current.map((item) =>
+            item.type === 'CHAT' && item.conversationId
+              ? { ...item, read: true }
+              : item,
+          ),
+        )
+      } catch (error) {
+        console.error('Error syncing unread chat state:', error)
+      }
+    }
+
+    syncAllUnreadChats()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeSection])
 
   const handleNotificationClick = useCallback((notification) => {
     if (!notification) {
@@ -1746,6 +2066,8 @@ const sidebarItems = useMemo(() => {
         return (
           <ChatsManagementSection
             searchTerm={searchTerm}
+            serviceBookings={serviceRequests}
+            isBookingsLoading={loadingState.serviceRequests}
             onUnreadCountChange={recountUnreadMessages}
             focusRequest={chatFocusRequest}
             onConversationRead={markConversationNotificationsRead}
@@ -1780,6 +2102,7 @@ const sidebarItems = useMemo(() => {
             technicians={technicians}
             roleOptions={roleOptions}
             normalizeText={normalizeText}
+            transactionLogs={transactionLogs}
             isDarkMode={isDarkMode}
           />
         )
@@ -1816,6 +2139,40 @@ const sidebarItems = useMemo(() => {
             onProfileSave={handleProfileSave}
             isSubmitting={isSubmitting}
             formatDate={formatDate}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'financing-applications':
+        return (
+          <FinancingApplicationsSection
+            applications={filteredFinancingApplications}
+            canEditOperations={canEditOperations}
+            handleCollectionUpdate={handleCollectionUpdate}
+            formatCurrency={formatCurrency}
+            onOpenApplication={handleOpenFinancingApplication}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'financing-application-detail':
+        return (
+          <FinancingApplicationDetailSection
+            application={selectedFinancingApplication}
+            canEditOperations={canEditOperations}
+            handleFinancingStatusUpdate={handleFinancingStatusUpdate}
+            formatCurrency={formatCurrency}
+            formatDate={formatDate}
+            onBack={handleBackToFinancingApplications}
+            isDarkMode={isDarkMode}
+          />
+        )
+      case 'approved-applications':
+        return (
+          <ApprovedApplicationsSection
+            applications={filteredFinancingApplications}
+            canEditOperations={canEditOperations}
+            handleFinancingStatusUpdate={handleFinancingStatusUpdate}
+            formatCurrency={formatCurrency}
+            onOpenApplication={handleOpenFinancingApplication}
             isDarkMode={isDarkMode}
           />
         )
@@ -1858,6 +2215,18 @@ const sidebarItems = useMemo(() => {
             currentAccessRole={currentAccessRole}
           />
         )
+      case 'master-categories':
+      case 'master-models':
+      case 'master-variants':
+        return (
+          <MasterDataManagementSection
+            dataType={activeSection}
+            categories={categories}
+            models={models}
+            canEditOperations={canEditOperations}
+            isDarkMode={isDarkMode}
+          />
+        )
       default:
         return (
           <DashboardSection
@@ -1897,7 +2266,7 @@ const sidebarItems = useMemo(() => {
         canManageAccess={canManageAccess}
         isSubmitting={isSubmitting}
         isDarkMode={isDarkMode}
-        currentUserRole={userProfile?.role}
+        currentUserRole={currentAccessRole}
       />
 
       <EditUserModal
@@ -1961,7 +2330,7 @@ const sidebarItems = useMemo(() => {
         onNavigateHome={onNavigateHome}
         onSignOut={handleLogoutClick}
         consoleLabel={consoleLabel}
-        userMenuAccess={userProfile?.accessibleSections ?? []}
+        userMenuAccess={allowedSectionIds ? [...allowedSectionIds] : userProfile?.accessibleSections ?? []}
       />
 
       <div className="superadmin-content">
@@ -1975,8 +2344,10 @@ const sidebarItems = useMemo(() => {
           notificationCount={unreadChatCount}
           adminName={adminName}
           consoleLabel={consoleLabel}
-          onOpenProfile={() => handleSectionChange('profile')}
+          onOpenProfile={handleProfileToggle}
           avatarUrl={profileForm.avatarUrl}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         />
 
         {/* Confirmation modals for save and unsaved-navigation */}
@@ -2012,7 +2383,11 @@ const sidebarItems = useMemo(() => {
           isDarkMode={isDarkMode}
         />
 
-        <main className="superadmin-main ml-64 px-4 pb-12 pt-24 sm:px-6 lg:px-8">
+        <main
+          className={`superadmin-main ml-64 px-4 pb-12 pt-24 sm:px-6 lg:px-8 ${
+            isSidebarOpen ? 'is-sidebar-open' : 'is-sidebar-collapsed'
+          }`}
+        >
           {isDashboardView && (
             <div className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -2044,33 +2419,21 @@ const sidebarItems = useMemo(() => {
           )}
 
           {isDashboardView && (
-            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <div className="dashboard-kpi-grid mb-8 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
               {metricCards.map((card) => (
                 <article
                   key={card.title}
-                  className="superadmin-summary-card superadmin-metric-card group relative overflow-hidden rounded-lg p-6 transition-all hover:border-red-600/30"
+                  className="superadmin-summary-card superadmin-metric-card dashboard-kpi-card"
                 >
-                  <div className="absolute -bottom-4 -right-4 opacity-5 transition-opacity group-hover:opacity-10">
-                    {card.title.includes('Availability') ? (
-                      <EngineeringRoundedIcon sx={{ fontSize: 80 }} />
-                    ) : card.title.includes('Revenue') ? (
-                      <AnalyticsRoundedIcon sx={{ fontSize: 80 }} />
-                    ) : null}
-                  </div>
-
-                  <p className="mb-1 text-xs font-bold uppercase tracking-widest text-white/40">{card.title}</p>
-                  <h3 className="font-['Epilogue'] text-3xl font-black text-white">{card.value}</h3>
+                  <p className="dashboard-kpi-label">{card.title}</p>
+                  <h3 className="dashboard-kpi-value">{card.value}</h3>
 
                   {card.progress !== undefined ? (
-                    <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                      <div className="h-full bg-red-600" style={{ width: `${card.progress}%` }} />
+                    <div className="dashboard-kpi-progress">
+                      <div style={{ width: `${card.progress}%` }} />
                     </div>
                   ) : (
-                    <div
-                      className={`mt-4 flex items-center gap-1 text-xs font-bold ${
-                        card.tone === 'emerald' ? 'text-emerald-400' : 'text-red-600'
-                      }`}
-                    >
+                    <div className={`dashboard-kpi-detail ${card.tone === 'emerald' ? 'is-positive' : 'is-negative'}`}>
                       {card.tone === 'emerald' ? (
                         <TrendingUpRoundedIcon sx={{ fontSize: 16 }} />
                       ) : (

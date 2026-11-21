@@ -226,7 +226,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
         {/* LEFT: Register Operation Form */}
         <div className={`lg:col-span-1 rounded-xl border p-8 ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
           <div className="mb-6">
-            <div className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'bg-red-600/20 text-red-400' : 'bg-red-100 text-red-600'}`}>
+            <div className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${isDarkMode ? 'bg-red-600/20 text-[#C51D34]' : 'bg-red-100 text-[#C51D34]'}`}>
               Register Operation
             </div>
             <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -252,7 +252,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-full px-4 py-3 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 transition text-sm font-bold ${
                   isDarkMode
-                    ? 'border-white/10 hover:border-red-600 hover:bg-red-600/10 text-white/60 hover:text-red-400'
+                    ? 'border-white/10 hover:border-red-600 hover:bg-red-600/10 text-white/60 hover:text-[#C51D34]'
                     : 'border-gray-300 hover:border-red-600 hover:bg-red-50 text-gray-600 hover:text-red-600'
                 }`}
               >
@@ -361,7 +361,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                           },
                         })
                       }
-                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-[#C51D34]' : 'bg-red-100 hover:bg-red-200 text-[#C51D34]'}`}
                     >
                       +
                     </button>
@@ -392,7 +392,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                           },
                         })
                       }
-                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-[#C51D34]' : 'bg-red-100 hover:bg-red-200 text-[#C51D34]'}`}
                     >
                       -
                     </button>
@@ -419,7 +419,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                           },
                         })
                       }
-                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-[#C51D34]' : 'bg-red-100 hover:bg-red-200 text-[#C51D34]'}`}
                     >
                       +
                     </button>
@@ -450,7 +450,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                           },
                         })
                       }
-                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-red-400' : 'bg-red-100 hover:bg-red-200 text-red-600'}`}
+                      className={`w-10 h-8 flex items-center justify-center rounded font-bold text-lg transition ${isDarkMode ? 'bg-red-600/20 hover:bg-red-600/30 text-[#C51D34]' : 'bg-red-100 hover:bg-red-200 text-[#C51D34]'}`}
                     >
                       -
                     </button>
@@ -493,7 +493,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
           {/* Header with Sort */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <div className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'bg-cyan-600/20 text-cyan-400' : 'bg-cyan-100 text-cyan-600'}`}>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest mb-2 ${isDarkMode ? 'bg-red-600/20 text-[#C51D34]' : 'bg-red-100 text-[#C51D34]'}`}>
                 Live Inventory
               </div>
               <h3 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -502,8 +502,8 @@ export default function ServiceTypeSection({ isDarkMode }) {
             </div>
             <button className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full transition ${
               isDarkMode
-                ? 'text-red-400 hover:bg-red-600/10'
-                : 'text-red-600 hover:bg-red-100'
+                ? 'text-[#C51D34] hover:bg-red-600/10'
+                : 'text-[#C51D34] hover:bg-red-100'
             }`}>
               Sort by Newest
             </button>
@@ -556,7 +556,7 @@ export default function ServiceTypeSection({ isDarkMode }) {
                       <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${isDarkMode ? 'text-white/40' : 'text-gray-500'}`}>
                         Duration
                       </p>
-                      <p className={`text-sm font-black ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                      <p className="text-sm font-black text-[#C51D34]">
                         {Math.floor((service.durationMinutes || 30) / 60)}h {(service.durationMinutes || 30) % 60}m
                       </p>
                     </div>
@@ -577,8 +577,8 @@ export default function ServiceTypeSection({ isDarkMode }) {
                         onClick={() => handleEditService(service)}
                         className={`p-2 rounded-lg transition ${
                           isDarkMode
-                            ? 'hover:bg-blue-600/20 text-blue-400'
-                            : 'hover:bg-blue-100 text-blue-600'
+                            ? 'hover:bg-red-600/20 text-[#C51D34]'
+                            : 'hover:bg-red-100 text-[#C51D34]'
                         }`}
                         title="Edit"
                       >
@@ -588,8 +588,8 @@ export default function ServiceTypeSection({ isDarkMode }) {
                         onClick={() => handleDeleteService(service.id)}
                         className={`p-2 rounded-lg transition ${
                           isDarkMode
-                            ? 'hover:bg-red-600/20 text-red-400'
-                            : 'hover:bg-red-100 text-red-600'
+                            ? 'hover:bg-red-600/20 text-[#C51D34]'
+                            : 'hover:bg-red-100 text-[#C51D34]'
                         }`}
                         title="Delete"
                       >

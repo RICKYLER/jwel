@@ -18,6 +18,8 @@ import './ChatsManagementSection.css'
 
 export default function ChatsManagementSection({
   searchTerm = '',
+  serviceBookings = [],
+  isBookingsLoading = false,
   onUnreadCountChange,
   focusRequest,
   onConversationRead,
@@ -31,6 +33,8 @@ export default function ChatsManagementSection({
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('active')
+  const [bookedCustomerError, setBookedCustomerError] = useState('')
+  const [startingBookedCustomerId, setStartingBookedCustomerId] = useState(null)
   const [conversationLastMessages, setConversationLastMessages] = useState({})
   const [selectedConversationIds, setSelectedConversationIds] = useState(new Set())
   const [deleteConfirmation, setDeleteConfirmation] = useState(null)
@@ -164,8 +168,57 @@ export default function ChatsManagementSection({
     [conversations],
   )
 
+  const bookedCustomers = useMemo(() => {
+    const customersById = new Map()
+
+    serviceBookings.forEach((booking) => {
+      const customerId = booking.customerId || booking.userId || booking.customer?.id || ''
+      const customerEmail = booking.customerEmail || booking.email || booking.customer?.email || ''
+      const customerName = booking.customerName ||
+        booking.customer?.fullName ||
+        (typeof booking.customer === 'string' ? booking.customer : '') ||
+        'Customer'
+      const key = customerId || customerEmail.trim().toLowerCase() || booking.id
+      if (!key) return
+
+      const bookingDate = booking.createdAt?.toDate?.() || new Date(booking.createdAt || 0)
+      const customer = customersById.get(key) || {
+        id: key,
+        customerId,
+        name: customerName,
+        email: customerEmail,
+        bookingCount: 0,
+        latestBookingDate: bookingDate,
+      }
+
+      customer.bookingCount += 1
+      if (bookingDate > customer.latestBookingDate) customer.latestBookingDate = bookingDate
+      if (!customer.customerId && customerId) customer.customerId = customerId
+      if (!customer.email && customerEmail) customer.email = customerEmail
+      if ((!customer.name || customer.name === 'Customer') && customerName !== 'Customer') {
+        customer.name = customerName
+      }
+      customersById.set(key, customer)
+    })
+
+    return Array.from(customersById.values()).sort(
+      (first, second) => second.latestBookingDate - first.latestBookingDate,
+    )
+  }, [serviceBookings])
+
+  const filteredBookedCustomers = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase()
+    if (!search) return bookedCustomers
+
+    return bookedCustomers.filter((customer) =>
+      [customer.name, customer.email].some((value) => String(value || '').toLowerCase().includes(search)),
+    )
+  }, [bookedCustomers, searchTerm])
+
   // Filter conversations based on search and active/archived mode
   const filteredConversations = useMemo(() => {
+    if (viewMode === 'booked') return []
+
     const baseConversations = conversations.filter((conv) => {
       if (viewMode === 'archived') {
         return conv.status === 'archived'
@@ -184,15 +237,84 @@ export default function ChatsManagementSection({
     )
   }, [conversations, searchTerm, viewMode])
 
+  const handleOpenBookedCustomerChat = async (customer) => {
+    if (!customer.customerId || startingBookedCustomerId) return
+
+    setBookedCustomerError('')
+    setStartingBookedCustomerId(customer.id)
+    try {
+      const existingConversation = conversations.find((conversation) =>
+        conversation.status !== 'deleted' &&
+        (
+          conversation.userId === customer.customerId ||
+          conversation.senderId === customer.customerId ||
+          conversation.participants?.includes(customer.customerId)
+        ),
+      )
+
+      if (existingConversation) {
+        if (existingConversation.status === 'archived') {
+          await updateDoc(doc(db, 'conversations', existingConversation.id), {
+            status: 'open',
+            updatedAt: serverTimestamp(),
+          })
+        }
+
+        setViewMode('active')
+        setSelectedConversation({
+          ...existingConversation,
+          status: existingConversation.status === 'archived' ? 'open' : existingConversation.status,
+        })
+        return
+      }
+
+      const now = new Date()
+      const conversationData = {
+        userId: customer.customerId,
+        senderId: customer.customerId,
+        userName: customer.name,
+        senderName: customer.name,
+        displayName: customer.name,
+        title: customer.name,
+        userEmail: customer.email || '',
+        senderAvatar: null,
+        otherUserAvatar: null,
+        participants: [customer.customerId],
+        isGuest: false,
+        status: 'open',
+        lastMessage: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastMessageTime: serverTimestamp(),
+      }
+      const conversationRef = await addDoc(collection(db, 'conversations'), conversationData)
+
+      setViewMode('active')
+      setSelectedConversation({
+        ...conversationData,
+        id: conversationRef.id,
+        createdAt: now,
+        updatedAt: now,
+      })
+    } catch (conversationError) {
+      console.error('Unable to open a conversation for booked customer', conversationError)
+      setBookedCustomerError(`Unable to open this customer's conversation. ${conversationError.message}`)
+    } finally {
+      setStartingBookedCustomerId(null)
+    }
+  }
+
   const handleSendResponse = async () => {
     if (!responseText.trim() || !selectedConversation) return
 
     setIsSending(true)
     try {
+      const trimmedResponse = responseText.trim()
+
       // Add admin response to messages
       await addDoc(collection(db, `conversations/${selectedConversation.id}/messages`), {
         type: 'admin',
-        text: responseText,
+        text: trimmedResponse,
         sender: 'admin',
         senderName: 'BYKELINK Admin',
         timestamp: serverTimestamp(),
@@ -202,6 +324,8 @@ export default function ChatsManagementSection({
       // Update conversation updatedAt timestamp
       await updateDoc(doc(db, 'conversations', selectedConversation.id), {
         updatedAt: serverTimestamp(),
+        lastMessage: trimmedResponse,
+        lastMessageTime: serverTimestamp(),
         status: 'responded',
       })
 
@@ -217,10 +341,16 @@ export default function ChatsManagementSection({
   const markMessagesAsRead = async (conversationId) => {
     try {
       const messagesRef = collection(db, `conversations/${conversationId}/messages`)
-      const unreadQuery = query(messagesRef, where('read', '==', false), where('type', '==', 'user'))
+      const unreadQuery = query(messagesRef, where('read', '==', false))
       const unreadSnap = await getDocs(unreadQuery)
 
       for (const msgDoc of unreadSnap.docs) {
+        const messageData = msgDoc.data()
+        const isCustomerMessage = messageData.type === 'user' || messageData.sender === 'user' || messageData.senderId || messageData.senderName
+        if (!isCustomerMessage || messageData.sender === 'admin' || messageData.type === 'admin') {
+          continue
+        }
+
         await updateDoc(msgDoc.ref, { read: true })
       }
     } catch (error) {
@@ -365,8 +495,14 @@ export default function ChatsManagementSection({
       {/* Conversations List */}
       <div className="conversations-sidebar">
         <div className="sidebar-header">
-          <h3 className="text-lg font-bold text-white">{viewMode === 'archived' ? 'Archived Messages' : 'Active Chats'}</h3>
-          <p className="mt-1 text-xs text-neutral-400">{filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}</p>
+          <h3 className="text-lg font-bold text-white">
+            {viewMode === 'archived' ? 'Archived Messages' : viewMode === 'booked' ? 'Booked Customers' : 'Active Chats'}
+          </h3>
+          <p className="mt-1 text-xs text-neutral-400">
+            {viewMode === 'booked'
+              ? `${filteredBookedCustomers.length} customer${filteredBookedCustomers.length !== 1 ? 's' : ''}`
+              : `${filteredConversations.length} conversation${filteredConversations.length !== 1 ? 's' : ''}`}
+          </p>
           <div className="active-archived">
             <button
               type="button"
@@ -381,6 +517,16 @@ export default function ChatsManagementSection({
               className="conversation-list-archive1-btn"
             >
               <ArchiveRoundedIcon sx={{ fontSize: 20 }} />Archived ({archivedConversationCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                switchViewMode('booked')
+                setBookedCustomerError('')
+              }}
+              className={`conversation-list-booked-btn ${viewMode === 'booked' ? 'is-selected' : ''}`}
+            >
+              Booked ({bookedCustomers.length})
             </button>
           </div>
 
@@ -444,7 +590,47 @@ export default function ChatsManagementSection({
         </div>
 
         <div className="conversations-list">
-          {error ? (
+          {viewMode === 'booked' && (bookedCustomerError || error) && (
+            <div className="booked-customer-error" role="alert">
+              {bookedCustomerError || `Unable to load conversations. ${error}`}
+            </div>
+          )}
+          {viewMode === 'booked' ? (
+            isLoading || isBookingsLoading ? (
+              <div className="pt-8 text-center text-neutral-400">
+                <p className="text-sm">Loading customer conversations...</p>
+              </div>
+            ) : filteredBookedCustomers.length ? (
+              filteredBookedCustomers.map((customer) => (
+                <div key={customer.id} className="booked-customer-list-item">
+                  <div className="booked-customer-avatar">
+                    {(customer.name || 'C').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="booked-customer-details">
+                    <p className="booked-customer-name">{customer.name}</p>
+                    <p className="booked-customer-email">{customer.email || 'No email available'}</p>
+                    <p className="booked-customer-bookings">
+                      {customer.bookingCount} booking{customer.bookingCount === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="booked-customer-chat-button"
+                    onClick={() => handleOpenBookedCustomerChat(customer)}
+                    disabled={!customer.customerId || isLoading || Boolean(error) || Boolean(startingBookedCustomerId)}
+                    title={customer.customerId ? 'Open conversation' : 'This booking has no linked customer account'}
+                    aria-label={`Chat with ${customer.name}`}
+                  >
+                    {startingBookedCustomerId === customer.id ? 'Opening...' : 'Chat'}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="pt-8 text-center text-neutral-500">
+                <p className="text-sm">No booked customers found</p>
+              </div>
+            )
+          ) : error ? (
             <div className="pt-8 text-center text-red-400">
               <p className="text-sm font-semibold mb-2">Permission Error</p>
               <p className="text-xs text-neutral-400 px-4">{error}</p>

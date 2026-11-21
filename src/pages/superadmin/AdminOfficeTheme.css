@@ -1,0 +1,324 @@
+.superadmin-shell {
+  --bg: #252b33;
+  --text: #e3e7ec;
+  --card: #303741;
+  --border: #4a535f;
+  --primary: #d98686;
+  --primary-hover: #c76c75;
+  --superadmin-bg: #252b33;
+  --superadmin-surface: #303741;
+  --superadmin-sidebar-bg: #303741;
+  --superadmin-topbar-bg: #303741;
+  --superadmin-border: #4a535f;
+  --superadmin-text: #e3e7ec;
+  --superadmin-text-muted: #aab3bf;
+  --superadmin-text-soft: #8793a2;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, "Segoe UI", sans-serif;
+}
+
+.superadmin-shell[data-theme='light'] {
+  --bg: #f0f2f4;
+  --text: #293747;
+  --card: #fff;
+  --border: #c9ced6;
+  --primary: #a43c47;
+  --primary-hover: #7e2934;
+  --superadmin-bg: #f0f2f4;
+  --superadmin-surface: #fff;
+  --superadmin-sidebar-bg: #e6e9ed;
+  --superadmin-topbar-bg: #e6e9ed;
+  --superadmin-border: #c9ced6;
+  --superadmin-text: #293747;
+  --superadmin-text-muted: #647284;
+  --superadmin-text-soft: #778393;
+}
+
+.superadmin-shell[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+.superadmin-shell .superadmin-content,
+.superadmin-shell .superadmin-main {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.superadmin-shell .superadmin-main .master-data-section {
+  --primary: #C51D34;
+  --primary-hover: #A01728;
+}
+
+.superadmin-shell .superadmin-main h1,
+.superadmin-shell .superadmin-main h2,
+.superadmin-shell .superadmin-main h3,
+.superadmin-shell .superadmin-main h4 {
+  font-family: Arial, "Segoe UI", sans-serif !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+}
+
+.superadmin-shell .superadmin-main button,
+.superadmin-shell .superadmin-main input,
+.superadmin-shell .superadmin-main select,
+.superadmin-shell .superadmin-main textarea,
+.superadmin-shell .superadmin-main [role="button"] {
+  border-radius: 2px !important;
+  box-shadow: none;
+  font-family: Arial, "Segoe UI", sans-serif;
+}
+
+.superadmin-shell .superadmin-main button {
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.superadmin-shell .superadmin-main input,
+.superadmin-shell .superadmin-main select,
+.superadmin-shell .superadmin-main textarea {
+  border-color: var(--border);
+  background-color: var(--card);
+  color: var(--text);
+}
+
+.superadmin-shell .superadmin-main input:focus,
+.superadmin-shell .superadmin-main select:focus,
+.superadmin-shell .superadmin-main textarea:focus {
+  border-color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.superadmin-shell .superadmin-main [class*="rounded"] {
+  border-radius: 2px !important;
+}
+
+.superadmin-shell .superadmin-main [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+.superadmin-shell .superadmin-main [class*="bg-gradient"],
+.superadmin-shell .superadmin-main [class*="bg-linear"] {
+  background-image: none !important;
+  background-color: var(--card) !important;
+}
+
+.superadmin-shell .superadmin-main article[class*="-card"]:not([class*="heading"]):not([class*="avatar"]),
+.superadmin-shell .superadmin-main section[class*="-card"]:not([class*="heading"]):not([class*="avatar"]),
+.superadmin-shell .superadmin-main aside[class*="-card"]:not([class*="heading"]):not([class*="avatar"]),
+.superadmin-shell .superadmin-main div[class*="-card"]:not([class*="heading"]):not([class*="avatar"]):not([class*="badge"]),
+.superadmin-shell .superadmin-main [class*="-board"],
+.superadmin-shell .superadmin-main [class*="table-shell"],
+.superadmin-shell .superadmin-main [class*="-panel"]:not([class*="heading"]):not([class*="title"]),
+.superadmin-shell .superadmin-main .service-requests-section,
+.superadmin-shell .superadmin-main .technicians-section,
+.superadmin-shell .superadmin-main .inventory-control-shell,
+.superadmin-shell .superadmin-main .inventory-delete-archived-shell,
+.superadmin-shell .superadmin-main .profile-card,
+.superadmin-shell .superadmin-main .chats-management-container {
+  border-radius: 2px;
+  background-color: var(--card);
+  background-image: none;
+  box-shadow: none;
+}
+
+.superadmin-shell .superadmin-main .inventory-summary-card::after {
+  content: none;
+}
+
+.superadmin-shell[data-theme='light'] .profile-section-grid,
+.superadmin-shell[data-theme='light'] .profile-section-grid p,
+.superadmin-shell[data-theme='light'] .profile-section-grid label,
+.superadmin-shell[data-theme='light'] .profile-section-grid span,
+.superadmin-shell[data-theme='light'] .profile-section-grid h1,
+.superadmin-shell[data-theme='light'] .profile-section-grid h2,
+.superadmin-shell[data-theme='light'] .profile-section-grid h3,
+.superadmin-shell[data-theme='light'] .profile-section-grid h4,
+.superadmin-shell[data-theme='light'] .profile-section-grid li,
+.superadmin-shell[data-theme='light'] .profile-section-grid td,
+.superadmin-shell[data-theme='light'] .profile-section-grid th {
+  color: var(--text) !important;
+}
+
+.superadmin-shell[data-theme='light'] .profile-section-grid input,
+.superadmin-shell[data-theme='light'] .profile-section-grid textarea,
+.superadmin-shell[data-theme='light'] .profile-section-grid select {
+  background: var(--card) !important;
+  color: var(--text) !important;
+}
+
+.superadmin-shell[data-theme='light'] .profile-section-grid .save-btn,
+.superadmin-shell[data-theme='light'] .profile-section-grid .save-btn:hover {
+  color: #fff !important;
+}
+
+.superadmin-shell .superadmin-main table {
+  border-collapse: collapse;
+  border-color: var(--border);
+  color: var(--text);
+  font-family: Arial, "Segoe UI", sans-serif;
+}
+
+.superadmin-shell .superadmin-main th {
+  background-color: color-mix(in srgb, var(--card) 86%, var(--bg));
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.superadmin-shell .superadmin-main td {
+  border-color: var(--border);
+}
+
+.superadmin-shell .superadmin-main tr:hover {
+  background-color: color-mix(in srgb, var(--card) 90%, var(--primary));
+}
+
+.superadmin-shell .superadmin-main [class*="pill"],
+.superadmin-shell .superadmin-main [class*="badge"] {
+  border-radius: 2px !important;
+  letter-spacing: 0.02em;
+}
+
+.superadmin-shell .superadmin-main [class*="dot"],
+.superadmin-shell .superadmin-main [class*="presence"] {
+  border-radius: 50% !important;
+}
+
+.superadmin-shell .superadmin-main button[class*="bg-blue-"] {
+  border-color: var(--primary) !important;
+  background-color: var(--primary) !important;
+  color: #fff !important;
+}
+
+.superadmin-shell .superadmin-main button[class*="bg-blue-"]:hover:not(:disabled) {
+  background-color: var(--primary-hover) !important;
+}
+
+.new-user-modal-panel,
+.edit-user-modal-panel,
+.password-change-modal-panel,
+.archived-users-modal-panel,
+.inventory-modal-panel,
+.scrollable-modal-panel {
+  border: 1px solid var(--border, #4a535f) !important;
+  border-radius: 3px !important;
+  background: var(--card, #303741) !important;
+  background-image: none !important;
+  box-shadow: 0 4px 12px rgba(20, 29, 39, 0.18) !important;
+  color: var(--text, #e3e7ec);
+}
+
+.new-user-modal-panel::before,
+.edit-user-modal-visual::after {
+  display: none;
+}
+
+.new-user-modal-visual,
+.edit-user-modal-visual {
+  background: var(--bg, #252b33) !important;
+}
+
+html[data-theme='light'] .new-user-modal-panel,
+html[data-theme='light'] .edit-user-modal-panel,
+html[data-theme='light'] .password-change-modal-panel,
+html[data-theme='light'] .archived-users-modal-panel,
+html[data-theme='light'] .inventory-modal-panel,
+html[data-theme='light'] .scrollable-modal-panel {
+  --border: #c9ced6;
+  --card: #fff;
+  --text: #293747;
+  --bg: #f0f2f4;
+}
+
+.new-user-modal-panel input,
+.new-user-modal-panel select,
+.edit-user-modal-panel input,
+.edit-user-modal-panel select,
+.password-change-modal-panel input,
+.inventory-modal-panel input,
+.inventory-modal-panel select,
+.inventory-modal-panel textarea {
+  border-radius: 2px !important;
+  border-color: var(--border, #4a535f) !important;
+  background: var(--card, #303741) !important;
+  color: var(--text, #e3e7ec) !important;
+}
+
+.new-user-modal-panel button,
+.edit-user-modal-panel button,
+.password-change-modal-panel button,
+.archived-users-modal-panel button,
+.inventory-modal-panel button {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.admin-confirmation-panel {
+  border: 1px solid var(--border, #4a535f) !important;
+  border-radius: 3px !important;
+  background: var(--card, #303741) !important;
+  background-image: none !important;
+  box-shadow: 0 4px 12px rgba(20, 29, 39, 0.18) !important;
+  color: var(--text, #e3e7ec) !important;
+}
+
+.admin-confirmation-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-theme='light'] .admin-confirmation-panel {
+  --border: #c9ced6;
+  --card: #fff;
+  --text: #293747;
+}
+
+html[data-theme='light'] .new-user-modal-panel,
+html[data-theme='light'] .edit-user-modal-panel,
+html[data-theme='light'] .password-change-modal-panel,
+html[data-theme='light'] .archived-users-modal-panel,
+html[data-theme='light'] .inventory-modal-panel,
+html[data-theme='light'] .scrollable-modal-panel {
+  color: #293747 !important;
+}
+
+html[data-theme='light'] .new-user-modal-panel h1,
+html[data-theme='light'] .new-user-modal-panel h2,
+html[data-theme='light'] .new-user-modal-panel h3,
+html[data-theme='light'] .new-user-modal-panel p,
+html[data-theme='light'] .new-user-modal-panel label,
+html[data-theme='light'] .edit-user-modal-panel h1,
+html[data-theme='light'] .edit-user-modal-panel h2,
+html[data-theme='light'] .edit-user-modal-panel h3,
+html[data-theme='light'] .edit-user-modal-panel p,
+html[data-theme='light'] .edit-user-modal-panel label,
+html[data-theme='light'] .archived-users-modal-panel h1,
+html[data-theme='light'] .archived-users-modal-panel h2,
+html[data-theme='light'] .archived-users-modal-panel h3,
+html[data-theme='light'] .archived-users-modal-panel p,
+html[data-theme='light'] .archived-users-modal-panel label,
+html[data-theme='light'] .inventory-modal-panel h1,
+html[data-theme='light'] .inventory-modal-panel h2,
+html[data-theme='light'] .inventory-modal-panel h3,
+html[data-theme='light'] .inventory-modal-panel p,
+html[data-theme='light'] .inventory-modal-panel label {
+  color: #293747 !important;
+}
+
+html[data-theme='light'] .admin-confirmation-panel h3,
+html[data-theme='light'] .admin-confirmation-panel p {
+  color: #293747 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .superadmin-shell .superadmin-main *,
+  .superadmin-shell .superadmin-main *::before,
+  .superadmin-shell .superadmin-main *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

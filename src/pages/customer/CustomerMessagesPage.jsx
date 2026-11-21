@@ -140,23 +140,30 @@ export default function CustomerMessagesPage({
     if (!messageText.trim() || !selectedConversationId) return
 
     try {
+      const trimmedMessage = messageText.trim()
+
       await addDoc(collection(db, 'conversations', selectedConversationId, 'messages'), {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || 'User',
         senderAvatar: userAvatar || null,
-        text: messageText.trim(),
+        sender: 'user',
+        type: 'user',
+        text: trimmedMessage,
         timestamp: serverTimestamp(),
         read: false,
       })
 
-      // Update conversation's updatedAt and lastMessage
       await updateDoc(doc(db, 'conversations', selectedConversationId), {
         updatedAt: serverTimestamp(),
-        lastMessage: messageText.trim(),
+        lastMessage: trimmedMessage,
         lastMessageTime: serverTimestamp(),
-        senderName: currentUser.displayName || 'User',   // 👈 add this
-        senderAvatar: userAvatar || null,                // 👈 add this
-        senderId: currentUser.uid,                       // 👈 add this
+        title: selectedConversation?.title || currentUser.displayName || 'Customer Support',
+        senderName: currentUser.displayName || 'User',
+        senderAvatar: userAvatar || null,
+        senderId: currentUser.uid,
+        userEmail: currentUser.email || '',
+        userId: currentUser.uid,
+        status: 'open',
       })
 
       setMessageText('')
@@ -444,12 +451,18 @@ export default function CustomerMessagesPage({
                         const docRef = await addDoc(collection(db, 'conversations'), {
                           participants: [currentUser.uid, adminId],
                           userId: currentUser.uid,
-                          title: 'Admin Support',
-                          otherUserAvatar: null, // Optionally set admin avatar
+                          userEmail: currentUser.email || '',
+                          title: currentUser.displayName || 'Customer Support',
+                          displayName: currentUser.displayName || 'Customer',
+                          otherUserAvatar: null,
                           lastMessage: '',
                           lastMessageTime: serverTimestamp(),
                           createdAt: serverTimestamp(),
                           updatedAt: serverTimestamp(),
+                          senderName: currentUser.displayName || 'Customer',
+                          senderAvatar: userAvatar || null,
+                          senderId: currentUser.uid,
+                          status: 'open',
                           isGuest: false,
                         });
                         setSelectedConversationId(docRef.id);

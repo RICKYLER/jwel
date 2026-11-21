@@ -233,6 +233,9 @@
 .superadmin-nav-subitem {
   width: 100%;
 
+  display: flex;
+  align-items: center;
+
   padding: 10px 12px;
   margin-bottom: 4px;
 
@@ -383,6 +386,10 @@
 /* MOBILE */
 
 @media (max-width: 1024px) {
+  .superadmin-sidebar-toggle {
+    display: none;
+  }
+
   .superadmin-sidebar {
     transform: translateX(-100%);
   }
@@ -394,4 +401,227 @@
   .superadmin-sidebar-close {
     display: flex;
   }
+}
+
+.superadmin-shell .superadmin-sidebar {
+  --admin-sidebar-bg: #303741;
+  --admin-sidebar-surface: #252b33;
+  --admin-sidebar-hover: #3b4552;
+  --admin-sidebar-border: #505a67;
+  --admin-sidebar-text: #e5e9ef;
+  --admin-sidebar-muted: #aeb8c5;
+  --admin-sidebar-accent: #C51D34;
+  padding: 12px 0;
+  border-right: 1px solid var(--admin-sidebar-border);
+  background: var(--admin-sidebar-bg);
+  box-shadow: 1px 0 4px rgba(20, 29, 39, 0.14);
+  color: var(--admin-sidebar-text);
+}
+
+[data-theme='light'] .superadmin-shell .superadmin-sidebar,
+.superadmin-shell[data-theme='light'] .superadmin-sidebar {
+  --admin-sidebar-bg: #e6e9ed;
+  --admin-sidebar-surface: #fff;
+  --admin-sidebar-hover: #f1f3f5;
+  --admin-sidebar-border: #bfc6ce;
+  --admin-sidebar-text: #293747;
+  --admin-sidebar-muted: #647284;
+  --admin-sidebar-accent: #C51D34;
+}
+
+.superadmin-shell .superadmin-header {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0 12px 12px;
+  border-bottom: 1px solid var(--admin-sidebar-border);
+}
+
+.superadmin-shell .superadmin-brand-block {
+  align-items: center;
+  gap: 9px;
+  color: var(--admin-sidebar-text);
+}
+
+.superadmin-shell .superadmin-logo {
+  width: 30px;
+  height: 30px;
+}
+
+.superadmin-shell .superadmin-brand-title {
+  margin: 0;
+  color: var(--admin-sidebar-text);
+  font-family: Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.superadmin-shell .superadmin-brand-subtitle {
+  margin: 3px 0 0;
+  color: var(--admin-sidebar-muted);
+  font-family: Arial, sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.01em;
+  opacity: 1;
+  text-transform: none;
+}
+
+.superadmin-shell .superadmin-sidebar-controls {
+  gap: 4px;
+}
+
+.superadmin-shell .superadmin-sidebar-toggle,
+.superadmin-shell .superadmin-sidebar-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--admin-sidebar-border);
+  border-radius: 2px;
+  background: var(--admin-sidebar-surface);
+  color: var(--admin-sidebar-text);
+}
+
+.superadmin-shell .superadmin-sidebar-toggle:hover,
+.superadmin-shell .superadmin-sidebar-close:hover {
+  border-color: var(--admin-sidebar-accent);
+  background: var(--admin-sidebar-hover);
+}
+
+.superadmin-shell .superadmin-nav {
+  padding: 0 8px;
+}
+
+.superadmin-shell .superadmin-nav-group {
+  margin-bottom: 12px;
+}
+
+.superadmin-shell .superadmin-nav-group-label {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  color: var(--admin-sidebar-muted);
+  font-family: Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+.superadmin-shell .superadmin-sidebar.is-collapsed .superadmin-nav-group-label {
+  display: none;
+}
+
+.superadmin-shell .superadmin-nav-item {
+  min-height: 38px;
+  margin-bottom: 2px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--admin-sidebar-text);
+  font-family: Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.superadmin-shell .superadmin-nav-item:hover {
+  background: var(--admin-sidebar-hover);
+}
+
+.superadmin-shell .superadmin-nav-item.is-active {
+  border-color: var(--admin-sidebar-border);
+  border-left: 3px solid var(--admin-sidebar-accent);
+  background: var(--admin-sidebar-surface);
+  color: var(--admin-sidebar-text);
+  box-shadow: none;
+}
+
+.superadmin-shell .superadmin-nav-icon {
+  margin-right: 10px;
+  color: var(--admin-sidebar-muted);
+}
+
+.superadmin-shell .superadmin-nav-item.is-active .superadmin-nav-icon {
+  color: var(--admin-sidebar-accent);
+}
+
+.superadmin-shell .superadmin-nav-right {
+  color: var(--admin-sidebar-muted);
+}
+
+.superadmin-shell .superadmin-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--admin-sidebar-border);
+  border-radius: 2px;
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-text);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.superadmin-shell .superadmin-submenu {
+  margin: 2px 0 6px 12px;
+  padding-left: 8px;
+  border-left: 1px solid var(--admin-sidebar-border);
+}
+
+.superadmin-shell .superadmin-nav-subitem {
+  min-height: 32px;
+  margin-bottom: 1px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--admin-sidebar-muted);
+  font-family: Arial, sans-serif;
+  font-size: 0.74rem;
+  font-weight: 500;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.superadmin-shell .superadmin-nav-subitem:hover {
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-text);
+}
+
+.superadmin-shell .superadmin-nav-subitem.is-active {
+  border-color: var(--admin-sidebar-border);
+  border-left-color: var(--admin-sidebar-accent);
+  background: var(--admin-sidebar-surface);
+  color: var(--admin-sidebar-text);
+}
+
+.superadmin-shell .superadmin-footer {
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--admin-sidebar-border);
+}
+
+.superadmin-shell .superadmin-sidebar-action {
+  min-height: 38px;
+  margin-bottom: 2px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--admin-sidebar-muted);
+  font-family: Arial, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.superadmin-shell .superadmin-sidebar-action:hover {
+  border-color: var(--admin-sidebar-border);
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-sidebar-text);
+}
+
+.superadmin-shell .superadmin-action-icon {
+  margin-right: 10px;
 }

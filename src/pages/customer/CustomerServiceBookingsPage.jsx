@@ -151,6 +151,25 @@ export default function CustomerServiceBookingsPage({
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   }
 
+  const formatBookingDate = (booking) => {
+    if (booking.bookingDateLabel) return booking.bookingDateLabel
+
+    const dateKey = booking.bookingDateKey || booking.dateKey
+    if (dateKey) {
+      const [year, month, day] = String(dateKey).split('-').map(Number)
+      const date = new Date(year, month - 1, day)
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+      }
+    }
+
+    return formatDate(booking.createdAt)
+  }
+
   const formatTime = (label) => label || 'N/A'
 
   return (
@@ -301,14 +320,22 @@ export default function CustomerServiceBookingsPage({
 
                     {/* Right Column */}
                     <div className="space-y-4">
-                      {/* Appointment Date & Time */}
+                      {/* Booking submission and schedule details */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
-                            Appointment Date
+                            Book Submitted
                           </p>
                           <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                             {formatDate(booking.createdAt)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                            Booking Schedule Date
+                          </p>
+                          <p className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {formatBookingDate(booking)}
                           </p>
                         </div>
                         <div>

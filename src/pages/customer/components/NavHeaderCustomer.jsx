@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import MenuRoundedIcon from '@mui/icons-material/MenuRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
@@ -11,11 +11,14 @@ import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 import bykelinkLogo from '../../../assets/bykelinklogo.png'
 import { db } from '../../../firebase'
+import ConfirmationModal from '../../superadmin/components/ConfirmationModal'
 
 export default function NavHeaderCustomer({
   currentUser,
   isDarkMode,
+  onNavigateToShowroom,
   onNavigateToService,
+  onNavigateToFinancing,
   onNavigateToFinancingStatus,
   onNavigateToMessages,
   onNavigateToProfile,
@@ -26,14 +29,31 @@ export default function NavHeaderCustomer({
   userAvatar = null,
 }) {
   const [notifications, setNotifications] = useState([])
+  const [financingNotifications, setFinancingNotifications] = useState([])
+  const [messageCount, setMessageCount] = useState(0)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false)
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false)
   const [isDrawerAnimating, setIsDrawerAnimating] = useState(false)
+  const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] = useState(false)
+  const financingStatusRef = useRef(new Map())
+  const hasLoadedFinancingStatusRef = useRef(false)
+  const bookingAssignmentRef = useRef(new Map())
+  const hasLoadedBookingAssignmentRef = useRef(false)
+  const bookingStatusRef = useRef(new Map())
+  const hasLoadedBookingStatusRef = useRef(false)
 
   useEffect(() => {
     if (!currentUser?.uid) {
       setNotifications([])
+      setFinancingNotifications([])
+      financingStatusRef.current = new Map()
+      hasLoadedFinancingStatusRef.current = false
+      bookingAssignmentRef.current = new Map()
+      hasLoadedBookingAssignmentRef.current = false
+      bookingStatusRef.current = new Map()
+      hasLoadedBookingStatusRef.current = false
+      setMessageCount(0)
       return undefined
     }
 
@@ -62,11 +82,200 @@ export default function NavHeaderCustomer({
           }
         })
 
-        setNotifications(liveNotifications)
+        const assignmentNotifications = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data()
+            const assignedTechnician = String(data.assignedTechnician || '').trim()
+            const previousAssignment = bookingAssignmentRef.current.get(docSnap.id)
+
+            if (!assignedTechnician || !hasLoadedBookingAssignmentRef.current || previousAssignment) {
+              return null
+            }
+
+            return {
+              id: `mechanic-assigned-${docSnap.id}`,
+              title: 'Mechanic Assigned',
+              message: `${data.assignedTechnicianName || 'A mechanic'} has been assigned to your ${data.service || 'service'} booking.`,
+              timestamp: data.updatedAt?.toDate?.()?.toLocaleString?.() || 'Just now',
+              read: false,
+            }
+          })
+          .filter(Boolean)
+
+        const completionNotifications = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data()
+            const bookingStatus = String(data.status || '').trim().toLowerCase()
+            const previousStatus = bookingStatusRef.current.get(docSnap.id)
+            const wasCompleted = previousStatus === 'services completed' || previousStatus === 'completed'
+            const isCompleted = bookingStatus === 'services completed' || bookingStatus === 'completed'
+
+            if (!isCompleted || wasCompleted || !hasLoadedBookingStatusRef.current) {
+              return null
+            }
+
+            return {
+              id: `service-completed-${docSnap.id}`,
+              title: 'Service Completed',
+              message: `Your ${data.service || 'service'} booking has been completed.`,
+              timestamp: data.updatedAt?.toDate?.()?.toLocaleString?.() || 'Just now',
+              read: false,
+            }
+          })
+          .filter(Boolean)
+
+        const currentAssignmentState = new Map(
+          snapshot.docs.map((docSnap) => [docSnap.id, String(docSnap.data().assignedTechnician || '').trim()]),
+        )
+        const currentStatusState = new Map(
+          snapshot.docs.map((docSnap) => [docSnap.id, String(docSnap.data().status || '').trim().toLowerCase()]),
+        )
+        setNotifications((current) => {
+          const existingUnreadAssignments = current.filter(
+            (notification) => notification.id.startsWith('mechanic-assigned-') && !notification.read,
+          )
+          const existingUnreadCompletions = current.filter(
+            (notification) => notification.id.startsWith('service-completed-') && !notification.read,
+          )
+
+          return [
+            ...assignmentNotifications,
+            ...existingUnreadAssignments.filter(
+              (existing) => !assignmentNotifications.some((next) => next.id === existing.id),
+            ),
+            ...completionNotifications,
+            ...existingUnreadCompletions.filter(
+              (existing) => !completionNotifications.some((next) => next.id === existing.id),
+            ),
+            ...liveNotifications,
+          ]
+        })
+        bookingAssignmentRef.current = currentAssignmentState
+        hasLoadedBookingAssignmentRef.current = true
+        bookingStatusRef.current = currentStatusState
+        hasLoadedBookingStatusRef.current = true
       },
       (error) => {
         console.error('Unable to load live customer notifications:', error)
         setNotifications([])
+      },
+    )
+
+    return () => unsubscribe()
+  }, [currentUser?.uid])
+
+  useEffect(() => {
+    if (!currentUser?.uid) return undefined
+
+    const financingQuery = query(
+      collection(db, 'financingApplications'),
+      where('submittedBy.uid', '==', currentUser.uid),
+    )
+
+    const unsubscribe = onSnapshot(
+      financingQuery,
+      (snapshot) => {
+        const nextStatuses = new Map()
+        const nextNotifications = []
+        const changedNotifications = []
+
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data()
+          const status = String(data.status || '').toLowerCase()
+          const referenceId = data.referenceId || docSnap.id
+
+          nextStatuses.set(docSnap.id, status)
+
+          if (status === 'approved' || status === 'rejected' || status === 'completed') {
+            const notification = {
+              id: `financing-${docSnap.id}-${status}`,
+              title: status === 'approved'
+                ? 'Financing Approved'
+                : status === 'rejected'
+                  ? 'Financing Application Rejected'
+                  : 'Financing Application Completed',
+              message: status === 'approved'
+                ? `Your application ${referenceId} has been approved.`
+                : status === 'rejected'
+                  ? `Your application ${referenceId} was rejected. Please review the application details.`
+                  : `Your application ${referenceId} is completed and ready for the next step.`,
+              timestamp: data.updatedAt?.toDate?.()?.toLocaleString?.() || 'Just now',
+              read: true,
+            }
+
+            nextNotifications.push(notification)
+
+            if (
+              hasLoadedFinancingStatusRef.current &&
+              financingStatusRef.current.get(docSnap.id) !== status
+            ) {
+              changedNotifications.push({ ...notification, read: false })
+            }
+          }
+        })
+
+        if (changedNotifications.length > 0) {
+          setFinancingNotifications((current) => [
+            ...changedNotifications,
+            ...current.filter((notification) => !changedNotifications.some((changed) => changed.id === notification.id)),
+          ])
+        } else {
+          setFinancingNotifications((current) => {
+            const unreadNotifications = current.filter((notification) => !notification.read)
+            return [...unreadNotifications, ...nextNotifications.filter(
+              (notification) => !unreadNotifications.some((unread) => unread.id === notification.id),
+            )]
+          })
+        }
+
+        financingStatusRef.current = nextStatuses
+        hasLoadedFinancingStatusRef.current = true
+      },
+      (error) => {
+        console.error('Unable to subscribe to financing application notifications:', error)
+      },
+    )
+
+    return () => unsubscribe()
+  }, [currentUser?.uid])
+
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setMessageCount(0)
+      return undefined
+    }
+
+    const conversationQuery = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', currentUser.uid),
+    )
+
+    const unsubscribe = onSnapshot(
+      conversationQuery,
+      async (snapshot) => {
+        try {
+          let unreadTotal = 0
+
+          for (const conversationDoc of snapshot.docs) {
+            const messagesQuery = query(
+              collection(db, 'conversations', conversationDoc.id, 'messages'),
+              where('read', '==', false),
+              where('senderId', '!=', currentUser.uid),
+            )
+
+            const messageSnapshot = await getDocs(messagesQuery)
+            unreadTotal += messageSnapshot.docs.length
+          }
+
+          setMessageCount(unreadTotal)
+        } catch (error) {
+          console.error('Unable to load customer message count:', error)
+          setMessageCount(0)
+        }
+      },
+      (error) => {
+        console.error('Unable to subscribe to customer conversations:', error)
+        setMessageCount(0)
       },
     )
 
@@ -107,6 +316,13 @@ export default function NavHeaderCustomer({
   }, [isProfileDrawerOpen])
 
   const handleLogout = () => {
+    setIsMenuOpen(false)
+    setIsProfileDrawerOpen(false)
+    setIsLogoutConfirmationOpen(true)
+  }
+
+  const confirmLogout = () => {
+    setIsLogoutConfirmationOpen(false)
     onSignOut?.()
   }
 
@@ -121,7 +337,14 @@ export default function NavHeaderCustomer({
           : notif,
       ),
     )
+    setFinancingNotifications((current) =>
+      current.map((notif) =>
+        notif.id === notifId ? { ...notif, read: true } : notif,
+      ),
+    )
   }
+
+  const combinedNotifications = [...notifications, ...financingNotifications]
 
   const handleProfileClick = () => {
     console.log('My Profile clicked, calling onNavigateToProfile:', onNavigateToProfile)
@@ -148,13 +371,37 @@ export default function NavHeaderCustomer({
           <div className="flex items-center gap-3 cursor-pointer">
             <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-lg bg-red-600 p-1.5" />
             <div>
-              <p className="text-sm font-black uppercase tracking-tight text-red-600">BYKELINK</p>
-              <p className="hidden sm:block text-[9px] font-bold text-slate-500 tracking-widest">Yamaha Dealer</p>
+              <p className="text-sm font-black uppercase tracking-tight text-red-600">BYEKLINK MOTOR INC.</p>
+              <p className="hidden sm:block text-[9px] font-bold text-slate-500 tracking-widest">TAGUM CITY</p>
             </div>
           </div>
 
           {/* Desktop Navigation */}
           <nav className={`hidden items-center gap-8 lg:flex`}>
+            <button
+              onClick={onNavigateToShowroom}
+              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                isActive('showroom')
+                  ? 'border-red-600 text-red-600'
+                  : isDarkMode
+                    ? 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Showroom
+            </button>
+            <button
+              onClick={() => onNavigateToFinancing?.()}
+              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                isActive('financing')
+                  ? 'border-red-600 text-red-600'
+                  : isDarkMode
+                    ? 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Financing
+            </button>
             <button
               onClick={onNavigateToService}
               className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
@@ -191,22 +438,33 @@ export default function NavHeaderCustomer({
             >
               Track My Status
             </button>
-            <button
-              onClick={onNavigateToMessages}
-              className={`border-b-2 pb-1 text-[11px] font-bold uppercase tracking-[0.2em] transition-colors ${
-                isActive('messages')
-                  ? 'border-red-600 text-red-600'
-                  : isDarkMode
-                    ? 'border-transparent text-slate-400 hover:text-white'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Messages
-            </button>
           </nav>
 
           {/* Desktop Right Section */}
-          <div className="hidden items-center gap-4 lg:flex">
+          <div className="hidden items-center gap-3 lg:flex">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={onNavigateToMessages}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition ${
+                  isActive('messages')
+                    ? 'bg-red-600/10 text-red-600'
+                    : isDarkMode
+                      ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800'
+                      : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'
+                }`}
+                aria-label={`Messages${messageCount > 0 ? `, ${messageCount} unread` : ''}`}
+                title="Messages"
+              >
+                <ChatRoundedIcon sx={{ fontSize: 20 }} />
+                {messageCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                    {messageCount > 99 ? '99+' : messageCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
             {/* Notification Bell */}
             <div className="relative">
               <button
@@ -224,8 +482,8 @@ export default function NavHeaderCustomer({
                     <h3 className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto space-y-0">
-                    {notifications.length > 0 ? (
-                      notifications.map((notif) => (
+                    {combinedNotifications.length > 0 ? (
+                      combinedNotifications.map((notif) => (
                         <div
                           key={notif.id}
                           onClick={() => handleNotificationClick(notif.id)}
@@ -247,10 +505,10 @@ export default function NavHeaderCustomer({
 
             {/* Profile Button */}
             <button
-              onClick={() => {
-                console.log('Avatar button clicked, current state:', isProfileDrawerOpen)
-                setIsProfileDrawerOpen(!isProfileDrawerOpen)
-              }}
+              type="button"
+              onClick={() => setIsProfileDrawerOpen((isOpen) => !isOpen)}
+              aria-label={isProfileDrawerOpen ? 'Close profile drawer' : 'Open profile drawer'}
+              aria-expanded={isProfileDrawerOpen}
               className={`p-1 rounded-lg transition ${isDarkMode ? 'text-slate-400 hover:text-red-600 hover:bg-slate-800' : 'text-slate-600 hover:text-red-600 hover:bg-slate-100'}`}
             >
               {userAvatar ? (
@@ -282,6 +540,12 @@ export default function NavHeaderCustomer({
         {/* Mobile Menu */}
         {isMenuOpen && (
           <nav className={`space-y-2 border-t px-4 py-3 sm:px-6 lg:hidden ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+            <button onClick={onNavigateToShowroom} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              Showroom
+            </button>
+            <button onClick={() => onNavigateToFinancing?.()} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
+              Financing
+            </button>
             <button onClick={onNavigateToService} className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'} w-full text-left`}>
               Service
             </button>
@@ -295,6 +559,13 @@ export default function NavHeaderCustomer({
               Messages
             </button>
             <a className={`block text-[11px] font-bold uppercase tracking-[0.2em] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Support</a>
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center gap-2 border-t border-slate-700 pt-3 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-red-600"
+            >
+              <LogoutRoundedIcon sx={{ fontSize: 18 }} />
+              Logout
+            </button>
           </nav>
         )}
       </header>
@@ -302,11 +573,12 @@ export default function NavHeaderCustomer({
       {/* Right-side Profile Slide Panel and Overlay rendered at root level */}
       {isProfileDrawerOpen && (
         <>
-          {/* Overlay - covers everything including header */}
+          {/* Keep the profile trigger above the drawer so it can toggle closed. */}
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-x-0 bottom-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={() => setIsProfileDrawerOpen(false)}
             style={{ 
+              top: '65px',
               pointerEvents: 'auto',
               opacity: isDrawerAnimating ? 1 : 0,
               transition: 'opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -315,7 +587,7 @@ export default function NavHeaderCustomer({
 
           {/* Slide Panel */}
           <div
-            className={`fixed right-0 top-0 h-screen w-80 z-50 shadow-2xl overflow-y-auto ${
+            className={`fixed right-0 top-[65px] h-[calc(100dvh-65px)] w-80 z-50 shadow-2xl overflow-y-auto ${
               isDarkMode ? 'bg-slate-950 border-l border-slate-800' : 'bg-white border-l border-slate-200'
             }`}
             style={{
@@ -407,6 +679,17 @@ export default function NavHeaderCustomer({
           </div>
         </>
       )}
+      <ConfirmationModal
+        open={isLogoutConfirmationOpen}
+        title="Log out"
+        message="Are you sure you want to log out? You will need to sign in again to access your account."
+        confirmText="Log out"
+        cancelText="Cancel"
+        isDangerous
+        isDarkMode={isDarkMode}
+        onConfirm={confirmLogout}
+        onCancel={() => setIsLogoutConfirmationOpen(false)}
+      />
     </>
   )
 }

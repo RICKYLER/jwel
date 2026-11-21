@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './GlobalLoadingScreen.css'
 
-export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, onComplete = null }) {
+export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, onComplete = null, autoComplete = true }) {
   const [isVisible, setIsVisible] = useState(false)
   const [progress, setProgress] = useState(0)
   const [isCompleting, setIsCompleting] = useState(false)
@@ -22,6 +22,8 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
     document.body.classList.add('kinetic-scroll-lock')
 
     let currentProgress = 0
+    let completionTimer
+    let hideTimer
     
     // Gradual progress increase for first 3 seconds
     const progressInterval = setInterval(() => {
@@ -36,27 +38,25 @@ export default function GlobalLoadingScreen({ role = 'Dashboard', delay = 500, o
     }, 300)
 
     // Force completion to 100% after 3.5 seconds
-    const completionTimer = setTimeout(() => {
-      setIsCompleting(true)
-      setProgress(100)
-      
-      // Call callback and hide after animation completes
-      const hideTimer = setTimeout(() => {
-        if (onComplete) {
-          onComplete()
-        }
-      }, 800) // Allow time for completion animation
+    if (autoComplete) {
+      completionTimer = setTimeout(() => {
+        setIsCompleting(true)
+        setProgress(100)
 
-      return () => clearTimeout(hideTimer)
-    }, 3500)
+        hideTimer = setTimeout(() => {
+          onComplete?.()
+        }, 800)
+      }, 3500)
+    }
 
     return () => {
       clearInterval(progressInterval)
       clearTimeout(completionTimer)
+      clearTimeout(hideTimer)
       document.documentElement.classList.remove('kinetic-scroll-lock')
       document.body.classList.remove('kinetic-scroll-lock')
     }
-  }, [isVisible, onComplete])
+  }, [isVisible, onComplete, autoComplete])
 
   if (!isVisible) {
     return null

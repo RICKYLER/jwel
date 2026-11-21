@@ -281,7 +281,7 @@ export default function UserManagementSection({
   }
 
   return (
-    <section className={`user-management-shell animate-entrance space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
+    <section className={`user-management-shell animate-entrance ${!isDarkMode ? 'light-mode' : ''}`}>
       <ConfirmationModal
         open={!!confirmAction}
         title={
@@ -316,12 +316,12 @@ export default function UserManagementSection({
         }}
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="user-management-page-header flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className={`font-['Epilogue'] text-3xl font-black uppercase tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'} sm:text-4xl`}>
+          <h2 className="user-management-page-title">
             User Management
           </h2>
-          <p className={`mt-2 text-sm ${isDarkMode ? 'text-white/50' : 'text-gray-600'}`}>
+          <p className="user-management-page-subtitle">
             Configure and oversee the Bykelink operator network.
           </p>
         </div>
@@ -330,29 +330,29 @@ export default function UserManagementSection({
           type="button"
           onClick={onOpenNewUserModal}
           disabled={!canManageAccess || isSubmitting}
-          className="user-management-primary-action inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-70"
+          className="user-management-primary-action inline-flex items-center justify-center gap-2 px-4 py-2 text-sm disabled:opacity-70"
         >
           <PersonAddAlt1RoundedIcon sx={{ fontSize: 16 }} />
           New User
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="user-stat-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {[
           { label: 'Total Users', value: totalUsers.toLocaleString(), detail: '+12.5% from last month' },
           { label: 'New this week', value: newUsersThisWeek.toLocaleString(), detail: 'Fresh operator onboarding' },
           { label: 'Active role rules', value: activeRoles.toLocaleString(), detail: 'Live access grants' },
           { label: 'Pending approvals', value: pendingApprovals.toLocaleString(), detail: 'Awaiting review' },
         ].map((card) => (
-          <article key={card.label} className="user-stat-card rounded-2xl p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">{card.label}</p>
-            <h3 className="mt-3 text-3xl font-black text-white font-['Epilogue']">{card.value}</h3>
-            <p className="mt-2 text-xs text-white/50">{card.detail}</p>
+          <article key={card.label} className="user-stat-card">
+            <p className="user-stat-label">{card.label}</p>
+            <h3 className="user-stat-value">{card.value}</h3>
+            <p className="user-stat-detail">{card.detail}</p>
           </article>
         ))}
       </div>
 
-      <div className="user-table-shell rounded-[28px] p-4 sm:p-5">
+      <div className="user-table-shell">
         <div className="user-table-toolbar">
           <div className="user-table-filter-group">
             <select
@@ -536,7 +536,7 @@ export default function UserManagementSection({
           })}
 
           {!paginatedUsers.length && (
-            <div className="rounded-xl px-3 py-8 text-center text-sm text-white/50">
+            <div className="user-management-empty">
               No user records match the current filters.
             </div>
           )}

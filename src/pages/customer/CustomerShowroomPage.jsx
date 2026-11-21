@@ -198,6 +198,46 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
     return '#808080'
   }
 
+  const getStockStatus = (item) => {
+    const rawStatus = String(item?.stockStatus || item?.status || item?.availability || '')
+      .trim()
+      .toLowerCase()
+
+    if (item?.isAvailable === false || item?.available === false || rawStatus === 'not available' || rawStatus === 'unavailable') {
+      return 'Not Available'
+    }
+
+    const stockValue = Number(item?.stock ?? item?.availableStock ?? item?.inventoryCount ?? 0)
+
+    if (stockValue <= 0 || rawStatus === 'out of stock') {
+      return 'Out of Stock'
+    }
+
+    if (stockValue <= 5 || rawStatus === 'low stock') {
+      return 'Low Stock'
+    }
+
+    if (rawStatus === 'available' || stockValue > 0) {
+      return 'Available'
+    }
+
+    return 'Not Available'
+  }
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Available':
+        return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35'
+      case 'Low Stock':
+        return 'bg-amber-500/15 text-amber-300 border border-amber-500/35'
+      case 'Out of Stock':
+        return 'bg-red-500/15 text-red-300 border border-red-500/35'
+      case 'Not Available':
+      default:
+        return 'bg-slate-700/60 text-slate-300 border border-slate-600'
+    }
+  }
+
   return (
     <div className={`min-h-screen overflow-x-hidden ${isDarkMode ? 'bg-linear-to-b from-slate-950 via-slate-900 to-slate-950 text-[#e5e2e1]' : 'bg-white text-slate-900'} font-['Manrope']`}>
       <NavHeaderCustomer
@@ -328,9 +368,6 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                       className="h-4 w-4 accent-red-600 border-slate-600 bg-slate-700 rounded cursor-pointer"
                     />
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300">In Stock Only</span>
-                    <span className="ml-auto w-5 h-5 bg-red-600 text-white text-[8px] font-black flex items-center justify-center rounded-sm">
-                      {filteredAndSorted.filter(i => (i.stock || 0) > 0).length}
-                    </span>
                   </label>
                 </div>
 
@@ -396,8 +433,8 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                           alt={item.name}
                           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         />
-                        <span className="absolute left-3 top-3 bg-red-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white rounded-sm">
-                          {item.stock ? `${item.stock} in stock` : 'Limited'}
+                        <span className={`absolute left-3 top-3 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] rounded-sm ${getStatusStyle(getStockStatus(item))}`}>
+                          {getStockStatus(item)}
                         </span>
                         <button
                           onClick={() => toggleFavorite(item.id)}
@@ -425,39 +462,6 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                         </p>
 
                         {/* Color Variants with Stock */}
-                        {Array.isArray(item.colorVariants) && item.colorVariants.length > 0 && (
-                          <div className="space-y-3 border-t border-slate-800 pt-3">
-                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Available Colors & Stock</p>
-                            <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                              {item.colorVariants.slice(0, 4).map((variant, idx) => (
-                                <div key={idx} className="flex flex-col items-center text-center">
-                                  <div
-                                    className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-2 border-slate-700 shadow-lg"
-                                    style={{
-                                      backgroundColor: getColorHex(
-                                        typeof variant === 'string'
-                                          ? variant
-                                          : typeof variant === 'object'
-                                          ? variant?.color?.name || variant?.name || variant?.color || ''
-                                          : ''
-                                      )
-                                    }}
-                                  />
-                                  <p className="text-[8px] font-semibold text-slate-300 mt-2 line-clamp-1">
-                                    {typeof variant === 'string'
-                                      ? variant
-                                      : typeof variant === 'object'
-                                      ? variant?.color?.name || variant?.name || 'Color'
-                                      : 'Color'}
-                                  </p>
-                                  <p className="text-[8px] font-bold text-slate-400 mt-1">
-                                    {(typeof variant === 'object' ? variant?.stock : 0) || '-'} in stock
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                         {/* Colors */}  
                         {getColors(item).length > 0 && !Array.isArray(item.colorVariants) && (
                           <div className="space-y-1 border-t border-slate-800 pt-3">
@@ -480,12 +484,6 @@ export default function CustomerShowroomPage({ currentUser, onSignOut, onNavigat
                             </div>
                           </div>
                         )}
-
-                        {/* Price */}
-                        <div className="border-t border-slate-800 pt-3">
-                          <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">Starting Price</p>
-                          <p className="mt-1 text-lg font-black text-white">{formatPrice(item.price || 0)}</p>
-                        </div>
 
                         {/* View Details Button */}
                         <button

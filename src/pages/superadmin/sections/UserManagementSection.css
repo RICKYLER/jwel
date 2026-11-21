@@ -1449,3 +1449,364 @@
   background: #f3f4f6;
 }
 
+.user-management-shell {
+  --user-admin-surface: #fff;
+  --user-admin-surface-muted: #f3f5f7;
+  --user-admin-border: #c9ced6;
+  --user-admin-text: #263445;
+  --user-admin-muted: #687485;
+  --user-admin-accent: #C51D34;
+  display: grid;
+  gap: 1rem;
+  color: var(--user-admin-text);
+}
+
+.user-management-shell.light-mode {
+  --user-admin-surface: #fff;
+  --user-admin-surface-muted: #f3f5f7;
+  --user-admin-border: #c9ced6;
+  --user-admin-text: #263445;
+  --user-admin-muted: #687485;
+  --user-admin-accent: #C51D34;
+}
+
+.user-management-shell:not(.light-mode) {
+  --user-admin-surface: #292f38;
+  --user-admin-surface-muted: #222830;
+  --user-admin-border: #4a535f;
+  --user-admin-text: #e3e7ec;
+  --user-admin-muted: #aab3bf;
+  --user-admin-accent: #C51D34;
+}
+
+.user-management-page-header {
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--user-admin-border);
+}
+
+.user-management-page-title {
+  margin: 0;
+  color: var(--user-admin-text);
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.user-management-page-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--user-admin-muted);
+  font-size: 0.82rem;
+}
+
+.user-management-primary-action {
+  min-width: 8rem;
+  min-height: 36px;
+  border: 1px solid var(--user-admin-accent);
+  border-radius: 2px;
+  background: var(--user-admin-accent);
+  box-shadow: none;
+  color: #fff;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.user-management-primary-action:hover:not(:disabled) {
+  border-color: var(--user-admin-accent);
+  background: color-mix(in srgb, var(--user-admin-accent) 88%, #000);
+  box-shadow: none;
+}
+
+.user-stat-card {
+  min-height: 105px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--user-admin-border);
+  border-top: 3px solid var(--user-admin-accent);
+  border-radius: 3px;
+  background: var(--user-admin-surface);
+  box-shadow: none;
+}
+
+.user-stat-label,
+.user-stat-detail {
+  margin: 0;
+  color: var(--user-admin-muted);
+}
+
+.user-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.user-stat-value {
+  margin: 0.5rem 0 0;
+  color: var(--user-admin-text);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.user-stat-detail {
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+}
+
+.user-management-shell .user-table-shell {
+  min-width: 0;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 3px;
+  background: var(--user-admin-surface);
+  box-shadow: none;
+}
+
+.user-table-toolbar {
+  margin: 0;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--user-admin-border);
+}
+
+.user-table-filter-group {
+  gap: 0.45rem;
+}
+
+.user-management-shell .user-table-select {
+  min-height: 34px;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  background: var(--user-admin-surface);
+  color: var(--user-admin-text);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.user-management-shell .user-table-select:focus {
+  border-color: var(--user-admin-accent);
+  outline: 2px solid color-mix(in srgb, var(--user-admin-accent) 20%, transparent);
+}
+
+.user-management-shell .user-table-icon-button,
+.user-management-shell .user-action-icon {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  background: var(--user-admin-surface);
+  color: var(--user-admin-muted);
+}
+
+.user-management-shell .user-table-icon-button:hover,
+.user-management-shell .user-action-icon:hover {
+  border-color: var(--user-admin-accent);
+  background: var(--user-admin-surface-muted);
+  color: var(--user-admin-accent);
+}
+
+.user-management-shell .user-action-icon--danger {
+  border-color: var(--user-admin-border);
+  background: var(--user-admin-surface);
+  color: var(--user-admin-accent);
+}
+
+.user-table-search-bar {
+  min-height: 42px;
+  margin: 0;
+  padding: 0 0.85rem;
+  border-bottom: 1px solid var(--user-admin-border);
+}
+
+.user-table-search-bar svg {
+  left: 0.85rem;
+  width: 16px;
+  color: var(--user-admin-muted);
+}
+
+.user-management-shell .user-table-search-bar input {
+  min-height: 40px;
+  padding-left: 2.2rem;
+  color: var(--user-admin-text);
+  font-size: 0.78rem;
+}
+
+.user-management-shell .user-table-search-bar input::placeholder {
+  color: var(--user-admin-muted);
+  opacity: 1;
+}
+
+.user-table-header,
+.user-table-row {
+  grid-template-columns: 48px minmax(180px, 1.3fr) minmax(100px, 0.8fr) minmax(140px, 0.9fr) minmax(100px, 0.7fr) 120px;
+  gap: 0.55rem;
+  min-width: 820px;
+}
+
+.user-table-header {
+  display: grid;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--user-admin-border);
+  background: var(--user-admin-surface-muted);
+  color: var(--user-admin-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.user-table-body {
+  display: block;
+  min-width: 820px;
+}
+
+.user-management-shell .user-table-row {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--user-admin-border);
+  background: var(--user-admin-surface);
+  transition: background-color 0.15s ease;
+}
+
+.user-management-shell .user-table-row:hover {
+  background: var(--user-admin-surface-muted);
+}
+
+.user-management-shell .user-table-row:last-child {
+  border-bottom: 0;
+}
+
+.user-management-shell .user-avatar {
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  background: var(--user-admin-surface-muted);
+  box-shadow: none;
+  color: var(--user-admin-accent);
+}
+
+.user-management-shell .user-avatar img {
+  border-radius: 0;
+}
+
+.user-management-shell .user-member-name,
+.user-management-shell .user-activity-primary {
+  color: var(--user-admin-text);
+}
+
+.user-management-shell .user-member-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.user-management-shell .user-member-email,
+.user-management-shell .user-activity-secondary {
+  color: var(--user-admin-muted);
+}
+
+.user-management-shell .user-role-pill,
+.user-management-shell .user-status-pill {
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  font-size: 0.63rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.user-management-shell .user-table-footer {
+  padding: 0.7rem 0.75rem;
+  border-top: 1px solid var(--user-admin-border);
+  color: var(--user-admin-muted);
+  font-size: 0.7rem;
+}
+
+.user-management-shell .user-pagination-button {
+  min-width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  background: var(--user-admin-surface);
+  color: var(--user-admin-text);
+  font-size: 0.72rem;
+}
+
+.user-management-shell .user-pagination-button.is-active {
+  border-color: var(--user-admin-accent);
+  background: var(--user-admin-accent);
+  color: #fff;
+}
+
+.user-management-shell .user-pagination-button:hover:not(:disabled) {
+  border-color: var(--user-admin-accent);
+}
+
+.user-management-shell .user-management-empty {
+  padding: 1.5rem 0.75rem;
+  color: var(--user-admin-muted);
+  text-align: center;
+}
+
+.user-management-shell .archived-users-shell {
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--user-admin-border);
+  border-radius: 3px;
+}
+
+.user-management-shell .archived-user-item {
+  border: 1px solid var(--user-admin-border);
+  border-radius: 2px;
+  background: var(--user-admin-surface);
+}
+
+.user-management-shell .archived-user-item:hover {
+  border-color: var(--user-admin-accent);
+  background: var(--user-admin-surface-muted);
+  transform: none;
+}
+
+@media (max-width: 767px) {
+  .user-management-page-header {
+    align-items: stretch;
+  }
+
+  .user-management-primary-action {
+    width: 100%;
+  }
+
+  .user-management-shell .user-table-shell {
+    padding: 0;
+  }
+}
+
+.user-management-shell.light-mode .user-management-primary-action {
+  border: 1px solid var(--user-admin-accent) !important;
+  background: var(--user-admin-accent) !important;
+  box-shadow: none !important;
+}
+
+.user-management-shell.light-mode .user-management-primary-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--user-admin-accent) 88%, #000) !important;
+  box-shadow: none !important;
+}
+
+.user-management-shell.light-mode .user-stat-card,
+.user-management-shell.light-mode .user-table-shell {
+  border-color: var(--user-admin-border);
+  background: var(--user-admin-surface);
+  box-shadow: none;
+}
+
+.user-management-shell.light-mode .user-table-row {
+  border-bottom-color: var(--user-admin-border);
+  background: var(--user-admin-surface);
+}
+
+.user-management-shell.light-mode .user-table-row:hover {
+  background: var(--user-admin-surface-muted);
+}
+
+.user-management-shell.light-mode .user-role-pill,
+.user-management-shell.light-mode .user-status-pill {
+  border-color: var(--user-admin-border);
+}
+

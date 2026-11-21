@@ -28,6 +28,7 @@ import { useState as useLocalState } from 'react'
 
 const navLinks = [
   { label: 'Home', href: '/#home', id: 'home', icon: HomeRoundedIcon },
+  { label: 'Showroom', href: '/customer', id: 'showroom', icon: StorefrontRoundedIcon },
   { label: 'Spare Parts', href: '/spare-parts', id: 'spare-parts', icon: StorefrontRoundedIcon },
   { label: 'About', href: '/#about', id: 'about', icon: InfoRoundedIcon },
   { label: 'Contact', href: '/#contact', id: 'contact', icon: CallRoundedIcon },
@@ -88,6 +89,7 @@ export default function HeroSection({
   const [servicesCompleted, setServicesCompleted] = useState(0)
   const [serviceRating, setServiceRating] = useState(0)
   const [liveSpareParts, setLiveSpareParts] = useState([])
+  const [showroomInventory, setShowroomInventory] = useState([])
   const [isSparePartsLoading, setIsSparePartsLoading] = useState(true)
   const [currentSparePartsPage, setCurrentSparePartsPage] = useState(0)
   const mapRef = useRef(null)
@@ -181,7 +183,7 @@ export default function HeroSection({
 
   // (Removed) Fetch popular categories — showroom was removed so categories not used
 
-  // Fetch spare parts from Firestore
+  // Fetch showroom inventory and spare parts from Firestore
   useEffect(() => {
     const q = query(
       collection(db, 'inventory'),
@@ -191,17 +193,27 @@ export default function HeroSection({
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }))
+        const items = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+
+        const showroomItems = items
+          .filter((item) => item.category !== 'Spare Parts')
+          .filter((item) => item.showInShowroom !== false && item.publishedToShowroom !== false)
+          .slice(0, 6)
+
+        const spareParts = items
           .filter((item) => item.category === 'Spare Parts')
-        setLiveSpareParts(data.slice(0, 8))
+          .slice(0, 8)
+
+        setShowroomInventory(showroomItems)
+        setLiveSpareParts(spareParts)
         setIsSparePartsLoading(false)
       },
       (error) => {
-        console.error('Unable to load hero spare parts', error)
+        console.error('Unable to load hero inventory', error)
+        setShowroomInventory([])
         setLiveSpareParts([])
         setIsSparePartsLoading(false)
       },
@@ -376,12 +388,21 @@ useEffect(() => {
 
 
   const handleNavClick = (link) => {
+    if (link.id === 'showroom') {
+      onNavigateShowroom()
+      return
+    }
+
     if (link.id === 'spare-parts') {
       onNavigateSpareParts()
       return
     }
 
     onNavigateSection(link.id, link.label)
+  }
+
+  const handleShowroomCardClick = () => {
+    onNavigateShowroom?.()
   }
 
   return (
@@ -526,7 +547,90 @@ useEffect(() => {
           </div>
         </section>
 
-        {/* Showroom section removed */}
+        <section id="showroom" className="relative py-16 lg:py-20" data-reveal="up" data-reveal-delay="120">
+          <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-5 md:grid-cols-3" data-reveal="up" data-reveal-delay="200">
+              {(showroomInventory.length > 0 ? showroomInventory : [
+                {
+                  id: 'fallback-1',
+                  name: 'YZF-R1M',
+                  category: 'Sport',
+                  badge: 'Racing DNA',
+                  description: 'Track-bred performance with MotoGP-inspired precision.',
+                  imageUrl: 'https://images.unsplash.com/photo-1558981808-9d7f3d7cf35f?auto=format&fit=crop&w=1200&q=80',
+                },
+                {
+                  id: 'fallback-2',
+                  name: 'Aerox 155',
+                  category: 'Scooter',
+                  badge: 'Premium Commuter',
+                  description: 'Urban speed meets premium handling and bold styling.',
+                  imageUrl: 'https://images.unsplash.com/photo-1571068316344-75bc3f6b6f40?auto=format&fit=crop&w=1200&q=80',
+                },
+                {
+                  id: 'fallback-3',
+                  name: 'Tenere 700',
+                  category: 'Adventure',
+                  badge: 'Adventure Ready',
+                  description: 'Adventure-ready confidence for every long-distance route.',
+                  imageUrl: 'https://images.unsplash.com/photo-1523983388277-336a88d1f9f8?auto=format&fit=crop&w=1200&q=80',
+                },
+              ]).slice(0, 3).map((bike, index) => (
+                <article
+                  key={bike.id || bike.name}
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleShowroomCardClick}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      handleShowroomCardClick()
+                    }
+                  }}
+                  className={`group flex min-h-[30rem] cursor-pointer flex-col justify-between overflow-hidden rounded-[2rem] border bg-[#0d1d33]/90 p-0 shadow-[0_0_0_1px_rgba(148,163,184,0.15)] transition duration-300 ${
+                    index === 1
+                      ? 'border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.9),0_20px_40px_rgba(239,68,68,0.12)]'
+                      : 'border-slate-500/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between px-5 pt-5">
+                    <div className="flex items-center gap-2 text-xl font-black uppercase tracking-tight text-white font-['Epilogue']">
+                      <span className="inline-block text-[1.05rem] text-red-500">◉</span>
+                      <span>{bike.name}</span>
+                    </div>
+                    <span className="rounded-full border border-white/15 bg-slate-950/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-white">
+                      {bike.badge || bike.category || 'Featured'}
+                    </span>
+                  </div>
+
+                  <div className="flex-1 px-5 pb-5 pt-8">
+                    <div className="mb-6 flex h-44 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#0b1425] text-3xl text-white/80">
+                      <img
+                        src={bike.imageUrl || bike.gallery?.[0] || bike.mainImage || bykelinkLogo}
+                        alt={bike.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      handleShowroomCardClick()
+                    }}
+                    className="flex w-full items-center justify-between border-t border-white/10 px-5 py-4 text-left text-xs font-black uppercase tracking-[0.28em] text-white transition hover:bg-white/5"
+                  >
+                    <span>Visit Showroom</span>
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-lg text-white shadow-lg shadow-red-600/30">
+                      <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+                    </span>
+                  </button>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Spare Parts Section */}
         <section className="bg-slate-900/50 py-20 lg:py-24" data-reveal="up" data-reveal-delay="120">
@@ -587,11 +691,6 @@ useEffect(() => {
                                       {part.name}
                                     </h3>
                                     <p className="mt-1 text-xs text-neutral-400 line-clamp-2 flex-1">{part.description || 'Genuine spare part'}</p>
-                                    
-                                    <div className="mt-3 flex items-center justify-between">
-                                      <span className="text-xs font-bold text-blue-400">{part.price || 'Contact'}</span>
-                                      <span className="text-xs font-bold uppercase text-neutral-500">Stock: {part.stockQuantity || 0}</span>
-                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -909,7 +1008,7 @@ useEffect(() => {
 
         <div className="mx-auto flex max-w-screen-2xl flex-col items-center justify-between gap-3 border-t border-white/10 px-6 py-6 text-center md:flex-row lg:px-8">
           <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-            © 2026 BYKELINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
+            © 2026 BYEKLINK MOTOR INC. AUTHORIZED YAMAHA DEALER.
           </p>
           <div className="flex gap-6 text-xs uppercase tracking-[0.24em]">
             <a

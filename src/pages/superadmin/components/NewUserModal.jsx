@@ -36,6 +36,7 @@ export default function NewUserModal({
   isSubmitting,
   isDarkMode = true,
   currentUserRole,
+  availableRoles = [],
 }) {
   const [initialInviteForm, setInitialInviteForm] = useState(null)
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false)
@@ -200,12 +201,11 @@ const handleFieldChange = (event) => {
               <option value="staff personnel">Staff Personnel</option>
               <option value="customer">Customer</option>
 
-              {/* Only allow admin/superadmin if current user is superadmin */}
-              {currentUserRole === "superadmin" && (
-                <>
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </>
+              {availableRoles.includes('admin') && (
+                <option value="admin">Admin</option>
+              )}
+              {currentUserRole === 'superadmin' && (
+                <option value="superadmin">Superadmin</option>
               )}
 
               {/* Mechanics personnel can be allowed for both admin and superadmin */}

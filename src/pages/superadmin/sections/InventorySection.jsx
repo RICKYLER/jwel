@@ -57,6 +57,18 @@ const defaultItemForm = {
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase()
 
+const canonicalStatusKey = (value = '') => {
+  const normalized = normalizeText(value)
+  const compact = normalized.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  if (!compact || compact === 'all') return 'all'
+  if (['in stock', 'available', 'instock', 'in-stock'].includes(compact)) return 'in stock'
+  if (['low stock', 'low-stock', 'low', 'limited'].includes(compact)) return 'low stock'
+  if (['out of stock', 'out-of-stock', 'outofstock', 'unavailable', 'not available', 'sold out'].includes(compact)) return 'out of stock'
+
+  return compact
+}
+
 export default function InventorySection({
   items,
   canEditOperations,
@@ -96,6 +108,8 @@ export default function InventorySection({
   const [selectedModel, setSelectedModel] = useState(null)
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false)
+  const [isVariantDropdownOpen, setIsVariantDropdownOpen] = useState(false)
   const [selectedSparepartsModel, setSelectedSparepartsModel] = useState(null)
   const [selectedSparepartsCategory, setSelectedSparepartsCategory] = useState(null)
   const [editSelectedCategory, setEditSelectedCategory] = useState(null)
@@ -135,18 +149,60 @@ export default function InventorySection({
     loadArchivedItems()
   }, [activeTab, currentUser])
 
-  const getAutoStatus = (stock) => {
-    const stockValue = Number(stock ?? 0)
-    const maxStock = Math.max(...items.map((item) => Number(item.stock ?? 0)), 100)
-    if (stockValue === 0) return 'Out of Stock'
-    if (stockValue < maxStock * 0.2) return 'Low Stock'
+  const getInventoryStatus = (item = {}) => {
+    const hasStockValue = item?.stock !== undefined && item?.stock !== null && item?.stock !== ''
+    if (hasStockValue) {
+      const stockValue = Number(item.stock)
+      if (Number.isFinite(stockValue)) {
+        if (stockValue <= 0) return 'Out of Stock'
+        if (stockValue <= 5) return 'Low Stock'
+        return 'In Stock'
+      }
+    }
+
+    const savedStatus = String(item?.status || '').trim()
+    const normalizedSavedStatus = normalizeText(savedStatus)
+
+    if (normalizedSavedStatus) {
+      if (['in stock', 'available', 'instock', 'in-stock'].includes(normalizedSavedStatus)) return 'In Stock'
+      if (['low stock', 'limited', 'low', 'low-stock'].includes(normalizedSavedStatus)) return 'Low Stock'
+      if (['out of stock', 'unavailable', 'not available', 'out-of-stock', 'outofstock', 'sold out'].includes(normalizedSavedStatus)) return 'Out of Stock'
+    }
+
     return 'In Stock'
+  }
+
+  const normalizeStatusFilter = (statusValue = '') => {
+    const normalized = canonicalStatusKey(statusValue)
+
+    if (normalized === 'all') return 'all'
+    if (normalized === 'in stock') return 'In Stock'
+    if (normalized === 'low stock') return 'Low Stock'
+    if (normalized === 'out of stock') return 'Out of Stock'
+
+    return statusValue
+  }
+
+  const matchesStatusFilter = (itemStatus, selectedStatus) => {
+    const canonicalItemStatus = canonicalStatusKey(itemStatus)
+    const canonicalSelectedStatus = canonicalStatusKey(selectedStatus)
+
+    if (canonicalSelectedStatus === 'all') return true
+    return canonicalItemStatus === canonicalSelectedStatus
+  }
+
+  const getAutoStatus = (itemOrStock) => {
+    if (typeof itemOrStock === 'object') {
+      return getInventoryStatus(itemOrStock)
+    }
+
+    const stockValue = Number(itemOrStock ?? 0)
+    return getInventoryStatus({ stock: stockValue })
   }
 
   const isCriticalStock = (stock) => {
     const stockValue = Number(stock ?? 0)
-    const maxStock = Math.max(...items.map((item) => Number(item.stock ?? 0)), 100)
-    return stockValue === 0 || stockValue < maxStock * 0.2
+    return stockValue <= 5 || stockValue === 0
   }
 
   // Disable page scroll when modals are open
@@ -174,7 +230,8 @@ export default function InventorySection({
     return items.filter((item) => {
       const searchHaystack = normalizeText(`${item.name} ${item.model} ${item.category} ${item.description} ${item.sku || ''}`)
       const searchMatch = !searchTerm || searchHaystack.includes(normalizeText(searchTerm))
-      const statusMatch = statusFilter === 'all' || normalizeText(item.status) === normalizeText(statusFilter)
+      const itemStatus = getInventoryStatus(item)
+      const statusMatch = matchesStatusFilter(itemStatus, statusFilter)
 
       if (!searchMatch || !statusMatch) {
         return false
@@ -232,15 +289,31 @@ export default function InventorySection({
     const { name, value, type, checked } = event.target
 
     if (formType === 'unit') {
-      setItemForm((current) => ({
-        ...current,
-        [name]: type === 'checkbox' ? checked : value,
-      }))
+      setItemForm((current) => {
+        const nextForm = {
+          ...current,
+          [name]: type === 'checkbox' ? checked : value,
+        }
+
+        if (name === 'stock') {
+          nextForm.status = getInventoryStatus({ stock: Number(value || 0) })
+        }
+
+        return nextForm
+      })
     } else {
-      setSparePartsForm((current) => ({
-        ...current,
-        [name]: type === 'checkbox' ? checked : value,
-      }))
+      setSparePartsForm((current) => {
+        const nextForm = {
+          ...current,
+          [name]: type === 'checkbox' ? checked : value,
+        }
+
+        if (name === 'stock') {
+          nextForm.status = getInventoryStatus({ stock: Number(value || 0) })
+        }
+
+        return nextForm
+      })
     }
     setFormMessage(null)
   }
@@ -399,6 +472,8 @@ export default function InventorySection({
         ? itemForm.colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
         : Number(itemForm.stock || 0)
 
+      const derivedStatus = getInventoryStatus({ stock: totalStock })
+
       await addDoc(collection(db, 'inventory'), {
         name: itemForm.name.trim(),
         model: selectedModel.name,
@@ -409,7 +484,7 @@ export default function InventorySection({
         description: itemForm.description.trim(),
         stock: totalStock,
         price: Number(itemForm.price || 0),
-        status: itemForm.status,
+        status: derivedStatus,
         badge: itemForm.badge.trim() || 'New Arrival',
         colorVariants: itemForm.colorVariants,
         specs: itemForm.specs || [],
@@ -428,9 +503,9 @@ export default function InventorySection({
           itemName: itemForm.name.trim(),
           itemModel: selectedModel.name,
           category: 'Motorcycle Units',
-          stock: Number(itemForm.stock || 0),
+          stock: totalStock,
           price: Number(itemForm.price || 0),
-          status: itemForm.status,
+          status: derivedStatus,
           imageUrl: imageUrl || '',
           addedBy: currentUser?.displayName || currentUser?.email || 'Unknown',
           createdAt: serverTimestamp(),
@@ -496,6 +571,8 @@ export default function InventorySection({
 
     try {
       let imageUrl = ''
+      const totalStock = Number(sparePartsForm.stock || 0)
+      const derivedStatus = getInventoryStatus({ stock: totalStock })
 
       if (imageFile) {
         const storageRef = ref(storage, `inventory/${Date.now()}-${imageFile.name}`)
@@ -509,9 +586,9 @@ export default function InventorySection({
         modelId: selectedSparepartsModel.id,
         category: 'Spare Parts',
         description: sparePartsForm.description.trim(),
-        stock: Number(sparePartsForm.stock || 0),
+        stock: totalStock,
         price: Number(sparePartsForm.price || 0),
-        status: sparePartsForm.status,
+        status: derivedStatus,
         badge: sparePartsForm.badge.trim() || 'New Stock',
         specs: sparePartsForm.specs || [],
         equipment: sparePartsForm.equipment || [],
@@ -529,9 +606,9 @@ export default function InventorySection({
           itemName: sparePartsForm.name.trim(),
           itemModel: selectedSparepartsModel.name,
           category: 'Spare Parts',
-          stock: Number(sparePartsForm.stock || 0),
+          stock: totalStock,
           price: Number(sparePartsForm.price || 0),
-          status: sparePartsForm.status,
+          status: derivedStatus,
           imageUrl: imageUrl || '',
           addedBy: currentUser?.displayName || currentUser?.email || 'Unknown',
           createdAt: serverTimestamp(),
@@ -645,8 +722,10 @@ export default function InventorySection({
       try {
         for (const itemId of Object.keys(stockUpdates)) {
           if (stockUpdates[itemId]) {
+            const nextStock = Number(stockUpdates[itemId])
             await updateDoc(doc(db, 'inventory', itemId), {
-              stock: Number(stockUpdates[itemId]),
+              stock: nextStock,
+              status: getInventoryStatus({ stock: nextStock }),
               updatedAt: serverTimestamp(),
             })
           }
@@ -758,6 +837,7 @@ export default function InventorySection({
         variant: editFormData.variant ?? editingItem.variant ?? '',
         variantId: editFormData.variantId ?? editingItem.variantId ?? '',
         stock: editTotalStock,
+        status: getInventoryStatus({ stock: editTotalStock }),
         price: Number(editFormData.price ?? editingItem.price ?? 0),
         colorVariants: colorVariants,
         specs: editFormData.specs ?? editingItem.specs ?? [],
@@ -896,7 +976,7 @@ export default function InventorySection({
             const stockValue = Number(item.stock ?? 0)
             const maxStock = Math.max(...items.map((item) => Number(item.stock ?? 0)), 100)
             const stockPercentage = (stockValue / maxStock) * 100
-            const autoStatus = getAutoStatus(stockValue)
+            const itemStatus = getInventoryStatus(item)
             const isCritical = isCriticalStock(stockValue)
             const stockWidth = Math.max(8, Math.min(100, stockPercentage))
             const itemCode = String(item.sku || item.id || `ITM-${index + 1}`).slice(0, 8).toUpperCase()
@@ -946,8 +1026,8 @@ export default function InventorySection({
                 </div>
 
                 <div>
-                  <span className={`text-xs font-bold ${stockValue === 0 ? 'text-[#ff3b30]' : stockValue < maxStock * 0.2 ? 'text-[#ff9500]' : 'text-emerald-400'}`}>
-                    {autoStatus}
+                  <span className={`text-xs font-bold ${itemStatus === 'Out of Stock' ? 'text-[#ff3b30]' : itemStatus === 'Low Stock' ? 'text-[#ff9500]' : 'text-emerald-400'}`}>
+                    {itemStatus}
                   </span>
                 </div>
 
@@ -1093,46 +1173,75 @@ export default function InventorySection({
 
                 <label className="inventory-field">
                   <span>Model</span>
-                  <select 
-                    value={selectedModel?.id || ''} 
-                    onChange={(e) => {
-                      const model = models.find(m => m.id === e.target.value)
-                      setSelectedModel(model || null)
-                    }}
-                    className="dropdown-select"
-                    disabled={!selectedCategory}
-                  >
-                    <option value="">
-                      {selectedCategory ? 'Select Model...' : 'Select Category First...'}
-                    </option>
-                    {selectedCategory 
-                      ? models
-                          .filter(m => m.categoryId === selectedCategory.id)
-                          .map((model) => (
-                            <option key={model.id} value={model.id}>{model.name}</option>
-                          ))
-                      : models.map((model) => (
-                          <option key={model.id} value={model.id}>{model.name}</option>
-                        ))
-                    }
-                  </select>
+                  <div className="inventory-custom-select">
+                    <button
+                      type="button"
+                      className={`inventory-custom-select-trigger ${!selectedCategory ? 'is-disabled' : ''}`}
+                      onClick={() => selectedCategory && setIsModelDropdownOpen((open) => !open)}
+                      disabled={!selectedCategory}
+                    >
+                      {selectedModel ? selectedModel.name : (selectedCategory ? 'Select Model...' : 'Select Category First...')}
+                    </button>
+
+                    {isModelDropdownOpen && selectedCategory && (
+                      <div className="inventory-custom-select-menu">
+                        {(models.filter((model) => model.categoryId === selectedCategory.id) || []).length > 0 ? (
+                          models
+                            .filter((model) => model.categoryId === selectedCategory.id)
+                            .map((model) => (
+                              <button
+                                key={model.id}
+                                type="button"
+                                className={`inventory-custom-select-option ${selectedModel?.id === model.id ? 'is-selected' : ''}`}
+                                onClick={() => {
+                                  setSelectedModel(model)
+                                  setIsModelDropdownOpen(false)
+                                }}
+                              >
+                                {model.name}
+                              </button>
+                            ))
+                        ) : (
+                          <div className="inventory-custom-select-empty">No models available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </label>
 
                 <label className="inventory-field">
                   <span>Variant (Optional)</span>
-                  <select 
-                    value={selectedVariant?.id || ''} 
-                    onChange={(e) => {
-                      const variant = variants.find(v => v.id === e.target.value)
-                      setSelectedVariant(variant || null)
-                    }}
-                    className="dropdown-select"
-                  >
-                    <option value="">Select Variant...</option>
-                    {variants.map((variant) => (
-                      <option key={variant.id} value={variant.id}>{variant.name}</option>
-                    ))}
-                  </select>
+                  <div className="inventory-custom-select">
+                    <button
+                      type="button"
+                      className="inventory-custom-select-trigger"
+                      onClick={() => setIsVariantDropdownOpen((open) => !open)}
+                    >
+                      {selectedVariant ? selectedVariant.name : 'Select Variant...'}
+                    </button>
+
+                    {isVariantDropdownOpen && (
+                      <div className="inventory-custom-select-menu">
+                        {variants.length > 0 ? (
+                          variants.map((variant) => (
+                            <button
+                              key={variant.id}
+                              type="button"
+                              className={`inventory-custom-select-option ${selectedVariant?.id === variant.id ? 'is-selected' : ''}`}
+                              onClick={() => {
+                                setSelectedVariant(variant)
+                                setIsVariantDropdownOpen(false)
+                              }}
+                            >
+                              {variant.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="inventory-custom-select-empty">No variants available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </label>
 
                 <label className="inventory-field">

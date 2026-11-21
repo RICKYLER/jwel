@@ -252,10 +252,10 @@ export default function NavHeader({
             <img src={bykelinkLogo} alt="Bykelink logo" className="h-10 w-10 rounded-xl bg-white/95 p-1.5" />
             <div>
               <div className="text-lg font-black uppercase tracking-tight text-neutral-100 font-['Epilogue'] sm:text-2xl">
-                BYKELINK
+                BYEKLINK MOTOR INC.
               </div>
               <div className="text-[10px] uppercase tracking-[0.28em] text-neutral-400 sm:text-[11px]">
-                Yamaha Dealer
+                TAGUM CITY
               </div>
             </div>
           </button>

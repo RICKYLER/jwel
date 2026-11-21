@@ -40,7 +40,7 @@ export default function ConfirmationModal({
 
   const modalContent = (
     <div
-      className="fixed inset-0 flex items-center justify-center p-4"
+      className="admin-confirmation-overlay fixed inset-0 flex items-center justify-center p-4"
       style={{
         zIndex: 99999,
         background: 'rgba(4, 4, 4, 0.78)',
@@ -52,7 +52,7 @@ export default function ConfirmationModal({
       aria-modal="true"
     >
       <div
-        className={`rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-xl pointer-events-auto ${
+        className={`admin-confirmation-panel rounded-2xl p-6 sm:p-8 w-full max-w-md shadow-xl pointer-events-auto ${
           isDarkMode
             ? 'bg-linear-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/10'
             : 'bg-white border border-gray-200'

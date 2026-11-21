@@ -621,8 +621,10 @@ export default function CustomerServicePage({
                   </label>
                   <textarea
                     value={problemDescription}
-                    onChange={(event) => setProblemDescription(event.target.value)}
+                    onChange={(event) => setProblemDescription(event.target.value.slice(0, 800))}
+                    maxLength={800}
                     rows={5}
+                    aria-describedby="problem-description-limit"
                     placeholder="Example: Engine starts late in the morning, front brake feels soft, and there is a rattling sound near the fairing."
                     className={`w-full rounded-xl px-4 py-3 border resize-none ${
                       isDarkMode
@@ -634,6 +636,16 @@ export default function CustomerServicePage({
 
                 <div>
                   <label className={`block text-sm font-bold mb-3 uppercase tracking-widest ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <div
+                    id="problem-description-limit"
+                    className={`mt-2 text-right text-xs ${
+                      problemDescription.length >= 800
+                        ? 'text-amber-400'
+                        : isDarkMode ? 'text-white/50' : 'text-gray-500'
+                    }`}
+                  >
+                    {problemDescription.length}/800 characters
+                  </div>
                     Upload or capture problem photos
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -893,7 +905,7 @@ export default function CustomerServicePage({
                 </div>
                 <div className="flex justify-between gap-4">
                   <span className={isDarkMode ? 'text-white' : 'text-gray-600'}>Problem Notes:</span>
-                  <span className={`max-w-[60%] text-right font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <span className={`max-w-[60%] break-words text-right font-bold whitespace-pre-wrap [overflow-wrap:anywhere] ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {problemDescription.trim() || 'No description provided'}
                   </span>
                 </div>
@@ -1172,7 +1184,7 @@ export default function CustomerServicePage({
                 <p className={`text-xs font-bold uppercase tracking-widest mb-3 ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                   Problem Report
                 </p>
-                <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
+                <p className={`max-w-full break-words text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere] ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
                   {problemDescription.trim() || 'No description added yet.'}
                 </p>
                 <p className={`text-xs font-bold uppercase tracking-widest ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>

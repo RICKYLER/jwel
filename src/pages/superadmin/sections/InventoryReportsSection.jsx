@@ -1,8 +1,5 @@
 import { useState, useMemo } from 'react'
-import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-import FilterListRoundedIcon from '@mui/icons-material/FilterListRounded'
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded'
-import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded'
 import CloudDownloadRoundedIcon from '@mui/icons-material/CloudDownloadRounded'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
@@ -17,6 +14,22 @@ const reportTabs = [
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase()
 
+const getLogDate = (createdAt) => {
+  if (typeof createdAt?.toDate === 'function') {
+    return createdAt.toDate()
+  }
+
+  const date = createdAt instanceof Date
+    ? createdAt
+    : new Date(createdAt?.seconds ? createdAt.seconds * 1000 : createdAt)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const getLogTimestamp = (createdAt) => {
+  return getLogDate(createdAt)?.getTime() ?? 0
+}
+
 export default function InventoryReportsSection({
   inventoryLogs = [],
   formatDate,
@@ -24,47 +37,59 @@ export default function InventoryReportsSection({
   isDarkMode = true,
 }) {
   const [activeTab, setActiveTab] = useState('all')
-    const [searchTerm] = useState('')
+  const [searchTerm] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const reportsPerPage = 15
 
   const normalizedSearchTerm = normalizeText(searchTerm)
+  const dateFilteredLogs = useMemo(() => {
+    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null
+    const toDate = dateTo ? new Date(`${dateTo}T00:00:00`) : null
+    const isValidRange = (!fromDate || !Number.isNaN(fromDate.getTime()))
+      && (!toDate || !Number.isNaN(toDate.getTime()))
+      && (!fromDate || !toDate || fromDate <= toDate)
+
+    if (!isValidRange) {
+      return []
+    }
+
+    const toDateExclusive = toDate ? new Date(toDate) : null
+    toDateExclusive?.setDate(toDateExclusive.getDate() + 1)
+
+    return inventoryLogs.filter((log) => {
+      if (!fromDate && !toDateExclusive) {
+        return true
+      }
+
+      const logDate = getLogDate(log.createdAt)
+      return logDate
+        && (!fromDate || logDate >= fromDate)
+        && (!toDateExclusive || logDate < toDateExclusive)
+    })
+  }, [inventoryLogs, dateFrom, dateTo])
 
   const filteredLogs = useMemo(() => {
-    return inventoryLogs.filter((log) => {
-      const searchHaystack = normalizeText(
-        `${log.itemName} ${log.itemModel} ${log.category} ${log.addedBy || ''}`
-      )
-      const searchMatch = !searchTerm || searchHaystack.includes(normalizedSearchTerm)
+    return [...dateFilteredLogs]
+      .sort((a, b) => getLogTimestamp(b.createdAt) - getLogTimestamp(a.createdAt))
+      .filter((log) => {
+        const searchHaystack = normalizeText(
+          `${log.itemName} ${log.itemModel} ${log.category} ${log.addedBy || ''}`
+        )
+        const searchMatch = !searchTerm || searchHaystack.includes(normalizedSearchTerm)
 
-      // Filter by tab
-      let categoryMatch = true
-      if (activeTab === 'motorcycle-units') {
-        categoryMatch = log.category === 'Motorcycle Units'
-      } else if (activeTab === 'spare-parts') {
-        categoryMatch = log.category === 'Spare Parts'
-      }
-
-      // Filter by date range
-      let dateMatch = true
-      if (log.createdAt) {
-        const logDate = new Date(log.createdAt.seconds ? log.createdAt.seconds * 1000 : log.createdAt)
-        if (dateFrom) {
-          const fromDate = new Date(dateFrom)
-          dateMatch = dateMatch && logDate >= fromDate
+        let categoryMatch = true
+        if (activeTab === 'motorcycle-units') {
+          categoryMatch = log.category === 'Motorcycle Units'
         }
-        if (dateTo) {
-          const toDate = new Date(dateTo)
-          toDate.setHours(23, 59, 59, 999)
-          dateMatch = dateMatch && logDate <= toDate
+        if (activeTab === 'spare-parts') {
+          categoryMatch = log.category === 'Spare Parts'
         }
-      }
 
-      return searchMatch && categoryMatch && dateMatch
-    })
-  }, [activeTab, inventoryLogs, searchTerm, normalizedSearchTerm, dateFrom, dateTo])
+        return searchMatch && categoryMatch
+      })
+  }, [activeTab, dateFilteredLogs, searchTerm, normalizedSearchTerm])
 
 
   // Handlers to reset currentPage when filters change
@@ -90,7 +115,7 @@ export default function InventoryReportsSection({
 
   const summaryStats = useMemo(() => {
     const stats = {
-      total: filteredLogs.length,
+      total: dateFilteredLogs.length,
       thisWeek: 0,
       thisMonth: 0,
       totalValue: 0,
@@ -100,15 +125,15 @@ export default function InventoryReportsSection({
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    filteredLogs.forEach((log) => {
-      const logDate = new Date(log.createdAt?.seconds ? log.createdAt.seconds * 1000 : log.createdAt)
-      if (logDate >= oneWeekAgo) stats.thisWeek++
-      if (logDate >= oneMonthAgo) stats.thisMonth++
+    dateFilteredLogs.forEach((log) => {
+      const logDate = getLogDate(log.createdAt)
+      if (logDate && logDate >= oneWeekAgo) stats.thisWeek++
+      if (logDate && logDate >= oneMonthAgo) stats.thisMonth++
       stats.totalValue += Number(log.price || 0) * Number(log.stock || 1)
     })
 
     return stats
-  }, [filteredLogs])
+  }, [dateFilteredLogs])
 
   const handleExportExcel = () => {
     const exportData = filteredLogs.map((log) => ({
@@ -203,19 +228,19 @@ export default function InventoryReportsSection({
 
   return (
     <section className={`inventory-reports-shell space-y-6 ${!isDarkMode ? 'light-mode' : ''}`}>
-      <div className="inventory-reports-header flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="inventory-reports-header flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="inventory-reports-title font-['Epilogue'] text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
-            Inventory <span>Reports</span>
+          <h2 className="inventory-reports-title">
+            Inventory Reports
           </h2>
-          <p className="mt-2 text-sm text-white/45">Track all inventory additions, updates, and actions with detailed audit logs.</p>
+          <p className="inventory-reports-subtitle">Inventory additions, updates, and audit records</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <button
             type="button"
             onClick={handleExportExcel}
-            className="inventory-reports-export-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white"
+            className="inventory-reports-export-button inline-flex items-center justify-center gap-2 px-4 py-2 text-sm"
           >
             <DownloadRoundedIcon sx={{ fontSize: 16 }} />
             Export Excel
@@ -224,7 +249,7 @@ export default function InventoryReportsSection({
           <button
             type="button"
             onClick={handleExportPDF}
-            className="inventory-reports-export-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white"
+            className="inventory-reports-export-button inline-flex items-center justify-center gap-2 px-4 py-2 text-sm"
           >
             <CloudDownloadRoundedIcon sx={{ fontSize: 16 }} />
             Export PDF
@@ -232,33 +257,33 @@ export default function InventoryReportsSection({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="inventory-reports-summary-card rounded-2xl p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">Total Items</p>
-          <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{filteredLogs.length}</h3>
-          <p className="mt-2 text-xs text-white/45">In selected period</p>
+      <div className="inventory-reports-summary-grid grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <article className="inventory-reports-summary-card p-4">
+          <p className="inventory-reports-summary-label">Total Records</p>
+          <h3 className="inventory-reports-summary-value">{summaryStats.total}</h3>
+          <p className="inventory-reports-summary-note">In selected period</p>
         </article>
 
-        <article className="inventory-reports-summary-card rounded-2xl p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">This Week</p>
-          <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{summaryStats.thisWeek}</h3>
-          <p className="mt-2 text-xs text-white/45">New additions</p>
+        <article className="inventory-reports-summary-card p-4">
+          <p className="inventory-reports-summary-label">This Week</p>
+          <h3 className="inventory-reports-summary-value">{summaryStats.thisWeek}</h3>
+          <p className="inventory-reports-summary-note">New records</p>
         </article>
 
-        <article className="inventory-reports-summary-card rounded-2xl p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">This Month</p>
-          <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{summaryStats.thisMonth}</h3>
-          <p className="mt-2 text-xs text-white/45">New additions</p>
+        <article className="inventory-reports-summary-card p-4">
+          <p className="inventory-reports-summary-label">This Month</p>
+          <h3 className="inventory-reports-summary-value">{summaryStats.thisMonth}</h3>
+          <p className="inventory-reports-summary-note">New records</p>
         </article>
 
-        <article className="inventory-reports-summary-card rounded-2xl p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/40">Total Value</p>
-          <h3 className="mt-3 font-['Epilogue'] text-2xl font-black text-white">{formatCurrency(summaryStats.totalValue)}</h3>
-          <p className="mt-2 text-xs text-white/45">Inventory value</p>
+        <article className="inventory-reports-summary-card p-4">
+          <p className="inventory-reports-summary-label">Total Value</p>
+          <h3 className="inventory-reports-summary-value">{formatCurrency(summaryStats.totalValue)}</h3>
+          <p className="inventory-reports-summary-note">Value in selected period</p>
         </article>
       </div>
 
-      <div className="inventory-reports-board rounded-[28px] p-4 sm:p-5">
+      <div className="inventory-reports-board">
         <div className="mb-5 flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="inventory-reports-tab-row flex flex-wrap gap-2">
@@ -275,25 +300,29 @@ export default function InventoryReportsSection({
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="inventory-reports-filter-bar flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <label className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/60">From:</span>
+                <span className="inventory-reports-filter-label">From:</span>
                 <input
                   type="date"
                   value={dateFrom}
+                  max={dateTo || undefined}
                   onChange={(e) => handleDateFromChange(e.target.value)}
-                  className="inventory-reports-date-input rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs text-white"
+                  aria-label="From date"
+                  className="inventory-reports-date-input px-3 py-2 text-xs"
                 />
               </label>
 
               <label className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/60">To:</span>
+                <span className="inventory-reports-filter-label">To:</span>
                 <input
                   type="date"
                   value={dateTo}
+                  min={dateFrom || undefined}
                   onChange={(e) => handleDateToChange(e.target.value)}
-                  className="inventory-reports-date-input rounded-lg border border-white/10 bg-white/4 px-3 py-2 text-xs text-white"
+                  aria-label="To date"
+                  className="inventory-reports-date-input px-3 py-2 text-xs"
                 />
               </label>
 
@@ -304,7 +333,7 @@ export default function InventoryReportsSection({
                     handleDateFromChange('')
                     handleDateToChange('')
                   }}
-                  className="text-xs font-bold text-[#ff7070] hover:text-red-400 transition-colors"
+                  className="inventory-reports-clear-button text-xs font-bold"
                 >
                   Clear Dates
                 </button>
@@ -313,85 +342,62 @@ export default function InventoryReportsSection({
           </div>
         </div>
 
-        <div className="hidden grid-cols-[0.6fr_1fr_1fr_1.2fr_0.8fr_1fr_1.2fr_1.5fr_0.8fr] gap-3 border-b border-white/5 px-3 py-3 md:grid">
-          <span className="inventory-reports-header-badge">Image</span>
-          <span className="inventory-reports-header-badge">Item Name</span>
-          <span className="inventory-reports-header-badge">Model/Variant</span>
-          <span className="inventory-reports-header-badge">Category</span>
-          <span className="inventory-reports-header-badge">Stock</span>
-          <span className="inventory-reports-header-badge">Price</span>
-          <span className="inventory-reports-header-badge">Status</span>
-          <span className="inventory-reports-header-badge">Added By</span>
-          <span className="inventory-reports-header-badge text-right">Date</span>
+        <div className="inventory-reports-table-wrap">
+          <table className="inventory-reports-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Item Name</th>
+                <th>Model / Variant</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Added By</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredLogs.length > 0 ? (
+                paginatedLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>
+                      {log.imageUrl ? (
+                        <img src={log.imageUrl} alt={log.itemName} className="inventory-reports-item-image" />
+                      ) : (
+                        <span className="inventory-reports-no-image">No image</span>
+                      )}
+                    </td>
+                    <td className="inventory-reports-item-name">{log.itemName || '—'}</td>
+                    <td>{log.itemModel || '—'}</td>
+                    <td>{log.category || '—'}</td>
+                    <td>{log.stock ?? '—'}</td>
+                    <td>{formatCurrency(log.price || 0)}</td>
+                    <td>
+                      <span className={`inventory-reports-status ${
+                        log.status === 'In Stock' ? 'is-in-stock' :
+                          log.status === 'Low Stock' ? 'is-low-stock' :
+                            log.status === 'Out of Stock' ? 'is-out-of-stock' : ''
+                      }`}>
+                        {log.status || '—'}
+                      </span>
+                    </td>
+                    <td>{log.addedBy || '—'}</td>
+                    <td>{formatDate(log.createdAt?.seconds ? log.createdAt.seconds * 1000 : log.createdAt)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="9" className="inventory-reports-empty">
+                    No inventory records match this filter. Try adjusting the date range.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div className="divide-y divide-white/5">
-          {filteredLogs.length > 0 ? (
-            paginatedLogs.map((log) => (
-              <div key={log.id} className="grid gap-3 px-3 py-4 md:grid-cols-[0.6fr_1fr_1fr_1.2fr_0.8fr_1fr_1.2fr_1.5fr_0.8fr] md:items-center">
-                <div className="flex items-center justify-center">
-                  {log.imageUrl ? (
-                    <img 
-                      src={log.imageUrl} 
-                      alt={log.itemName}
-                      className={`rounded-lg w-12 h-12 object-cover border ${!isDarkMode ? 'border-gray-300' : 'border-white/10'}`}
-                    />
-                  ) : (
-                    <div className={`rounded-lg w-12 h-12 flex items-center justify-center text-xs font-bold ${!isDarkMode ? 'bg-gray-300 text-gray-600' : 'bg-white/10 text-white/30'}`}>
-                      No img
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold text-white">{log.itemName}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/50">{log.itemModel}</p>
-                </div>
-
-                <div>
-                  <span className="inventory-reports-category-pill inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">
-                    {log.category}
-                  </span>
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold text-white">{log.stock}</p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-bold text-white">{formatCurrency(log.price || 0)}</p>
-                </div>
-
-                <div>
-                  <span className={`text-xs font-bold ${
-                    log.status === 'In Stock' ? 'text-emerald-400' :
-                    log.status === 'Low Stock' ? 'text-[#ff9500]' :
-                    'text-[#ff3b30]'
-                  }`}>
-                    {log.status}
-                  </span>
-                </div>
-
-                <div>
-                  <p className="text-xs text-white/70">{log.addedBy}</p>
-                </div>
-
-                <div className="relative">
-                  <p className="text-xs text-white/50">{formatDate(log.createdAt?.seconds ? log.createdAt.seconds * 1000 : log.createdAt)}</p>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="inventory-reports-empty rounded-2xl px-4 py-10 text-center text-white/50">
-              No inventory records match this filter. Try adjusting your search criteria or date range.
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-[11px] text-white/40">
+        <div className="inventory-reports-pagination mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-[11px]">
           <span>Showing {startIndex + 1}-{Math.min(endIndex, filteredLogs.length)} of {filteredLogs.length} records</span>
           
           {totalPages > 1 && (

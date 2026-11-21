@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { addDoc, collection, serverTimestamp, deleteDoc, doc, getDocs } from 'firebase/firestore'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded'
@@ -25,6 +25,8 @@ export default function MasterDataManagementSection({
   const [message, setMessage] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [parentData, setParentData] = useState([])
+  const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false)
+  const parentDropdownRef = useRef(null)
   const [confirmModal, setConfirmModal] = useState({ open: false, itemId: null, itemName: '' })
 
   const config = collectionMap[dataType]
@@ -67,6 +69,28 @@ export default function MasterDataManagementSection({
     loadParentData()
   }, [dataType, categories, models])
 
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!parentDropdownRef.current?.contains(event.target)) {
+        setIsParentDropdownOpen(false)
+      }
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsParentDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
+
   const handleAddItem = async () => {
     if (!newItemName.trim()) {
       setMessage({ type: 'error', text: 'Please enter a name.' })
@@ -96,6 +120,7 @@ export default function MasterDataManagementSection({
       setMessage({ type: 'success', text: `${config.label.slice(0, -1)} added successfully!` })
       setNewItemName('')
       setSelectedParentId(null)
+      setIsParentDropdownOpen(false)
 
       // Reload items
       const snapshot = await getDocs(collection(db, 'masterData', 'inventory', config.path))
@@ -173,6 +198,29 @@ export default function MasterDataManagementSection({
           {dataType === 'master-variants' && 'Define variants for different product specifications and features.'}
           {dataType === 'master-series' && 'Create series/sub-variants within models (e.g., Mio Sporty, Mio i 125).'}
         </p>
+
+        {dataType === 'master-models' && (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: 'Total Models', value: String(items.length) },
+              { label: 'Active', value: String(Math.max(0, items.length)) },
+              { label: 'Ready to Use', value: 'Yes' },
+              { label: 'Last Updated', value: 'Today' },
+            ].map((stat) => (
+              <article
+                key={stat.label}
+                className={`rounded-2xl border p-5 ${!isDarkMode ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/4'}`}
+              >
+                <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${!isDarkMode ? 'text-gray-600' : 'text-white/50'}`}>
+                  {stat.label}
+                </p>
+                <p className={`mt-3 font-['Epilogue'] text-3xl font-black ${!isDarkMode ? 'text-gray-900' : 'text-white'}`}>
+                  {stat.value}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={`master-data-panel rounded-[28px] p-6 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/5'}`}>
@@ -188,26 +236,69 @@ export default function MasterDataManagementSection({
                 <label className={`text-xs font-bold uppercase tracking-[0.12em] block mb-2 ${!isDarkMode ? 'text-gray-600' : 'text-white/60'}`}>
                   {getParentLabel()}
                 </label>
-                <select
-                  value={selectedParentId || ''}
-                  onChange={(e) => setSelectedParentId(e.target.value || null)}
-                  disabled={!canEditOperations}
-                  className={`w-full px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${
-                    !isDarkMode
-                      ? 'bg-gray-100 border-gray-300 text-gray-900 disabled:opacity-60'
-                      : 'bg-white/4 border-white/10 text-white disabled:opacity-60'
-                  }`}
-                  style={{
-                    colorScheme: isDarkMode ? 'dark' : 'light',
-                  }}
-                >
-                  <option value="">Select {getParentLabel()}...</option>
-                  {parentData.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                <div ref={parentDropdownRef} className="relative z-30">
+                  <button
+                    type="button"
+                    onClick={() => setIsParentDropdownOpen((current) => !current)}
+                    disabled={!canEditOperations}
+                    aria-haspopup="listbox"
+                    aria-expanded={isParentDropdownOpen}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-colors disabled:opacity-60 ${
+                      !isDarkMode
+                        ? 'border-gray-300 bg-gray-100 text-gray-900'
+                        : 'border-white/10 bg-white/4 text-white'
+                    }`}
+                  >
+                    <span>{selectedParentId ? getParentName(selectedParentId) : `Select ${getParentLabel()}...`}</span>
+                    <span className={`ml-3 text-xs transition-transform ${isParentDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true">⌄</span>
+                  </button>
+
+                  {isParentDropdownOpen && (
+                    <div
+                      role="listbox"
+                      aria-label={`Select ${getParentLabel()}`}
+                      className={`absolute left-0 right-0 top-full mt-2 max-h-60 overflow-y-auto rounded-lg border p-1 shadow-2xl ${
+                        !isDarkMode
+                          ? 'border-gray-300 bg-white'
+                          : 'border-white/15 bg-[#25252a]'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={!selectedParentId}
+                        onClick={() => {
+                          setSelectedParentId(null)
+                          setIsParentDropdownOpen(false)
+                        }}
+                        className={`w-full rounded-md px-3 py-2 text-left text-sm ${
+                          !isDarkMode ? 'text-gray-500 hover:bg-gray-100' : 'text-white/60 hover:bg-white/10'
+                        }`}
+                      >
+                        Select {getParentLabel()}...
+                      </button>
+                      {parentData.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selectedParentId === item.id}
+                          onClick={() => {
+                            setSelectedParentId(item.id)
+                            setIsParentDropdownOpen(false)
+                          }}
+                          className={`w-full rounded-md px-3 py-2 text-left text-sm ${
+                            selectedParentId === item.id
+                              ? !isDarkMode ? 'bg-red-100 text-red-900' : 'bg-red-500/20 text-red-200'
+                              : !isDarkMode ? 'text-gray-900 hover:bg-gray-100' : 'text-white hover:bg-white/10'
+                          }`}
+                        >
+                          {item.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -308,25 +399,26 @@ export default function MasterDataManagementSection({
         </div>
       </div>
 
-      {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: 'Total ' + config.label, value: String(items.length) },
-          { label: 'Active', value: String(Math.max(0, items.length - 0)) },
-          { label: 'Ready to Use', value: 'Yes' },
-          { label: 'Last Updated', value: 'Today' },
-        ].map((stat, idx) => (
-          <article
-            key={idx}
-            className={`rounded-2xl p-4 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/10'}`}
-          >
-            <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${!isDarkMode ? 'text-gray-600' : 'text-white/40'}`}>
-              {stat.label}
-            </p>
-            <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{stat.value}</h3>
-          </article>
-        ))}
-      </div>
+      {dataType !== 'master-models' && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Total ' + config.label, value: String(items.length) },
+            { label: 'Active', value: String(Math.max(0, items.length - 0)) },
+            { label: 'Ready to Use', value: 'Yes' },
+            { label: 'Last Updated', value: 'Today' },
+          ].map((stat, idx) => (
+            <article
+              key={idx}
+              className={`rounded-2xl p-4 ${!isDarkMode ? 'bg-gray-50 border border-gray-200' : 'bg-white/4 border border-white/10'}`}
+            >
+              <p className={`text-[10px] font-black uppercase tracking-[0.24em] ${!isDarkMode ? 'text-gray-600' : 'text-white/40'}`}>
+                {stat.label}
+              </p>
+              <h3 className="mt-3 font-['Epilogue'] text-3xl font-black text-white">{stat.value}</h3>
+            </article>
+          ))}
+        </div>
+      )}
 
       <ConfirmationModal
         open={confirmModal.open}

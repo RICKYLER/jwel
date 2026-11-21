@@ -16,7 +16,9 @@ export const ThemeProvider = ({ children }) => {
       return savedTheme !== 'light'
     }
 
-    return !window.matchMedia('(prefers-color-scheme: light)').matches
+    // Keep the storefront in its intended dark visual design by default,
+    // even when the browser/system is configured for a light theme.
+    return true
   })
 
   // Persist theme to localStorage whenever it changes

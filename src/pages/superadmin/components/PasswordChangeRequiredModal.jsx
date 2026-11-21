@@ -16,6 +16,7 @@ export default function PasswordChangeRequiredModal({
   isSuccessful = false,
   onDismissSuccess,
 }) {
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -69,6 +70,33 @@ export default function PasswordChangeRequiredModal({
         </p>
 
         <form onSubmit={onSubmit} className="password-change-modal-form">
+          <label className="password-change-field">
+            <span>Temporary Password</span>
+            <div className="password-input-wrapper">
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                name="currentPassword"
+                value={passwordChangeForm.currentPassword}
+                onChange={onFieldChange}
+                placeholder="Enter your current temporary password"
+                disabled={isSubmitting}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                className="password-toggle-button"
+                aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
+              >
+                {showCurrentPassword ? (
+                  <VisibilityOffRoundedIcon sx={{ fontSize: 18 }} />
+                ) : (
+                  <VisibilityRoundedIcon sx={{ fontSize: 18 }} />
+                )}
+              </button>
+            </div>
+          </label>
+
           <label className="password-change-field">
             <span>New Password</span>
             <div className="password-input-wrapper">

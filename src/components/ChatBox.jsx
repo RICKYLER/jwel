@@ -182,11 +182,25 @@ export default function ChatBox({ currentUser }) {
       // Save user message to Firestore (works for both authenticated and guest users)
       await addDoc(collection(db, `conversations/${convId}/messages`), {
         type: 'user',
+        sender: 'user',
+        senderId: currentUser?.uid || 'guest',
         text: messageText,
-        sender: currentUser?.email || 'guest@bykelink.com',
         senderName: currentUser?.displayName || 'Guest User',
+        senderAvatar: currentUser?.photoURL || null,
         timestamp: serverTimestamp(),
         read: false,
+      })
+
+      await updateDoc(doc(db, 'conversations', convId), {
+        updatedAt: serverTimestamp(),
+        lastMessage: messageText,
+        lastMessageTime: serverTimestamp(),
+        senderName: currentUser?.displayName || 'Guest User',
+        senderAvatar: currentUser?.photoURL || null,
+        senderId: currentUser?.uid || 'guest',
+        userEmail: currentUser?.email || 'guest@bykelink.com',
+        userId: currentUser?.uid || localStorage.getItem('bykelink_guest_user_id') || 'guest',
+        status: 'open',
       })
     } catch (error) {
       console.error('Error saving message:', error)
@@ -204,7 +218,7 @@ export default function ChatBox({ currentUser }) {
           position: fixed;
           bottom: 2rem;
           right: 2rem;
-          z-index: 60;
+          z-index: 140;
           width: 56px;
           height: 56px;
           padding: 0 !important;
@@ -219,6 +233,16 @@ export default function ChatBox({ currentUser }) {
           -webkit-backdrop-filter: blur(12px) saturate(140%);
           box-shadow: none !important;
           transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .chat-window {
+          position: fixed;
+          right: 2rem;
+          bottom: 6.5rem;
+          z-index: 130;
+          width: min(24rem, calc(100vw - 2rem));
+          max-height: calc(100vh - 8rem);
+          box-shadow: 0 24px 70px rgba(2, 6, 23, 0.58);
         }
 
         .chat-button:hover {
@@ -241,14 +265,13 @@ export default function ChatBox({ currentUser }) {
           }
 
           .chat-window {
-            position: fixed;
-            bottom: 5.5rem; /* leave space above the chat button */
+            bottom: 5.5rem;
             right: 1rem;
             left: 1rem;
             width: auto !important;
             max-width: calc(100vw - 2rem) !important;
             max-height: calc(100vh - 8rem);
-            z-index: 50;
+            z-index: 130;
           }
         }
       `}</style>

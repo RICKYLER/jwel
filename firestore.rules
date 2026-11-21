@@ -68,6 +68,7 @@ function defaultAccess(role) {
   allow read: if isSignedIn();
 
   allow create: if isSignedIn() && (
+    request.auth.uid == userId ||
     // Superadmin can create any role
     isSuperadmin() ||
     // Admin can only create staff, mechanics personnel, or customer
@@ -191,6 +192,15 @@ match /authorizedPersonnel/{docId} {
       allow create: if isSignedIn();
       allow update: if isAdminOrHigher();
       allow delete: if isAdminOrHigher();
+    }
+
+    match /transactionLogs/{docId} {
+      allow read: if isAdminOrHigher()
+        || (isSignedIn() && (
+          signedInRole() == 'cashier personnel'
+          || signedInRole() == 'staff personnel'
+        ));
+      allow write: if isAdminOrHigher();
     }
 
 

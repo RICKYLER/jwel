@@ -126,6 +126,10 @@
   transition: background-color 0.25s ease;
 }
 
+.superadmin-main {
+  transition: margin-left 0.34s cubic-bezier(.2,.8,.2,1);
+}
+
 [data-theme='light'] .superadmin-content,
 .superadmin-content[data-theme='light'] {
   background: #F5F5F5;
@@ -269,18 +273,22 @@
 }
 
 [data-theme='light'] .superadmin-shell .notifications-drawer {
-  background: #ffffff;
+  background: var(--notification-drawer-bg, #ffffff);
 }
 
 [data-theme='light'] .superadmin-shell .notification-card {
-  background: #f8fafc;
+  background: var(--notification-card-bg, #f8fafc);
 }
 
 .superadmin-mobile-toggle {
-  display: inline-flex !important;
+  display: none !important;
 }
 
 @media (min-width: 1024px) {
+  .superadmin-shell .superadmin-main.is-sidebar-collapsed {
+    margin-left: 72px;
+  }
+
   .superadmin-sidebar.is-collapsed {
     width: 72px;
     transform: translateX(0);
@@ -318,8 +326,16 @@
 }
 
 @media (max-width: 1023px) {
+  .superadmin-mobile-toggle {
+    display: inline-flex !important;
+  }
+
   .superadmin-sidebar {
     width: min(18rem, 86vw) !important;
+    transform: translateX(-108%);
+  }
+
+  .superadmin-sidebar.is-collapsed {
     transform: translateX(-108%);
   }
 
@@ -459,6 +475,195 @@
 
 [data-theme='light'] .superadmin-shell .outline-brand {
   outline: 2px solid #C51D34;
+}
+
+.superadmin-shell {
+  --admin-bar-bg: #303741;
+  --admin-bar-border: #505a67;
+  --admin-bar-control: #252b33;
+  --admin-bar-control-hover: #3b4552;
+  --admin-bar-text: #e5e9ef;
+  --admin-bar-muted: #aeb8c5;
+  --admin-bar-accent: #C51D34;
+}
+
+[data-theme='light'] .superadmin-shell,
+.superadmin-shell[data-theme='light'] {
+  --admin-bar-bg: #e6e9ed;
+  --admin-bar-border: #bfc6ce;
+  --admin-bar-control: #fff;
+  --admin-bar-control-hover: #f1f3f5;
+  --admin-bar-text: #293747;
+  --admin-bar-muted: #647284;
+  --admin-bar-accent: #C51D34;
+}
+
+.superadmin-shell .superadmin-topbar {
+  border-bottom: 1px solid var(--admin-bar-border);
+  background: var(--admin-bar-bg);
+  box-shadow: 0 1px 2px rgba(20, 29, 39, 0.12);
+  backdrop-filter: none;
+  color: var(--admin-bar-text);
+}
+
+.superadmin-shell .superadmin-topbar-search-input {
+  min-height: 36px;
+  border: 1px solid var(--admin-bar-border) !important;
+  border-radius: 2px;
+  background: var(--admin-bar-control) !important;
+  color: var(--admin-bar-text) !important;
+  outline: none;
+  box-shadow: none;
+}
+
+.superadmin-shell .superadmin-topbar-search-input::placeholder {
+  color: var(--admin-bar-muted);
+}
+
+.superadmin-shell .superadmin-topbar-search-input:focus {
+  border-color: var(--admin-bar-accent) !important;
+  outline: 2px solid color-mix(in srgb, var(--admin-bar-accent) 24%, transparent);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+.superadmin-shell .superadmin-topbar-search-icon {
+  color: var(--admin-bar-muted) !important;
+}
+
+.superadmin-shell .superadmin-topbar-icon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--admin-bar-border);
+  border-radius: 2px;
+  background: var(--admin-bar-control);
+  color: var(--admin-bar-text) !important;
+  opacity: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.superadmin-shell .superadmin-topbar-icon:hover {
+  border-color: var(--admin-bar-accent);
+  background: var(--admin-bar-control-hover);
+}
+
+.superadmin-shell .superadmin-profile-trigger {
+  min-height: 40px;
+  border: 0;
+  border-left: 1px solid var(--admin-bar-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--admin-bar-text) !important;
+  opacity: 1;
+}
+
+.superadmin-shell .superadmin-profile-name {
+  margin: 0;
+  color: var(--admin-bar-text);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.superadmin-shell .superadmin-profile-role {
+  margin: 0.15rem 0 0;
+  color: var(--admin-bar-muted);
+  font-size: 0.65rem;
+}
+
+.superadmin-shell .superadmin-profile-avatar {
+  border: 1px solid var(--admin-bar-border);
+  border-radius: 2px;
+  background: var(--admin-bar-control);
+  color: var(--admin-bar-accent);
+}
+
+.superadmin-shell .superadmin-notification-count {
+  border: 1px solid var(--admin-bar-bg);
+  border-radius: 2px;
+  background: #9c3d43;
+  color: #fff;
+}
+
+.superadmin-shell .superadmin-mobile-toggle {
+  border: 1px solid var(--admin-bar-border);
+  border-radius: 2px;
+  background: var(--admin-bar-control);
+  color: var(--admin-bar-text) !important;
+}
+
+.superadmin-shell .superadmin-mobile-toggle:hover {
+  background: var(--admin-bar-control-hover);
+}
+
+.superadmin-shell .dashboard-kpi-card {
+  min-height: 8rem;
+  padding: 1rem;
+  border: 1px solid var(--admin-bar-border);
+  border-top: 3px solid var(--admin-bar-accent);
+  border-radius: 3px;
+  background: var(--admin-bar-control);
+  box-shadow: none;
+  color: var(--admin-bar-text);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.superadmin-shell .dashboard-kpi-card:hover {
+  border-color: var(--admin-bar-accent);
+  box-shadow: none;
+}
+
+.superadmin-shell .dashboard-kpi-label {
+  margin: 0;
+  color: var(--admin-bar-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.superadmin-shell .dashboard-kpi-value {
+  margin: 0.55rem 0 0;
+  color: var(--admin-bar-text);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.superadmin-shell .dashboard-kpi-progress {
+  height: 5px;
+  margin-top: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--admin-bar-border);
+  background: var(--admin-bar-bg);
+}
+
+.superadmin-shell .dashboard-kpi-progress > div {
+  height: 100%;
+  background: var(--admin-bar-accent);
+}
+
+.superadmin-shell .dashboard-kpi-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.superadmin-shell .dashboard-kpi-detail.is-positive {
+  color: #578467;
+}
+
+[data-theme='dark'] .superadmin-shell .dashboard-kpi-detail.is-positive {
+  color: #9ac3a6;
+}
+
+.superadmin-shell .dashboard-kpi-detail.is-negative {
+  color: var(--admin-bar-accent);
 }
 
 /* ChatsManagementSection Integration */

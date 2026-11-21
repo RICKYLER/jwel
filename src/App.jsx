@@ -7,6 +7,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   updatePassword,
   updateProfile,
   checkActionCode,
@@ -20,10 +22,12 @@ import PasswordResetConfirmationPage from './pages/PasswordResetConfirmationPage
 import EmailPasswordResetPage from './pages/EmailPasswordResetPage'
 import ServicePage from './pages/herosection/ServicePage'
 import SparePartsPage from './pages/herosection/SparePartsPage'
+import ShowroomPage from './pages/herosection/ShowroomPage'
+import CustomerShowroomPage from './pages/customer/CustomerShowroomPage'
 import CustomerServicePage from './pages/customer/CustomerServicePage'
 import CustomerMessagesPage from './pages/customer/CustomerMessagesPage'
 import CustomerServiceBookingsPage from './pages/customer/CustomerServiceBookingsPage'
-import CashierPanel from './pages/customer/CashierPanel'
+import CashierPanel from './pages/cashier/CashierPage'
 import ProductDetailsPage from './pages/customer/ProductDetailsPage'
 import FinancingPage from './pages/customer/FinancingPage'
 import ConfirmApplicationPage from './pages/customer/ConfirmApplicationPage'
@@ -68,7 +72,7 @@ const rolePriority = {
 
 const dashboardByRole = {
   customer: '/customer',
-  'staff personnel': '/admin',
+  'staff personnel': '/staff',
   'mechanics personnel': '/admin',
   'cashier personnel': '/cashier',
   admin: '/admin',
@@ -78,6 +82,7 @@ const dashboardByRole = {
 const dashboardRequirements = {
   '/customer': 'customer',
   '/admin': 'staff personnel',
+  '/staff': 'staff personnel',
   '/cashier': 'cashier personnel',
   '/superadmin': 'superadmin',
 }
@@ -129,7 +134,7 @@ const formatAuthError = (error) => {
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a moment and try again.'
     case 'auth/operation-not-allowed':
-      return 'Enable Email/Password and Google sign-in in your Firebase console to use this form.'
+      return 'Enable Email/Password and Google sign-in in the account settings to use this form.'
     default:
       return error?.message || 'Something went wrong. Please try again.'
   }
@@ -140,6 +145,7 @@ const normalizePath = (path) => {
   if (path?.startsWith('/financing/')) return path
   if (path?.startsWith('/superadmin/')) return path
   if (path?.startsWith('/admin/')) return path
+  if (path?.startsWith('/staff/')) return path
   if (path?.startsWith('/customer/')) return path
 
   if (path?.startsWith('/login')) return '/login'
@@ -148,12 +154,13 @@ const normalizePath = (path) => {
 
   if (path?.startsWith('/customer')) return '/customer'
   if (path?.startsWith('/cashier')) return '/cashier'
-  if (path?.startsWith('/showroom')) return '/customer/service'
+  if (path?.startsWith('/showroom')) return '/showroom'
   if (path?.startsWith('/spare-parts')) return '/spare-parts'
   if (path?.startsWith('/service')) return '/service'
   if (path?.startsWith('/financing')) return '/financing'
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
+  if (path?.startsWith('/staff')) return '/staff'
 
   return '/'
 }
@@ -162,6 +169,7 @@ const normalizePath = (path) => {
 const getNavLabelForPath = (path, hash = '') => {
   const matchedLink = navLinks.find((link) => link.id === hash)
 
+  if (path === '/showroom') return 'Showroom'
   if (path === '/spare-parts') return 'Spare Parts'
   if (path === '/service') return 'Service'
   if (path === '/financing' || path?.startsWith('/financing/')) return 'Financing'
@@ -174,6 +182,7 @@ const getNavLabelForPath = (path, hash = '') => {
 const getDashboardBasePath = (path = '') => {
   if (path?.startsWith('/superadmin')) return '/superadmin'
   if (path?.startsWith('/admin')) return '/admin'
+  if (path?.startsWith('/staff')) return '/staff'
   return path
 }
 
@@ -187,14 +196,15 @@ const normalizeAccessRole = (value = 'customer') => {
 
   if (normalizedValue === 'superadmin') return 'superadmin'
   if (normalizedValue === 'admin') return 'admin'
-  if (normalizedValue === 'staffpersonnel') return 'staff personnel'
-  if (normalizedValue === 'mechanicspersonnel') return 'mechanics personnel'
-  if (normalizedValue === 'cashierpersonnel') return 'cashier personnel'
-  if (normalizedValue === 'customer') return 'customer'
+  if (normalizedValue === 'staff' || normalizedValue === 'staffpersonnel') return 'staff personnel'
+  if (normalizedValue === 'mechanic' || normalizedValue === 'mechanics' || normalizedValue === 'mechanicspersonnel') return 'mechanics personnel'
+  if (normalizedValue === 'cashier' || normalizedValue === 'cashierpersonnel') return 'cashier personnel'
+  if (normalizedValue === 'customer' || normalizedValue === 'user') return 'customer'
 
   return 'customer'
 }
 
+const isCashierAccessRole = (role = '') => normalizeAccessRole(role) === 'cashier personnel'
 
 const normalizeDashboardPath = (value = '') => {
   const normalizedValue = String(value).trim()
@@ -272,32 +282,46 @@ const getAuthorizedAdminProfile = async (email = '') => {
     },
     {
       name: 'authorizedPersonnel',
-      fallbackRole: 'staff',
+      fallbackRole: 'staff personnel',
       source: 'authorized-personnel-collection',
     },
   ]
   const emailFields = ['email', 'emailAddress', 'authorizedEmail', 'userEmail']
 
+  const directProfiles = await Promise.all(
+    collectionsToCheck.map(async ({ name: collectionName, fallbackRole, source }) => {
+      try {
+        const snapshot = await getDoc(doc(db, collectionName, normalizedEmail))
+
+        return snapshot.exists()
+          ? buildAuthorizedAdminProfile(snapshot.data(), { fallbackRole, source })
+          : null
+      } catch {
+        return null
+      }
+    }),
+  )
+  const directProfile = directProfiles.find(Boolean)
+
+  if (directProfile) {
+    return directProfile
+  }
+
   try {
     for (const { name: collectionName, fallbackRole, source } of collectionsToCheck) {
-      const directSnapshot = await getDoc(doc(db, collectionName, normalizedEmail))
-
-      if (directSnapshot.exists()) {
-        const docData = directSnapshot.data()
-        const directProfile = buildAuthorizedAdminProfile(docData, {
-          fallbackRole,
-          source,
-        })
-
-        if (directProfile) {
-          return directProfile
-        }
-      }
-
       for (const fieldName of emailFields) {
-        const filteredSnapshot = await getDocs(
-          query(collection(db, collectionName), where(fieldName, '==', normalizedEmail), limit(1)),
-        )
+        let filteredSnapshot
+
+        try {
+          filteredSnapshot = await getDocs(
+            query(collection(db, collectionName), where(fieldName, '==', normalizedEmail), limit(1)),
+          )
+        } catch (error) {
+          if (error?.code !== 'permission-denied') {
+            throw error
+          }
+          continue
+        }
 
         const matchedDocument = filteredSnapshot.docs[0]
 
@@ -368,6 +392,7 @@ function App() {
   const [passwordChangeMessage, setPasswordChangeMessage] = useState(null)
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false)
   const [passwordChangeForm, setPasswordChangeForm] = useState({
+    currentPassword: '',
     password: '',
     confirmPassword: '',
   })
@@ -582,7 +607,8 @@ function App() {
 
  
 useEffect(() => {
-  const requestedRole = dashboardRequirements[currentPath] || 'customer';
+  const currentDashboardPath = getDashboardBasePath(normalizePath(window.location.pathname))
+  const requestedRole = dashboardRequirements[currentDashboardPath] || 'customer';
 
   if (!currentUser) {
     setAccessProfile(defaultAccessProfile);
@@ -591,6 +617,12 @@ useEffect(() => {
   }
 
   let isMounted = true;
+  const timeout = setTimeout(() => {
+    if (isMounted) {
+      console.warn("Access resolving timeout - forcing stop");
+      setIsAccessResolving(false);
+    }
+  }, 10000);
 
   const resolveAccessProfile = async () => {
     setIsAccessResolving(true);
@@ -605,6 +637,7 @@ useEffect(() => {
       console.error("Access resolve error:", error);
     } finally {
       if (isMounted) {
+        clearTimeout(timeout);
         setIsAccessResolving(false);
       }
     }
@@ -612,30 +645,39 @@ useEffect(() => {
 
   resolveAccessProfile();
 
-  // ✅ 🔥 FAILSAFE (VERY IMPORTANT)
-  const timeout = setTimeout(() => {
-    if (isMounted) {
-      console.warn("Access resolving timeout - forcing stop");
-      setIsAccessResolving(false);
-    }
-  }, 3000);
-
   return () => {
     isMounted = false;
     clearTimeout(timeout);
   };
 
-}, [currentUser, currentPath]);
+}, [currentUser]);
 
 
   useEffect(() => {
+    const isCustomerRoute = currentPath === '/customer' || currentPath.startsWith('/customer/')
+    const isStaffOnAdminRoute =
+      accessProfile.role === 'staff personnel' &&
+      (currentPath === '/admin' || currentPath.startsWith('/admin/'))
+    const isCashierOnStaffRoute =
+      isCashierAccessRole(accessProfile.role) &&
+      (currentPath === '/staff' || currentPath.startsWith('/staff/'))
+    const isRoleMismatch =
+      (isCustomerRoute && accessProfile.role !== 'customer') || isStaffOnAdminRoute || isCashierOnStaffRoute
+
     if (
-      currentPath === '/' &&
+      (currentPath === '/' || currentPath === '/login' || isRoleMismatch) &&
       currentUser &&
       !isAccessResolving &&
       accessProfile.dashboardPath &&
-      (accessProfile.isPrivileged || accessProfile.role === 'customer')
+      (accessProfile.isPrivileged || accessProfile.role === 'customer' || isCashierAccessRole(accessProfile.role))
     ) {
+      const normalizedRole = normalizeAccessRole(accessProfile.role)
+
+      if (normalizedRole === 'cashier personnel') {
+        navigateTo('/cashier')
+        return
+      }
+
       navigateTo(accessProfile.dashboardPath)
     }
   }, [currentPath, currentUser, isAccessResolving, accessProfile.role, accessProfile.isPrivileged, accessProfile.dashboardPath])
@@ -832,86 +874,97 @@ accessibleSections: Array.isArray(profile?.accessibleSections)
   const resolveRoleAfterLogin = async (user, requestedRole) => {
     const syncUserAccess = httpsCallable(functions, 'syncUserAccess')
 
-    const [authorizedAdminResult, cloudResult] = await Promise.allSettled([
-      getAuthorizedAdminProfile(user.email),
-      syncUserAccess({ requestedRole }),
+    const localProfilePromise = (async () => {
+      try {
+        const authorizedAdminProfile = await getAuthorizedAdminProfile(user.email || '')
+        if (authorizedAdminProfile) {
+          return {
+            role: authorizedAdminProfile.role,
+            label: roleLabels[authorizedAdminProfile.role] || 'Admin',
+            dashboardPath:
+              (isCashierAccessRole(authorizedAdminProfile.role)
+                ? dashboardByRole[authorizedAdminProfile.role]
+                : authorizedAdminProfile.dashboardPath) ||
+              dashboardByRole[authorizedAdminProfile.role] ||
+              null,
+            isPrivileged: true,
+            authorized: true,
+            mustChangePassword: Boolean(authorizedAdminProfile.mustChangePassword),
+            firstLoginRequired: Boolean(
+              authorizedAdminProfile.firstLoginRequired || authorizedAdminProfile.mustChangePassword,
+            ),
+            accessibleSections: authorizedAdminProfile.accessibleSections || [],
+            source: authorizedAdminProfile.source,
+          }
+        }
+
+        const userSnapshot = await getDoc(doc(db, 'users', user.uid)).catch(() => null)
+        const userData = userSnapshot?.exists ? userSnapshot.data() : {}
+        const firestoreRole = normalizeAccessRole(userData?.role || userData?.accountRole || requestedRole)
+
+        if (firestoreRole !== 'customer') {
+          const firestoreSections = Array.isArray(userData?.accessibleSections)
+            ? userData.accessibleSections
+            : []
+
+          return {
+            role: firestoreRole,
+            label: roleLabels[firestoreRole] || 'User',
+            dashboardPath: dashboardByRole[firestoreRole] || null,
+            isPrivileged: true,
+            authorized: true,
+            mustChangePassword: Boolean(userData?.mustChangePassword),
+            firstLoginRequired: Boolean(userData?.firstLoginRequired || userData?.mustChangePassword),
+            accessibleSections: firestoreSections,
+            source: 'firestore-user-doc',
+          }
+        }
+      } catch {
+        // Ignore local role lookup failures and continue with the cloud fallback.
+      }
+
+      return null
+    })()
+
+    const cloudResultPromise = Promise.race([
+      syncUserAccess({ requestedRole }).then((result) => result?.data ?? null).catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+    ])
+    const [localProfile, cloudResult] = await Promise.all([
+      Promise.race([
+        localProfilePromise,
+        new Promise((resolve) => setTimeout(() => resolve(null), 2500)),
+      ]),
+      cloudResultPromise,
     ])
 
-    const authorizedAdminProfile =
-      authorizedAdminResult.status === 'fulfilled' ? authorizedAdminResult.value : null
-    const cloudData = cloudResult.status === 'fulfilled' ? cloudResult.value?.data ?? null : null
-    const resolvedCloudRole = normalizeAccessRole(cloudData?.role || requestedRole)
+    const resolvedCloudRole = normalizeAccessRole(cloudResult?.role || requestedRole)
     const cloudDashboardPath =
-      normalizeDashboardPath(cloudData?.dashboardPath) ||
+      normalizeDashboardPath(cloudResult?.dashboardPath) ||
       dashboardByRole[resolvedCloudRole] ||
       null
 
-    // If admin is found in authorized collections, prioritize that role
-    if (authorizedAdminProfile) {
-      const dashboardPath =
-        authorizedAdminProfile.dashboardPath ||
-        dashboardByRole[authorizedAdminProfile.role] ||
-        null
+    if (localProfile && localProfile.role !== 'customer') {
+      return localProfile
+    }
 
+    if (resolvedCloudRole !== 'customer') {
       return {
-        role: authorizedAdminProfile.role,
-        label: roleLabels[authorizedAdminProfile.role] || 'Admin',
-        dashboardPath,
+        role: resolvedCloudRole,
+        label: roleLabels[resolvedCloudRole] || 'User',
+        dashboardPath:
+          cloudDashboardPath && cloudDashboardPath !== '/'
+            ? cloudDashboardPath
+            : dashboardByRole[resolvedCloudRole],
         isPrivileged: true,
         authorized: true,
-        mustChangePassword: Boolean(authorizedAdminProfile.mustChangePassword),
-        firstLoginRequired: Boolean(authorizedAdminProfile.firstLoginRequired || authorizedAdminProfile.mustChangePassword),
-        source: authorizedAdminProfile.source,
+        mustChangePassword: Boolean(cloudResult?.mustChangePassword),
+        firstLoginRequired: Boolean(cloudResult?.firstLoginRequired || cloudResult?.mustChangePassword),
+        accessibleSections: localProfile?.accessibleSections || [],
+        source: typeof cloudResult?.source === 'string' ? cloudResult.source : 'firestore-user-doc',
       }
     }
 
-    // If the Cloud Function resolved a privileged role, trust the server result
-   
-
-if (resolvedCloudRole !== 'customer') {
-
-  // ✅ GET USER DOCUMENT
-  const userDocRef = doc(db, "users", user.uid);
-  const userSnapshot = await getDoc(userDocRef);
-
-  let firestoreSections = [];
-
-  if (userSnapshot.exists()) {
-    const userData = userSnapshot.data();
-
-    firestoreSections = Array.isArray(userData.accessibleSections)
-      ? userData.accessibleSections
-      : [];
-  }
-
-  console.log("🔥 FIRESTORE SECTIONS:", firestoreSections);
-
-  return {
-    role: resolvedCloudRole,
-    label: roleLabels[resolvedCloudRole] || 'User',
-
-    dashboardPath:
-      cloudDashboardPath && cloudDashboardPath !== '/'
-        ? cloudDashboardPath
-        : dashboardByRole[resolvedCloudRole],
-
-    isPrivileged: true,
-    authorized: true,
-
-    mustChangePassword: Boolean(cloudData?.mustChangePassword),
-    firstLoginRequired: Boolean(
-      cloudData?.firstLoginRequired || cloudData?.mustChangePassword
-    ),
-
-    // ✅ ✅ ✅ FORCE USE FIRESTORE
-    accessibleSections: firestoreSections,
-
-    source: 'firestore-user-doc',
-  };
-}
-
-
-    // For customer logins without authorized admin profile or privileged server result
     if (requestedRole === 'customer') {
       return {
         role: 'customer',
@@ -925,24 +978,16 @@ if (resolvedCloudRole !== 'customer') {
       }
     }
 
-    // Handle staff/personnel/admin roles from cloud function
-    
-return {
-  role: resolvedCloudRole,
-  label: roleLabels[resolvedCloudRole] || 'User',
-
-  // ✅ FIXED
-  dashboardPath: cloudDashboardPath && cloudDashboardPath !== '/'
-    ? cloudDashboardPath
-    : dashboardByRole[resolvedCloudRole],
-
-  isPrivileged: resolvedCloudRole !== 'customer',
-  authorized: true,
-  mustChangePassword: Boolean(cloudData?.mustChangePassword),
-  firstLoginRequired: Boolean(cloudData?.firstLoginRequired || cloudData?.mustChangePassword),
-  source: cloudData?.source || 'cloud-function',
-}
-
+    return {
+      role: resolvedCloudRole,
+      label: roleLabels[resolvedCloudRole] || 'User',
+      dashboardPath: cloudDashboardPath && cloudDashboardPath !== '/' ? cloudDashboardPath : dashboardByRole[resolvedCloudRole],
+      isPrivileged: resolvedCloudRole !== 'customer',
+      authorized: true,
+      mustChangePassword: Boolean(cloudResult?.mustChangePassword),
+      firstLoginRequired: Boolean(cloudResult?.firstLoginRequired || cloudResult?.mustChangePassword),
+      source: cloudResult?.source || 'cloud-function',
+    }
   }
 
 
@@ -1173,11 +1218,21 @@ if (!actualRole) {
         throw new Error('Passwords do not match. Please confirm your password again.')
       }
 
-      if (!auth.currentUser) {
+      const signedInUser = auth.currentUser
+      if (!signedInUser?.email) {
         throw new Error('Your session expired. Please sign in again with the temporary password.')
       }
 
-      await updatePassword(auth.currentUser, passwordChangeForm.password)
+      if (!passwordChangeForm.currentPassword) {
+        throw new Error('Enter your temporary password to verify your account.')
+      }
+
+      const credential = EmailAuthProvider.credential(
+        signedInUser.email,
+        passwordChangeForm.currentPassword,
+      )
+      await reauthenticateWithCredential(signedInUser, credential)
+      await updatePassword(signedInUser, passwordChangeForm.password)
 
       const completeFirstLoginSetup = httpsCallable(functions, 'completeFirstLoginSetup')
       await completeFirstLoginSetup({})
@@ -1193,6 +1248,7 @@ if (!actualRole) {
       // Show success message instead of immediately closing
       setPasswordChangeSuccess(true)
       setPasswordChangeForm({
+        currentPassword: '',
         password: '',
         confirmPassword: '',
       })
@@ -1202,7 +1258,9 @@ if (!actualRole) {
       })
     } catch (error) {
       const passwordMessage =
-        error?.code === 'auth/requires-recent-login'
+        ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-mismatch'].includes(error?.code)
+          ? 'The temporary password is incorrect. Check it and try again.'
+          : error?.code === 'auth/requires-recent-login'
           ? 'Please sign in again using the temporary password, then update it immediately.'
           : formatAuthError(error)
 
@@ -1223,8 +1281,9 @@ if (!actualRole) {
 
   const currentDashboardBasePath = getDashboardBasePath(currentPath)
   const requiredDashboardRole = dashboardRequirements[currentDashboardBasePath]
+  const normalizedAccessRole = normalizeAccessRole(accessProfile.role)
   const canViewCurrentDashboard = requiredDashboardRole
-    ? canAccessRole(accessProfile.role, requiredDashboardRole)
+    ? canAccessRole(normalizedAccessRole, requiredDashboardRole)
     : false
 
   const shouldShowAccessLoader =
@@ -1318,13 +1377,27 @@ if (!actualRole) {
     )
   }
 
+  if (currentPath === '/showroom') {
+    return withSecurityModal(
+      <ShowroomPage
+        onNavigateHome={() => goToHomeSection('home', 'Home')}
+        onNavigateSection={goToHomeSection}
+        onNavigateService={() => goToHomeSection('service', 'Service')}
+        onNavigateSpareParts={() => navigateTo('/spare-parts')}
+        onNavigateLogin={() => navigateTo('/login')}
+        onNavigateShowroom={() => navigateTo('/showroom')}
+        currentUser={currentUser}
+      />,
+    )
+  }
+
   if (currentPath === '/spare-parts') {
     return withSecurityModal(
       <SparePartsPage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
         onNavigateSection={goToHomeSection}
         onNavigateService={() => goToHomeSection('service', 'Service')}
-        onNavigateShowroom={() => navigateTo('/customer')}
+        onNavigateShowroom={() => navigateTo('/showroom')}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
         currentUser={currentUser}
       />,
@@ -1335,7 +1408,7 @@ if (!actualRole) {
     return withSecurityModal(
       <ServicePage
         onNavigateHome={() => goToHomeSection('home', 'Home')}
-        onNavigateShowroom={() => navigateTo('/customer')}
+        onNavigateShowroom={() => navigateTo('/showroom')}
         onNavigateSection={goToHomeSection}
         onOpenSignup={() => openAuthSection('signup', 'customer')}
       />,
@@ -1438,25 +1511,26 @@ if (!actualRole) {
     )
   }
 
-  if (currentPath === '/customer' && currentUser && accessProfile.role === 'customer') {
+  if (currentPath === '/customer' && (!currentUser || accessProfile.role === 'customer')) {
     return withSecurityModal(
-      <CustomerServicePage
+      <CustomerShowroomPage
         currentUser={currentUser}
-        onSignOut={handleSignOut}
-        onNavigateToShowroom={() => navigateTo('/customer/service')}
+        onSignOut={currentUser ? handleSignOut : null}
+        onNavigateToShowroom={() => navigateTo('/customer')}
         onNavigateToService={() => navigateTo('/customer/service')}
         onNavigateToFinancing={() => navigateTo('/financing')}
         onNavigateToFinancingStatus={() => navigateTo('/financing/status')}
         onNavigateToMessages={() => navigateTo('/customer/messages')}
         onNavigateToProfile={() => navigateTo('/customer/profile')}
         onNavigateToServiceBookings={() => navigateTo('/customer/service-bookings')}
-        onNavigateBack={() => navigateTo('/customer/service')}
+        onNavigateBack={() => navigateTo('/customer')}
+        onNavigateToProduct={(productId) => navigateTo(`/customer/product/${encodeURIComponent(productId)}`)}
       />,
     )
   }
 
   // Customer Service Page Route
-  if (currentPath === '/cashier' && currentUser && accessProfile.role === 'cashier personnel') {
+  if ((currentPath === '/cashier' || (currentPath === '/' && currentUser && isCashierAccessRole(accessProfile.role))) && currentUser && isCashierAccessRole(accessProfile.role)) {
     return withSecurityModal(
       <CashierPanel
         currentUser={currentUser}
@@ -1567,14 +1641,15 @@ if (!actualRole) {
       <GlobalLoadingScreen
         role={requiredDashboardRole ? roleLabels[requiredDashboardRole] : 'Dashboard'}
         delay={300}
+        autoComplete={false}
       />
     )
   }
 
   if (dashboardRequirements[currentDashboardBasePath] && currentUser && canViewCurrentDashboard && !isAccessResolving) {
-    const financingDetailMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications\/(.+)$/)
-    const financingListMatch = currentPath.match(/^\/(superadmin|admin)\/financing-applications$/)
-    const approvedApplicationsMatch = currentPath.match(/^\/(superadmin|admin)\/approved-applications$/)
+    const financingDetailMatch = currentPath.match(/^\/(superadmin|admin|staff)\/financing-applications\/(.+)$/)
+    const financingListMatch = currentPath.match(/^\/(superadmin|admin|staff)\/financing-applications$/)
+    const approvedApplicationsMatch = currentPath.match(/^\/(superadmin|admin|staff)\/approved-applications$/)
 
     let initialSection = 'dashboard'
     if (financingDetailMatch || financingListMatch) {
@@ -1607,7 +1682,7 @@ if (!actualRole) {
       customerName={customerName}
       onSelectSlide={setActiveSlide}
       onOpenAuthSection={openAuthSection}
-      onNavigateShowroom={() => navigateTo('/customer')}
+      onNavigateShowroom={() => navigateTo('/showroom')}
       onNavigateSpareParts={() => navigateTo('/spare-parts')}
       onNavigateLogin={() => navigateTo('/login')}
       onNavigateSection={goToHomeSection}

@@ -10,6 +10,10 @@ input[type='number'] {
   -moz-appearance: textfield;
 }
 
+.inventory-control-shell {
+  --primary: #C51D34;
+}
+
 .inventory-control-title span {
   color: var(--primary);
 }
@@ -167,7 +171,7 @@ input[type='number'] {
 .inventory-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 70;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -177,12 +181,12 @@ input[type='number'] {
 
 /* Spare parts modal should appear above the sidebar overlay (z-index:45) */
 .spareparts-modal-overlay {
-  z-index: 60;
+  z-index: 80;
 }
 
 /* Edit modal should appear above the sidebar overlay (z-index:45) */
 .edit-modal-overlay {
-  z-index: 60;
+  z-index: 80;
 }
 
 .inventory-modal-backdrop {
@@ -196,7 +200,7 @@ input[type='number'] {
 
 .inventory-modal-panel {
   position: relative;
-  z-index: 10;
+  z-index: 20;
   width: min(100%, 48rem);
   border: 1px solid var(--border);
   border-radius: 28px;
@@ -329,6 +333,74 @@ input[type='number'] {
   background-position: right 0.7rem center;
   background-size: 1.2em 1.2em;
   padding-right: 2.5rem;
+}
+
+.inventory-custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.inventory-custom-select-trigger {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 1.2em 1.2em;
+  padding-right: 2.5rem;
+}
+
+.inventory-custom-select-trigger.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.inventory-custom-select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  max-height: 18rem;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(11, 13, 16, 0.96);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
+
+.inventory-custom-select-option {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  text-align: left;
+  padding: 0.8rem 0.9rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.inventory-custom-select-option:hover,
+.inventory-custom-select-option.is-selected {
+  background: rgba(197, 29, 52, 0.16);
+}
+
+.inventory-custom-select-empty {
+  padding: 0.8rem 0.9rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.85rem;
 }
 
 .dropdown-select:hover {
@@ -1067,4 +1139,23 @@ input[type='number'] {
 
 .inventory-control-shell.light-mode .w-16:hover {
   background: #FFFFFF;
+}
+
+.inventory-control-shell .inventory-add-button,
+.inventory-control-shell.light-mode .inventory-add-button {
+  background: #C51D34;
+  box-shadow: 0 3px 8px rgba(197, 29, 52, 0.24);
+  color: #FFFFFF !important;
+}
+
+.inventory-control-shell .inventory-add-button:hover:not(:disabled),
+.inventory-control-shell.light-mode .inventory-add-button:hover:not(:disabled) {
+  background: #A01728;
+  box-shadow: 0 4px 10px rgba(160, 23, 40, 0.28);
+}
+
+.inventory-control-shell .inventory-add-button:disabled,
+.inventory-control-shell.light-mode .inventory-add-button:disabled {
+  background: #C51D34;
+  opacity: 0.6;
 }

@@ -569,20 +569,21 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
               <div className="mb-12 border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg p-8">
                 <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8">Application Journey</h3>
                 
-                <div className="flex items-center justify-between mb-6">
+                <div className="relative mb-6 grid grid-cols-4 px-1 sm:px-4">
+                  <div className="absolute left-[12.5%] right-[12.5%] top-5 h-1 rounded-full bg-green-500/70" aria-hidden="true" />
                   {[
                     { label: 'INQUIRY', completed: true },
                     { label: 'FINANCING APPROVED', completed: true },
                     { label: 'DOCUMENT REVIEW', completed: true },
                     { label: 'FINAL', completed: true, active: true }
                   ].map((stage, idx) => (
-                    <div key={idx} className="flex flex-col items-center flex-1">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 mb-3 transition-all ${
-                        stage.active 
+                    <div key={idx} className="relative z-10 flex min-w-0 flex-col items-center">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                        stage.active
                           ? 'border-red-600 bg-red-600 shadow-lg shadow-red-600/50'
                           : stage.completed
-                          ? 'border-green-500 bg-green-500/20'
-                          : 'border-slate-600 bg-slate-800'
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-slate-600 bg-slate-800'
                       }`}>
                         {stage.completed ? (
                           <CheckIcon sx={{ fontSize: 20 }} className={stage.active ? 'text-white' : 'text-green-400'} />
@@ -590,16 +591,11 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
                           <span className="text-sm font-bold text-slate-300">{idx + 1}</span>
                         )}
                       </div>
-                      <p className={`text-xs font-black uppercase tracking-tight text-center leading-tight ${
+                      <p className={`mt-3 max-w-[120px] text-center text-[10px] font-black uppercase leading-tight tracking-[0.08em] sm:text-xs sm:tracking-tight ${
                         stage.active ? 'text-red-600' : stage.completed ? 'text-green-400' : 'text-slate-500'
                       }`}>
                         {stage.label}
                       </p>
-                      {idx < 3 && (
-                        <div className={`absolute w-[calc(25%-20px)] h-1 top-10.5 ml-[calc(12.5%+20px)] ${
-                          stage.completed ? 'bg-green-500' : 'bg-slate-700'
-                        }`} />
-                      )}
                     </div>
                   ))}
                 </div>
@@ -846,19 +842,37 @@ export default function FinancingStatusPage({ referenceId, currentUser, onNaviga
                       </div>
 
                       {/* Progress Timeline */}
-                      <div className="relative py-8 mb-6">
-                        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-800 -translate-y-1/2"></div>
-                        <div className="absolute top-1/2 left-0 h-0.5 bg-red-600 -translate-y-1/2" style={{width: `${((getStageFromStatus(statusData?.status) || 1) / 4) * 100}%`}}></div>
-                        
-                        <div className="relative flex justify-between items-center">
-                          {['Submitted', 'Reviewing', 'Approved', 'Completed'].map((step, idx) => (
-                            <div key={idx} className="flex flex-col items-center">
-                              <div className={`w-8 h-8 flex items-center justify-center rounded-full font-black text-sm ${idx < (getStageFromStatus(statusData?.status) || 1) ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                                {idx < (getStageFromStatus(statusData?.status) || 1) ? '✓' : idx + 1}
+                      <div className="relative mb-6 px-1 py-8 sm:px-4">
+                        <div className="absolute left-[12.5%] right-[12.5%] top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-slate-800" />
+                        <div
+                          className="absolute left-[12.5%] top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-red-600 transition-all"
+                          style={{ width: `calc(${((getStageFromStatus(statusData?.status) || 1) - 1) / 3 * 75}%)` }}
+                        />
+                        <div className="relative grid grid-cols-4">
+                          {['Submitted', 'Reviewing', 'Approved', 'Completed'].map((step, idx) => {
+                            const currentStage = getStageFromStatus(statusData?.status) || 1
+                            const isComplete = idx < currentStage
+                            const isCurrent = idx === currentStage - 1
+
+                            return (
+                              <div key={step} className="flex min-w-0 flex-col items-center">
+                                <div className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-black transition-all ${
+                                  isCurrent
+                                    ? 'border-red-500 bg-red-600 text-white shadow-lg shadow-red-600/30'
+                                    : isComplete
+                                      ? 'border-red-500 bg-red-600/20 text-red-300'
+                                      : 'border-slate-700 bg-slate-800 text-slate-400'
+                                }`}>
+                                  {isComplete ? '✓' : idx + 1}
+                                </div>
+                                <p className={`mt-2 max-w-[90px] text-center text-[9px] font-bold uppercase leading-tight tracking-[0.1em] sm:text-[10px] ${
+                                  isComplete ? 'text-red-500' : 'text-slate-400'
+                                }`}>
+                                  {step}
+                                </p>
                               </div>
-                              <p className={`text-[9px] font-bold uppercase tracking-widest mt-2 ${idx < (getStageFromStatus(statusData?.status) || 1) ? 'text-red-600' : 'text-slate-400'}`}>{step}</p>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
 

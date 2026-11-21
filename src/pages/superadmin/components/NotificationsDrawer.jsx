@@ -25,25 +25,25 @@ export default function NotificationsDrawer({
   return (
     <>
       {open && <button type="button" className="notifications-overlay" onClick={onClose} aria-label="Close notifications overlay" />}
-      <aside className={`notifications-drawer ${open ? 'open' : ''}`}>
-        <div className="space-y-3 border-b border-white/10 px-5 py-4">
-          <div className="flex items-center justify-between">
+      <aside className={`notifications-drawer ${open ? 'open' : ''}`} aria-label="Notifications">
+        <div className="notifications-drawer-header">
+          <div className="notifications-drawer-title-row">
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-red-300">Alerts</p>
-              <h3 className="font-['Epilogue'] text-lg font-black uppercase text-white">Notifications</h3>
+              <p className="notifications-drawer-eyebrow">Alerts</p>
+              <h3 className="notifications-drawer-title">Notifications</h3>
             </div>
-            <button type="button" onClick={onClose} className="text-white/70 transition hover:text-white" aria-label="Close notifications drawer">
+            <button type="button" onClick={onClose} className="notifications-drawer-close" aria-label="Close notifications drawer">
               <CloseRoundedIcon sx={{ fontSize: 20 }} />
             </button>
           </div>
 
           {hasNotifications && (
-            <div className="flex gap-2">
+            <div className="notifications-drawer-actions">
               {hasUnreadNotifications && (
                 <button
                   type="button"
                   onClick={onMarkAllAsRead}
-                  className="flex items-center gap-1.5 rounded-full bg-red-600/20 px-3 py-1.5 text-[11px] font-bold uppercase text-red-400 transition hover:bg-red-600/30"
+                  className="notifications-action-button"
                   title="Mark all as read"
                 >
                   <DoneAllRoundedIcon sx={{ fontSize: 14 }} />
@@ -53,7 +53,7 @@ export default function NotificationsDrawer({
               <button
                 type="button"
                 onClick={onDeleteAllNotifications}
-                className="flex items-center gap-1.5 rounded-full bg-red-600/20 px-3 py-1.5 text-[11px] font-bold uppercase text-red-400 transition hover:bg-red-600/30"
+                className="notifications-action-button"
                 title="Delete all notifications"
               >
                 <ClearAllRoundedIcon sx={{ fontSize: 14 }} />
@@ -63,32 +63,32 @@ export default function NotificationsDrawer({
           )}
         </div>
 
-        <div className="space-y-3 overflow-y-auto px-4 py-4" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+        <div className="notifications-list">
           {notifications.map((item) => (
             <div
               key={item.id}
-              className={`notification-card group flex items-start gap-3 rounded-2xl p-4 text-left transition ${item.read ? 'opacity-75' : 'ring-1 ring-red-600/30'}`}
+              className={`notification-card ${item.read ? 'is-read' : 'is-unread'}`}
             >
               <button
                 type="button"
                 onClick={() => onNotificationClick?.(item)}
-                className="flex-1 cursor-pointer text-left"
+                className="notification-card-content"
               >
-                <div className="mb-2 flex items-center gap-2 text-red-300">
+                <div className="notification-card-heading">
                   <NotificationsActiveRoundedIcon sx={{ fontSize: 16 }} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.22em]">{item.type}</span>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${item.read ? 'bg-white/10 text-white/60' : 'bg-red-600/20 text-red-300'}`}>
+                  <span className="notification-type">{item.type}</span>
+                  <span className={`notification-read-state ${item.read ? 'is-read' : 'is-new'}`}>
                     {item.read ? 'Read' : 'New'}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-white">{item.title}</p>
-                <p className="mt-1 text-xs text-white/60">{item.description}</p>
-                <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-white/40">{item.time}</p>
+                <p className="notification-title">{item.title}</p>
+                <p className="notification-description">{item.description}</p>
+                <p className="notification-time">{item.time}</p>
               </button>
               <button
                 type="button"
                 onClick={(e) => handleDeleteClick(e, item.id)}
-                className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg bg-red-600/10 text-red-400 opacity-0 transition hover:bg-red-600/20 group-hover:opacity-100"
+                className="notification-delete-button"
                 title="Delete notification"
                 aria-label="Delete notification"
               >
@@ -98,7 +98,7 @@ export default function NotificationsDrawer({
           ))}
 
           {!notifications.length && (
-            <div className="notification-card rounded-2xl p-4 text-sm text-white/60">
+            <div className="notification-empty-state">
               No new notifications right now.
             </div>
           )}

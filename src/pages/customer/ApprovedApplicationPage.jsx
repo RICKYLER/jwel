@@ -108,37 +108,33 @@ export default function ApprovedApplicationPage({ referenceId, motorcycleName, a
             <div className="mb-12 border border-slate-800 bg-slate-900/60 backdrop-blur-sm rounded-lg p-8">
               <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8">Application Journey</h3>
               
-              <div className="flex items-center justify-between mb-6">
+              <div className="relative mb-6 grid grid-cols-4 px-1 sm:px-4">
+                <div className="absolute left-[12.5%] right-[12.5%] top-5 h-1 rounded-full bg-green-500/70" aria-hidden="true" />
                 {[
                   { label: 'INQUIRY', completed: true },
                   { label: 'FINANCING APPROVED', completed: true },
                   { label: 'DOCUMENT REVIEW', completed: true },
                   { label: 'FINAL', completed: true, active: true }
                 ].map((stage, idx) => (
-                  <div key={idx} className="flex flex-col items-center flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 mb-3 transition-all ${
-                      stage.active 
-                        ? 'border-red-600 bg-red-600 shadow-lg shadow-red-600/50'
-                        : stage.completed
-                        ? 'border-green-500 bg-green-500/20'
-                        : 'border-slate-600 bg-slate-800'
-                    }`}>
-                      {stage.completed ? (
-                        <CheckIcon sx={{ fontSize: 20 }} className={stage.active ? 'text-white' : 'text-green-400'} />
-                      ) : (
-                        <span className="text-sm font-bold text-slate-300">{idx + 1}</span>
-                      )}
-                    </div>
-                    <p className={`text-xs font-black uppercase tracking-tight text-center leading-tight ${
-                      stage.active ? 'text-red-600' : stage.completed ? 'text-green-400' : 'text-slate-500'
-                    }`}>
-                      {stage.label}
-                    </p>
-                    {idx < 3 && (
-                      <div className={`absolute w-[calc(25%-20px)] h-1 top-10.5 ml-[calc(12.5%+20px)] ${
-                        stage.completed ? 'bg-green-500' : 'bg-slate-700'
-                      }`} />
-                    )}
+                  <div key={idx} className="relative z-10 flex min-w-0 flex-col items-center">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                        stage.active
+                          ? 'border-red-600 bg-red-600 shadow-lg shadow-red-600/50'
+                          : stage.completed
+                            ? 'border-green-500 bg-green-500/20'
+                            : 'border-slate-600 bg-slate-800'
+                      }`}>
+                        {stage.completed ? (
+                          <CheckIcon sx={{ fontSize: 20 }} className={stage.active ? 'text-white' : 'text-green-400'} />
+                        ) : (
+                          <span className="text-sm font-bold text-slate-300">{idx + 1}</span>
+                        )}
+                      </div>
+                      <p className={`mt-3 max-w-[120px] text-center text-[10px] font-black uppercase leading-tight tracking-[0.08em] sm:text-xs sm:tracking-tight ${
+                        stage.active ? 'text-red-600' : stage.completed ? 'text-green-400' : 'text-slate-500'
+                      }`}>
+                        {stage.label}
+                      </p>
                   </div>
                 ))}
               </div>

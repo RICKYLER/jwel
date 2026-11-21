@@ -1,3 +1,8 @@
+.inventory-delete-archived-shell {
+  --primary: #C51D34;
+  --primary-hover: #A01728;
+}
+
 .inventory-delete-archived-shell .inventory-control-title {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   background-clip: text;

@@ -1,184 +1,350 @@
-.inventory-reports-title span {
-  color: var(--primary);
+.inventory-reports-shell {
+  --reports-surface: #fff;
+  --reports-surface-muted: #f3f5f7;
+  --reports-border: #c9ced6;
+  --reports-text: #263445;
+  --reports-muted: #687485;
+  --reports-accent: #C51D34;
+  --reports-accent-strong: #A01728;
+  color: var(--reports-text);
 }
 
-.inventory-reports-export-button,
-.inventory-reports-submit-button {
-  border: 0;
-  background: var(--primary);
-  box-shadow: 0 8px 16px rgba(197, 29, 52, 0.3);
-  transition: all 0.2s ease;
-  font-weight: 800;
-  color: #FFFFFF !important;
+.inventory-reports-shell.light-mode {
+  --reports-surface: #fff;
+  --reports-surface-muted: #f3f5f7;
+  --reports-border: #c9ced6;
+  --reports-text: #263445;
+  --reports-muted: #687485;
+  --reports-accent: #C51D34;
+  --reports-accent-strong: #A01728;
 }
 
-.inventory-reports-header-badge {
-  display: inline-block;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.5);
-  padding: 0;
-  border-radius: 0;
-  font-size: 0.625rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
+.inventory-reports-shell:not(.light-mode) {
+  --reports-surface: #292f38;
+  --reports-surface-muted: #222830;
+  --reports-border: #4a535f;
+  --reports-text: #e3e7ec;
+  --reports-muted: #aab3bf;
+  --reports-accent: #C51D34;
+  --reports-accent-strong: #A01728;
+}
+
+.inventory-reports-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--reports-border);
+}
+
+.inventory-reports-title {
+  margin: 0;
+  color: var(--reports-text);
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.inventory-reports-subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--reports-muted);
+  font-size: 0.85rem;
+}
+
+.inventory-reports-export-button {
+  min-height: 38px;
+  border: 1px solid var(--reports-border);
+  border-radius: 3px;
+  background: var(--reports-surface);
+  box-shadow: none;
+  color: var(--reports-text) !important;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .inventory-reports-export-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(197, 29, 52, 0.4);
+  transform: none;
+  border-color: var(--reports-accent);
+  background: var(--reports-surface-muted);
+  box-shadow: none;
 }
 
 .inventory-reports-summary-card {
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(93, 20, 20, 0.88) 0%, rgba(36, 28, 29, 0.96) 22%, #1d1d1f 100%);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  min-height: 112px;
+  border: 1px solid var(--reports-border);
+  border-top: 3px solid var(--reports-accent);
+  border-radius: 3px;
+  background: var(--reports-surface);
+  box-shadow: none;
   position: relative;
   overflow: hidden;
 }
 
-.inventory-reports-board,
-.inventory-reports-empty {
-  border: 1px solid var(--border);
-  background: var(--bg);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+.inventory-reports-summary-card::after {
+  content: none;
 }
 
-.inventory-reports-summary-card::after {
-  content: '';
-  position: absolute;
-  right: -18px;
-  bottom: -20px;
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(197, 29, 52, 0.16) 0%, transparent 70%);
+.inventory-reports-summary-label {
+  margin: 0;
+  color: var(--reports-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.inventory-reports-summary-value {
+  margin: 0.55rem 0 0;
+  color: var(--reports-text);
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.inventory-reports-summary-note {
+  margin: 0.35rem 0 0;
+  color: var(--reports-muted);
+  font-size: 0.72rem;
+}
+
+.inventory-reports-board {
+  overflow: hidden;
+  border: 1px solid var(--reports-border);
+  border-radius: 3px;
+  background: var(--reports-surface);
+  box-shadow: none;
+}
+
+.inventory-reports-board > .mb-5 {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--reports-border);
+}
+
+.inventory-reports-tab-row {
+  gap: 0;
+  border-bottom: 1px solid var(--reports-border);
 }
 
 .inventory-reports-tab {
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 3px 3px 0 0;
   background: transparent;
-  color: var(--text);
-  opacity: 0.6;
-  padding: 0.4rem 1rem;
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.3s ease;
-  border-radius: 999px;
-  padding: 0.5rem 1.2rem;
-  white-space: nowrap;
+  color: var(--reports-muted);
+  opacity: 1;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 .inventory-reports-tab.is-active {
-  color: var(--text);
-  background: var(--card);
-  border: 1px solid var(--border);
-  opacity: 1;
+  margin-bottom: -1px;
+  border-color: var(--reports-border);
+  border-bottom-color: var(--reports-surface);
+  background: var(--reports-surface);
+  color: var(--reports-text);
 }
 
 .inventory-reports-tab:hover:not(.is-active) {
-  opacity: 0.8;
-  background: var(--card);
+  background: var(--reports-surface-muted);
+  color: var(--reports-text);
 }
 
-.inventory-reports-search-box {
-  border: 1px solid var(--border);
-  background: var(--card);
-  transition: border-color 0.3s ease;
+.inventory-reports-filter-bar {
+  padding-top: 0.85rem;
 }
 
-.inventory-reports-search-box input {
-  background: transparent;
-  color: var(--text);
-  text-overflow: ellipsis;
-}
-
-.inventory-reports-search-box input::placeholder {
-  color: var(--text);
-  opacity: 0.5;
+.inventory-reports-filter-label {
+  color: var(--reports-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .inventory-reports-date-input {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  transition: border-color 0.3s ease;
+  min-height: 34px;
+  border: 1px solid var(--reports-border);
+  border-radius: 3px;
+  background: var(--reports-surface);
+  color: var(--reports-text);
+  transition: border-color 0.15s ease;
 }
 
 .inventory-reports-date-input:focus {
-  border-color: var(--primary);
-  outline: none;
+  border-color: var(--reports-accent);
+  outline: 2px solid color-mix(in srgb, var(--reports-accent) 20%, transparent);
+  outline-offset: 1px;
 }
 
-.inventory-reports-category-pill {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  transition: all 0.3s ease;
+.inventory-reports-clear-button {
+  border: 0;
+  background: transparent;
+  color: var(--reports-accent);
+  cursor: pointer;
+}
+
+.inventory-reports-clear-button:hover {
+  color: var(--reports-accent-strong);
+  text-decoration: underline;
+}
+
+.inventory-reports-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.inventory-reports-table {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+  color: var(--reports-text);
+  font-size: 0.78rem;
+}
+
+.inventory-reports-table th,
+.inventory-reports-table td {
+  padding: 0.65rem 0.75rem;
+  border-right: 1px solid var(--reports-border);
+  border-bottom: 1px solid var(--reports-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.inventory-reports-table th:last-child,
+.inventory-reports-table td:last-child {
+  border-right: 0;
+}
+
+.inventory-reports-table th {
+  background: var(--reports-surface-muted);
+  color: var(--reports-text);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.inventory-reports-table tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--reports-surface) 92%, var(--reports-surface-muted));
+}
+
+.inventory-reports-table tbody tr:hover {
+  background: color-mix(in srgb, var(--reports-accent) 8%, var(--reports-surface));
+}
+
+.inventory-reports-table td {
+  color: var(--reports-muted);
+}
+
+.inventory-reports-table td p {
+  margin: 0;
+  color: inherit;
+}
+
+.inventory-reports-table .inventory-reports-item-name {
+  color: var(--reports-text);
+  font-weight: 600;
+}
+
+.inventory-reports-item-image {
+  display: block;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--reports-border);
+  border-radius: 2px;
+  object-fit: cover;
+}
+
+.inventory-reports-no-image {
+  display: inline-flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--reports-border);
+  background: var(--reports-surface-muted);
+  color: var(--reports-muted);
+  font-size: 0.62rem;
+}
+
+.inventory-reports-status {
+  display: inline-block;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--reports-border);
+  border-radius: 2px;
+  color: var(--reports-text);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.inventory-reports-status.is-in-stock {
+  border-color: #6d9477;
+  color: #4f805c;
+}
+
+.inventory-reports-status.is-low-stock {
+  border-color: #bd9852;
+  color: #96712d;
+}
+
+.inventory-reports-status.is-out-of-stock {
+  border-color: #b66b6b;
+  color: #a34f4f;
+}
+
+.inventory-reports-shell:not(.light-mode) .inventory-reports-status.is-in-stock {
+  border-color: #668b70;
+  color: #b8d7be;
+}
+
+.inventory-reports-shell:not(.light-mode) .inventory-reports-status.is-low-stock {
+  border-color: #a88a54;
+  color: #e0c58e;
+}
+
+.inventory-reports-shell:not(.light-mode) .inventory-reports-status.is-out-of-stock {
+  border-color: #a56a6a;
+  color: #e0abab;
 }
 
 .inventory-reports-empty {
-  text-align: center;
-  color: var(--text);
-  opacity: 0.5;
+  padding: 2.5rem 1rem !important;
+  color: var(--reports-muted) !important;
+  text-align: center !important;
 }
 
-@media (max-width: 767px) {
-  .inventory-reports-tab-row {
-    width: 100%;
-  }
-
-  .inventory-reports-tab {
-    flex: 1 1 auto;
-    font-size: 0.6rem;
-    padding: 0.4rem 0.8rem;
-  }
-
-  .inventory-reports-header {
-    flex-direction: column;
-  }
-
-  .inventory-reports-export-button {
-    width: 100%;
-  }
+.inventory-reports-pagination {
+  margin: 0 !important;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--reports-border);
+  color: var(--reports-muted);
 }
 
-/* Inventory Reports Pagination */
 .inventory-pagination-button,
 .inventory-pagination-page {
-  padding: 0.4rem 0.6rem;
-  min-width: 2.2rem;
-  height: 2.2rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--card);
-  color: var(--text);
-  font-size: 0.75rem;
+  min-width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--reports-border);
+  border-radius: 3px;
+  background: var(--reports-surface);
+  color: var(--reports-text);
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .inventory-pagination-button:hover:not(:disabled),
 .inventory-pagination-page:hover {
-  background: var(--border);
-  border-color: var(--primary);
+  border-color: var(--reports-accent);
+  background: var(--reports-surface-muted);
 }
 
 .inventory-pagination-page.is-active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
+  border-color: var(--reports-accent);
+  background: var(--reports-accent);
+  color: #fff;
 }
 
 .inventory-pagination-button:disabled {
@@ -186,101 +352,25 @@
   cursor: not-allowed;
 }
 
-/* Light Mode Support */
-.inventory-reports-shell.light-mode {
-  background: #FFFFFF;
-  border: 1px solid #D0D0D0;
-  color: #2E2E30;
-}
+@media (max-width: 767px) {
+  .inventory-reports-header {
+    align-items: stretch;
+  }
 
-.inventory-reports-shell.light-mode h2,
-.inventory-reports-shell.light-mode h3,
-.inventory-reports-shell.light-mode p {
-  color: #2E2E30;
-}
+  .inventory-reports-export-button {
+    width: 100%;
+  }
 
-.inventory-reports-shell.light-mode .text-white\/45 {
-  color: #808080;
-}
+  .inventory-reports-tab-row {
+    width: 100%;
+    overflow-x: auto;
+  }
 
-.inventory-reports-shell.light-mode .inventory-reports-summary-card {
-  border: 1px solid #D0D0D0;
-  background: #FFFFFF;
-}
+  .inventory-reports-tab {
+    flex: 1 0 auto;
+  }
 
-.inventory-reports-shell.light-mode .inventory-reports-board {
-  border: 1px solid #D0D0D0;
-  background: #FFFFFF;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-tab {
-  color: #555555;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-tab.is-active {
-  color: #2E2E30;
-  background: #FAFAFA;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-search-box {
-  border: 1px solid #D0D0D0;
-  background: #FAFAFA;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-search-box input {
-  color: #2E2E30;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-date-input,
-.inventory-reports-shell.light-mode .inventory-reports-category-pill {
-  border: 1px solid #D0D0D0;
-  background: #FAFAFA;
-  color: #2E2E30;
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-export-button,
-.inventory-reports-shell.light-mode .inventory-reports-submit-button {
-  background: #C51D34;
-  color: #FFFFFF !important;
-  box-shadow: 0 8px 16px rgba(197, 29, 52, 0.25);
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-export-button:hover,
-.inventory-reports-shell.light-mode .inventory-reports-submit-button:hover {
-  background: #B01A2E;
-  box-shadow: 0 12px 24px rgba(197, 29, 52, 0.35);
-}
-
-.inventory-reports-shell.light-mode .inventory-reports-header-badge {
-  background: transparent;
-  color: #999999;
-}
-
-.inventory-reports-shell.light-mode .hidden.grid-cols {
-  color: #999999;
-  border-bottom-color: #D0D0D0;
-}
-
-.inventory-reports-shell.light-mode .divide-y {
-  border-color: #D0D0D0;
-}
-
-.inventory-reports-shell.light-mode .text-xs,
-.inventory-reports-shell.light-mode .text-sm {
-  color: #2E2E30;
-}
-
-.inventory-reports-shell.light-mode .text-white\/50 {
-  color: #999999;
-}
-
-.inventory-reports-shell.light-mode .inventory-pagination-page {
-  border: 1px solid #D0D0D0;
-  background: #FAFAFA;
-  color: #2E2E30;
-}
-
-.inventory-reports-shell.light-mode .inventory-pagination-page.is-active {
-  background: #C51D34;
-  color: #FFF;
+  .inventory-reports-filter-bar > div {
+    align-items: flex-start;
+  }
 }

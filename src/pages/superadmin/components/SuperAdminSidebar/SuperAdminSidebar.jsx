@@ -53,6 +53,86 @@ const visibleItems = userMenuAccess.length > 0
     })
   : sidebarItems
 
+  const sidebarGroups = [
+    { label: 'Overview', itemIds: ['dashboard'] },
+    {
+      label: 'Management',
+      itemIds: ['user-management', 'inventory-management', 'unit-management', 'service-management'],
+    },
+    {
+      label: 'Sales',
+      itemIds: ['financing-applications', 'approved-applications', 'analytics'],
+    },
+    { label: 'Account', itemIds: ['chats-management', 'profile'] },
+  ]
+  const visibleGroups = sidebarGroups
+    .map((group) => ({
+      ...group,
+      items: visibleItems.filter((item) => group.itemIds.includes(item.id)),
+    }))
+    .filter((group) => group.items.length > 0)
+  const groupedItemIds = new Set(visibleGroups.flatMap((group) => group.items.map((item) => item.id)))
+  const ungroupedItems = visibleItems.filter((item) => !groupedItemIds.has(item.id))
+
+  if (ungroupedItems.length > 0) {
+    visibleGroups.push({ label: 'Other', items: ungroupedItems })
+  }
+
+  const renderSidebarItem = (item) => {
+    const Icon = item.icon
+    const isActive = activeSection === item.id
+    const isExpanded = expandedItem === item.id
+    const hasSubitems = item.subitems?.length > 0
+    const isSubitemActive = item.subitems?.some((sub) => activeSection === sub.id)
+
+    return (
+      <div key={item.id}>
+        <button
+          type="button"
+          onClick={() => handleItemClick(item)}
+          className={`superadmin-nav-item ${isActive || isSubitemActive ? 'is-active' : ''}`}
+        >
+          <Icon sx={{ fontSize: 20 }} className="superadmin-nav-icon" />
+          <span className="superadmin-nav-label">{item.label}</span>
+          <div className="superadmin-nav-right">
+            {item.badge && (
+              <span className="superadmin-badge">{Math.min(item.badge, 9)}</span>
+            )}
+            {hasSubitems && (
+              <ExpandMoreRoundedIcon
+                sx={{
+                  fontSize: 18,
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s',
+                }}
+              />
+            )}
+          </div>
+        </button>
+
+        {hasSubitems && isExpanded && (
+          <div className="superadmin-submenu">
+            {item.subitems.map((subitem) => (
+              <button
+                key={subitem.id}
+                type="button"
+                onClick={() => onSectionChange(subitem.id)}
+                className={`superadmin-nav-subitem ${activeSection === subitem.id ? 'is-active' : ''}`}
+              >
+                <span>{subitem.label}</span>
+                <div className="superadmin-nav-right">
+                  {subitem.badge && (
+                    <span className="superadmin-badge">{Math.min(subitem.badge, 9)}</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <>
       {isSidebarOpen && (
@@ -114,103 +194,13 @@ const visibleItems = userMenuAccess.length > 0
           </div>
         </div>
 
-        <nav className="superadmin-nav">
-          {visibleItems.map((item) => {
-            const Icon = item.icon
-
-            const isActive = activeSection === item.id
-            const isExpanded = expandedItem === item.id
-
-            const hasSubitems =
-              item.subitems &&
-              item.subitems.length > 0
-
-            const isSubitemActive =
-              item.subitems?.some(
-                (sub) =>
-                  activeSection === sub.id
-              )
-
-            return (
-              <div key={item.id}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleItemClick(item)
-                  }
-                  className={`superadmin-nav-item ${
-                    isActive ||
-                    isSubitemActive
-                      ? 'is-active'
-                      : ''
-                  }`}
-                >
-                  <Icon
-                    sx={{ fontSize: 20 }}
-                    className="superadmin-nav-icon"
-                  />
-
-                  <span className="superadmin-nav-label">{item.label}</span>
-
-                  <div className="superadmin-nav-right">
-                    {item.badge && (
-                      <span className="superadmin-badge">
-                        {Math.min(
-                          item.badge,
-                          9
-                        )}
-                      </span>
-                    )}
-
-                    {hasSubitems && (
-                      <ExpandMoreRoundedIcon
-                        sx={{
-                          fontSize: 18,
-                          transform:
-                            isExpanded
-                              ? 'rotate(180deg)'
-                              : 'rotate(0deg)',
-                          transition:
-                            'transform 0.3s',
-                        }}
-                      />
-                    )}
-                  </div>
-                </button>
-
-                {hasSubitems &&
-                  isExpanded && (
-                    <div className="superadmin-submenu">
-                      {item.subitems.map(
-                        (subitem) => (
-                          <button
-                            key={
-                              subitem.id
-                            }
-                            type="button"
-                            onClick={() =>
-                              onSectionChange(
-                                subitem.id
-                              )
-                            }
-                            className={`superadmin-nav-subitem ${
-                              activeSection ===
-                              subitem.id
-                                ? 'is-active'
-                                : ''
-                            }`}
-                          >
-                            {
-                              subitem.label
-                            }
-                          </button>
-                        )
-                      )}
-                    </div>
-                  )}
-              </div>
-            )
-          })}
+        <nav className="superadmin-nav" aria-label="Admin sections">
+          {visibleGroups.map((group) => (
+            <div className="superadmin-nav-group" key={group.label}>
+              <h2 className="superadmin-nav-group-label">{group.label}</h2>
+              {group.items.map(renderSidebarItem)}
+            </div>
+          ))}
         </nav>
 
         <div className="superadmin-footer">
