@@ -3,7 +3,7 @@ COMPLETE TECHNICAL CHANGE AND ARCHITECTURE REPORT
 
 System Name      : Bykelink Motor Inc. Management System (bykelinkmotorinc-system)
 Repository       : RICKYLER/jwel (Branch: main)
-Covered Commits  : 563b94d, f58d8f0, 2501951, 0f38403, afb2a59, 2c6b38c, f64ab9d
+Covered Commits  : 563b94d, f58d8f0, 2501951, 0f38403, afb2a59, 2c6b38c, f64ab9d, aafbacf, b5e7511, cd35f73, plus Phase 6 POS Enhancements
 Report Date      : November 21, 2026
 
 
@@ -46,14 +46,28 @@ Overall Engineering Scope:
     cleanly.
 
   Phase 5 - Operational Enhancements: Staff Admin Verification, Top Sold Spare
-            Parts Analytics, Returned Damaged Inventory, and Unified Notifications
-            (f64ab9d)
+            Parts Analytics, Returned Damaged Inventory, Unified Notifications,
+            and Enterprise Downloadable Reports (f64ab9d, aafbacf, b5e7511)
     Resolved staff product edit verification bottlenecks with server-side on-site
     admin credentials validation and remote verification queues, introduced sales
     analytics ranking for most sold spare parts with top-3 podium and visual meters,
     added full damaged and returned products tracking with disposition status
-    management, and unified system notifications across chats, staff requests,
-    low-stock alerts, and service bookings.
+    management, unified system notifications across chats, staff requests,
+    low-stock alerts, and service bookings, and built an enterprise Excel (.xlsx)
+    and branded PDF report engine with managerial audit sign-offs.
+
+  Phase 6 - Unified POS Sales Invoice, Transaction Reprinting, Dynamic Customer
+            Details, and Audit UI Modernization (cd35f73 & Phase 6 Release)
+    Engineered a centralized Sales Invoice engine (posInvoiceService.js) compliant
+    with the Philippine Ease of Paying Taxes (EOPT) Act, unifying spare parts
+    and precision service labor under one Official Sales Invoice. Connected POS
+    Transaction Logs to an interactive on-screen invoice preview modal with
+    thermal slip (80mm) and desktop printing. Implemented dynamic customer name,
+    mobile number, and motorcycle plate tracking (with dedicated modal, F4 shortcut,
+    auto-reset to Walk-in Customer on checkout, and clean 'Information' button).
+    Purged raw JSON before/after state debug blocks from the SuperAdmin audit
+    modal in favor of structured data presentations. Expanded automated testing
+    suite to 72 unit tests across 7 suites with 100% pass rate.
 
 
 ================================================================================
@@ -67,9 +81,11 @@ TABLE OF CONTENTS
   5. Phase 3C: Admin-Only System Audit Trail and Access Isolation (2501951)
   6. Phase 3D: POS Itemized Walk-In Breakdown and Bulk Detection (2501951)
   7. Phase 4: Vercel Deployment and Build Pipeline Stabilization
-  8. Phase 5: Operational Enhancements and Inventory Governance (f64ab9d)
+  8. Phase 5: Operational Enhancements, Inventory Governance, and Reports
   9. Firestore Security Rules and Collection Access Summary
   10. Verification Summary and Deployment Checklist
+  11. Automated Testing Framework and Test File Tree
+  12. Phase 6: Unified POS Sales Invoice, Customer Details, and UI Modernization
 
 
 ================================================================================
@@ -749,17 +765,17 @@ Verified directly against firestore.rules:
 
 10.1 Verified Checks
 
-  - Automated Test Suite (npm run test using Vitest): 100% passing across 6 test
-    suites (60 tests passed in under 450ms).
+  - Automated Test Suite (npm run test using Vitest): 100% passing across 7 test
+    suites (72 tests passed in under 550ms).
   - Dependency Install (npm install): Passed with exit code 0.
   - Production Bundle Build (npm run build using Vite 8.0.5): Passed cleanly,
-    transforming 1,586 modules and emitting production dist/ bundle in 1.45 seconds.
+    transforming 1,587 modules and emitting production dist/ bundle in 1.69 seconds.
   - Cloud Functions Syntax Check (node --check functions/index.js): Passed
     with exit code 0.
   - Vercel Config Validation (python3 -m json.tool vercel.json): Passed.
   - ESLint & Type Checks: All newly created and modified components verified
     without syntax errors or broken imports.
-  - Git Branch Synchronization: Synchronized with origin/main on GitHub (RICKYLER/jwel).
+  - Git Working Tree: Staged locally on branch main; pending final user push command.
 
 10.2 Production Deployment Steps
 
@@ -796,16 +812,22 @@ Verified directly against firestore.rules:
   │   ├── damagedReturns.test.js          # Intake schema validation, disposition state machine & auto-restocking triggers
   │   ├── reportExportService.test.js     # Universal Excel AOA layout, merges, col widths & branded PDF parameters
   │   ├── unifiedNotifications.test.js    # Multi-stream alert aggregation (4 types), unread badge counts & category filters
-  │   └── staffAuthorization.test.js      # Direct admin credential verification, dual-custody approval & stock adjustments
+  │   ├── staffAuthorization.test.js      # Direct admin credential verification, dual-custody approval & stock adjustments
+  │   └── posInvoiceService.test.js       # Unified Sales Invoice: Parts vs Service separation, 12% VAT & customer tracking
   └── src/
       ├── services/
-      │   └── reportExportService.js      # Enterprise Excel & PDF export service (with testable AOA builder)
-      └── pages/superadmin/sections/
-          ├── superadminUtils.js          # Shared utility functions (currency, date, sale items)
-          ├── analyticsUtils.js           # Spare parts sales velocity & volume share calculation
-          ├── damagedReturnsUtils.js      # Damaged returns validation, restock logic & loss calculation
-          ├── notificationUtils.js        # 4-in-1 alert aggregation & unread calculation
-          └── staffAuthUtils.js           # Administrative authority & inventory update reconciliation
+      │   ├── reportExportService.js      # Enterprise Excel & PDF export service (with testable AOA builder)
+      │   └── posInvoiceService.js        # Universal POS Sales Invoice calculation, VAT, and customer data model
+      └── pages/
+          ├── cashier/
+          │   ├── CashierPage.jsx         # Standalone POS workstation, transaction logs reprint, and customer modal
+          │   └── CashierPage.css         # High-contrast 80mm thermal slip print styles and responsive customer UI
+          └── superadmin/sections/
+              ├── superadminUtils.js      # Shared utility functions (currency, date, sale items)
+              ├── analyticsUtils.js       # Spare parts sales velocity & volume share calculation
+              ├── damagedReturnsUtils.js  # Damaged returns validation, restock logic & loss calculation
+              ├── notificationUtils.js    # 4-in-1 alert aggregation & unread calculation
+              └── staffAuthUtils.js       # Administrative authority & inventory update reconciliation
   ```
 
 11.3 Test Suite Coverage Breakdown
@@ -852,3 +874,160 @@ Verified directly against firestore.rules:
     - Atomic product update application preserving unchanged fields.
     - Dynamic stock recalculation from color variants or total quantity.
     - Automatic inventory status updating ('In Stock', 'Low Stock', 'Out of Stock') based on resulting stock levels.
+
+  Suite 7: tests/posInvoiceService.test.js (12 Tests Passed)
+    - Line item categorization: Accurate classification of physical spare parts vs service labor fees (`isServiceItem`).
+    - Standardized line item normalization with item type badges (`[PART]` vs `[SERVICE]`).
+    - Financial isolation of Parts Subtotal, Service Subtotal, and combined Gross Subtotal.
+    - Philippine 12% Value Added Tax calculation with Net VATable Sales reconciliation (`grandTotal / 1.12`).
+    - Exact customer change calculation (`amountTendered - grandTotal`) avoiding negative values.
+    - Official dealership invoice header metadata injection and historical reprint flagging.
+    - Backward-compatible handling of legacy unitemized service fees from older sales logs.
+    - Dynamic customer metadata mapping (customer name, contact phone number, vehicle plate/model).
+    - Graceful fallback defaults to "Walk-in Customer" and null contact details when omitted.
+
+
+================================================================================
+12. PHASE 6: UNIFIED POS SALES INVOICE, CUSTOMER DETAILS, AND UI MODERNIZATION
+================================================================================
+
+12.1 Background & Statutory Alignment (Philippine EOPT Act / RA 11976)
+  Under the Philippine Ease of Paying Taxes (EOPT) Act (Republic Act No. 11976),
+  the traditional dichotomy between Commercial Invoices (for goods) and Official
+  Receipts (for services) was unified. The Sales Invoice now serves as the primary
+  official documentary evidence for both the sale of physical goods (spare parts,
+  fluids, tires) and precision service labor (tune-ups, PMS, caliper cleaning).
+  
+  In Bykelink Motor Inc. daily operations, walk-in customers and servicing riders
+  frequently purchase replacement parts and mechanic services in a single counter
+  visit. Previously, transactions lacked clear line item tax classification,
+  historical reprint capabilities on the cashier workstation, and dynamic customer
+  profiling. Phase 6 addresses these core operational needs.
+
+12.2 Unified POS Sales Invoice Architecture (`src/services/posInvoiceService.js`)
+  A centralized, pure JavaScript service layer was introduced to standardize
+  transaction records, calculate financial distributions, and generate structured
+  invoice models for both live checkouts and historical reprints.
+
+  Key Technical Capabilities:
+  - Smart Service Labor Detection (`isServiceItem`):
+    Inspects line item attributes (`type === 'service'`, `sku === 'SERVICE'`,
+    `id.startsWith('service-')`) and keywords (`labor`, `cleaning`, `tune-up`,
+    `tune up`, `installation`) to accurately tag mechanic charges.
+  - Standardized Normalization (`normalizeInvoiceItems`):
+    Transforms heterogeneous cart and Firestore log items into uniform objects
+    carrying explicit `typeLabel` badges (`[PART]` vs `[SERVICE]`), unit pricing,
+    quantities, and line subtotals.
+  - Financial Breakdown & Tax Math:
+    - `partsSubtotal`: Cumulative sum of physical inventory items.
+    - `serviceSubtotal`: Cumulative sum of precision labor items (plus legacy unitemized
+      service fee extraction where applicable).
+    - `grossSubtotal`: Combined gross revenue before discounts.
+    - `vatableSales`: Calculated as `grandTotal / (1 + 0.12)`.
+    - `vatAmount`: Exact 12% VAT component (`grandTotal - vatableSales`).
+    - `change`: Non-negative customer change (`Math.max(0, amountTendered - grandTotal)`).
+  - Dealership Branding & Audit Stamps:
+    Automatically embeds company header ("BYKELINK MOTOR INC.", "TAGUM CITY MAIN BRANCH",
+    "Dealership & Precision Motorcycle Service Center"), unique invoice number,
+    cashier personnel identity, payment mode, and timestamp.
+  - Historical Reprint Flagging:
+    Injects `isReprint: true` flag, prompting the invoice modal to render an
+    explicit `[ OFFICIAL REPRINT / COPY ]` indicator to prevent fraudulent re-use.
+
+12.3 Interactive Transaction Log Reprinting (`src/pages/cashier/CashierPage.jsx`)
+  Previously, clicking the print button on the cashier Transaction Logs modal
+  (`F3`) only issued a background Firebase HTTPS callable (`printReceipt`) without
+  opening any visual modal on screen. Cashiers lacked a way to inspect or reprint
+  historical receipts on the counter.
+
+  Implementation Details:
+  - Wired `handleReprintReceipt` to build an immutable invoice data model using
+    `buildInvoiceData({ transaction: log, cashierUser: currentUser, isReprint: true })`.
+  - Immediately invokes `setReceipt(invoiceData)`, rendering the full Sales Invoice
+    modal on screen with layered `z-index: 99999` directly above the logs drawer.
+  - The entire transaction row as well as the printer button is interactive
+    (`onClick={() => handleReprintReceipt(log)}`).
+  - Added dedicated `🖨 Print Invoice` action button that invokes browser print
+    (`window.print()`), as well as a clean `Close` button returning cashiers to the
+    logs drawer without firing extraneous "Transaction Complete" alerts.
+
+12.4 Dynamic Customer Name, Contact Number & Vehicle Tracking
+  Prior to this release, POS sales were permanently hardcoded to "Walk-in Customer".
+  Cashiers could not record customer names for warranty tracking, service histories,
+  or official invoice documentation.
+
+  Engineering Design:
+  - State Management:
+    Added active states `customerName`, `customerPhone`, `customerVehicle`, along
+    with draft states `draftCustomerName`, `draftCustomerPhone`, `draftCustomerVehicle`
+    and modal visibility state `isCustomerModalOpen`.
+  - Customer Information Modal:
+    Renders an accessible dialog with inputs for:
+    1. Customer Full Name (e.g., "Juan Dela Cruz"; defaults to "Walk-in Customer" if empty).
+    2. Mobile / Contact Number (optional, e.g., "0917-123-4567").
+    3. Motorcycle Model / Plate Number (optional, e.g., "Yamaha NMAX (123-ABC)").
+  - Action Controls:
+    - "Apply Customer": Trims and updates active customer state.
+    - "Set as Walk-in": Quickly reverts back to default walk-in status.
+    - Quick Reset Button (`✕`): Rendered next to the customer name whenever a custom
+      customer is active, providing one-click clearing without opening the modal.
+  - Automatic Lifecycle Reset:
+    To ensure high counter throughput, upon successful checkout in `finalizeSale`,
+    customer states automatically reset to "Walk-in Customer", blank contact, and blank
+    vehicle for the subsequent queue.
+  - Persistence & History:
+    Customer name, phone, and vehicle details are saved to Firestore transaction
+    payloads and propagated to the printed invoice and transaction audit logs.
+
+12.5 Streamlined POS UI: 'Information' Button & Action Strip Simplification
+  Based on real cashier feedback and workflow ergonomics:
+  - Action Strip De-cluttering:
+    The top action strip was restored to its focused 4-button layout:
+    `F2 Barcode`, `F3 Transaction Logs`, `F8 Price Check`, and `ESC Cancel`.
+    Extraneous "Customer" action buttons were removed from the top bar to preserve
+    horizontal rhythm and avoid button duplication.
+  - 'Information' Button:
+    The action button in the customer card was updated from generic `Change` to
+    `Information` (`[ ✕ ] [ Information ]`), clearly communicating that clicking
+    the button opens full contact and vehicle details rather than just switching names.
+  - Keyboard Accessibility:
+    Global window `keydown` listener preserves `F4` as a direct keyboard shortcut
+    for opening the customer information modal without requiring a top action bar button.
+
+12.6 SuperAdmin Audit Trail Debug Block Removal (Commit `cd35f73`)
+  In `src/pages/superadmin/sections/TransactionHistorySection.jsx`, inspecting
+  transaction details previously rendered raw, unformatted `<pre>` JSON blocks
+  labeled "Before State" and "After State".
+  
+  Resolution:
+  - Stripped raw JSON dumps from the audit details view.
+  - Replaced with a structured, executive-grade Purchased Items table featuring
+    product names, SKUs, quantities, unit prices, line subtotals, and bulk tags.
+  - Maintained clean, human-readable summary fields for Actor, Verifier, Target,
+    Timestamp, and Amount.
+
+12.7 Responsive Thermal Slip (80mm) & Desktop Print Styles
+  Enhanced `src/pages/cashier/CashierPage.css` with `@media print` rules:
+  - Centers and constrains the `.cashier-receipt-modal` to `78mm` width (standard 80mm
+    thermal roll paper).
+  - Suppresses all peripheral web UI, modals, topbars, and action buttons during print.
+  - High-contrast typography and dashed divider lines ensure crisp rendering on ESC/POS
+    thermal printers, laser printers, and PDF virtual printers.
+
+12.8 Phase 6 Code and Module Reference
+
+  - src/services/posInvoiceService.js:
+      Centralized POS Sales Invoice normalization, item type classification (`[PART]`
+      vs `[SERVICE]`), 12% VAT calculations, and customer metadata mapping.
+  - src/pages/cashier/CashierPage.jsx:
+      Integrated interactive transaction log reprint modal, customer information
+      modal (`isCustomerModalOpen`), `F4` hotkey, quick reset button, 'Information'
+      button, and invoice customer fields.
+  - src/pages/cashier/CashierPage.css:
+      Added styles for customer modal, customer subtext chips, named customer
+      highlighting, reset button, and print media stylesheet for 80mm receipts.
+  - src/pages/superadmin/sections/TransactionHistorySection.jsx:
+      Removed raw JSON before/after state debug blocks from transaction details modal.
+  - tests/posInvoiceService.test.js:
+      12-test automated unit suite verifying item classification, tax calculations,
+      change math, and customer details management.
