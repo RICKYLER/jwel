@@ -475,21 +475,39 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
     .filter((entry) => entry && (entry.id || entry.name))
     .map((entry) => {
       const id = String(entry.id || '')
+      const sku = String(entry.sku || '')
       const qty = Number(entry.qty || 0)
       const unitPrice = Number(entry.unitPrice || 0)
+      const isService =
+        entry.type === 'service' ||
+        id.startsWith('service-') ||
+        sku.trim().toUpperCase() === 'SERVICE'
       return {
         id,
         name: String(entry.name || entry.item || 'Item'),
-        sku: String(entry.sku || ''),
-        type: id.startsWith('service-') ? 'service' : 'product',
+        sku,
+        type: isService ? 'service' : 'product',
         qty,
         unitPrice,
         subtotal: Number((qty * unitPrice).toFixed(2)),
       }
     })
 
-  const inventoryUpdates = normalizedItems.filter((entry) => entry.id && !entry.id.startsWith('service-'))
+  const inventoryUpdates = normalizedItems.filter((entry) => entry.id && entry.type !== 'service')
   const totalQuantity = normalizedItems.reduce((sum, entry) => sum + Number(entry.qty || 0), 0)
+  const partsSubtotal = Number(
+    normalizedItems
+      .filter((entry) => entry.type !== 'service')
+      .reduce((sum, entry) => sum + Number(entry.subtotal || 0), 0)
+      .toFixed(2),
+  )
+  const serviceSubtotal = Number(
+    normalizedItems
+      .filter((entry) => entry.type === 'service')
+      .reduce((sum, entry) => sum + Number(entry.subtotal || 0), 0)
+      .toFixed(2),
+  )
+  const hasServices = normalizedItems.some((entry) => entry.type === 'service')
 
   const paymentMethodKey = String(receipt.paymentMethodKey || receipt.paymentMethod || 'cash').toLowerCase().trim()
 
@@ -499,6 +517,9 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
     paymentMethod: receipt.paymentMethod || 'Cash',
     paymentMethodKey,
     subtotal: Number(receipt.subtotal || 0),
+    partsSubtotal,
+    serviceSubtotal,
+    hasServices,
     discount: Number(receipt.discount || 0),
     vat: Number(receipt.vat || 0),
     grandTotal: Number(receipt.grandTotal || 0),
@@ -558,6 +579,9 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
     newData: {
       paymentMethod: transactionLog.paymentMethod,
       subtotal: transactionLog.subtotal,
+      partsSubtotal: transactionLog.partsSubtotal,
+      serviceSubtotal: transactionLog.serviceSubtotal,
+      hasServices: transactionLog.hasServices,
       vat: transactionLog.vat,
       discount: transactionLog.discount,
       grandTotal: transactionLog.grandTotal,
@@ -607,8 +631,8 @@ exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) =>
       ? request.data.pendingUpdates
       : null
 
-  if (!itemId || !['rename', 'delete'].includes(requestType)) {
-    throw new HttpsError('invalid-argument', 'Valid itemId and requestType (rename or delete) are required.')
+  if (!itemId || !['rename', 'delete', 'update'].includes(requestType)) {
+    throw new HttpsError('invalid-argument', 'Valid itemId and requestType (rename, update, or delete) are required.')
   }
 
   if (requestType === 'rename' && !proposedName) {
@@ -634,8 +658,8 @@ exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) =>
     status: 'pending',
     itemId,
     currentName,
-    proposedName: requestType === 'rename' ? proposedName : '',
-    pendingUpdates: requestType === 'rename' ? pendingUpdates : null,
+    proposedName: proposedName || currentName,
+    pendingUpdates: pendingUpdates || null,
     itemSnapshot: {
       name: currentName,
       model: itemData.model || '',
@@ -653,18 +677,22 @@ exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) =>
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   })
 
+  let actionSummary = `Requested deletion of "${currentName}" (awaiting admin verification)`
+  if (requestType === 'rename') {
+    actionSummary = `Requested rename of "${currentName}" to "${proposedName}" (awaiting admin verification)`
+  } else if (requestType === 'update') {
+    actionSummary = `Requested product update for "${currentName}" (awaiting admin verification)`
+  }
+
   await recordAuditLog(db, {
     module: 'Inventory',
-    action: requestType === 'rename' ? 'PRODUCT_RENAME_REQUESTED' : 'PRODUCT_DELETE_REQUESTED',
-    summary:
-      requestType === 'rename'
-        ? `Requested rename of "${currentName}" to "${proposedName}" (awaiting admin verification)`
-        : `Requested deletion of "${currentName}" (awaiting admin verification)`,
+    action: requestType === 'rename' ? 'PRODUCT_RENAME_REQUESTED' : requestType === 'update' ? 'PRODUCT_UPDATE_REQUESTED' : 'PRODUCT_DELETE_REQUESTED',
+    summary: actionSummary,
     targetType: 'inventory',
     targetId: itemId,
     targetName: currentName,
-    previousData: { name: currentName },
-    newData: requestType === 'rename' ? { name: proposedName } : null,
+    previousData: { name: currentName, price: itemData.price, stock: itemData.stock },
+    newData: pendingUpdates || (proposedName ? { name: proposedName } : null),
     performedBy: requestedBy,
     metadata: { requestId: requestRef.id, reason },
   })
@@ -673,9 +701,9 @@ exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) =>
     ok: true,
     requestId: requestRef.id,
     message:
-      requestType === 'rename'
-        ? 'Product name change submitted for admin verification.'
-        : 'Product deletion request submitted for admin verification.',
+      requestType === 'delete'
+        ? 'Product deletion request submitted for admin verification.'
+        : 'Product updates submitted for admin verification.',
   }
 })
 
@@ -757,15 +785,16 @@ exports.verifyInventoryChangeRequest = onCall({ cors: true }, async (request) =>
   const itemData = itemSnap.data() || {}
   const batch = db.batch()
 
-  if (reqData.requestType === 'rename') {
+  if (reqData.requestType === 'rename' || reqData.requestType === 'update') {
     const safeUpdates =
       reqData.pendingUpdates && typeof reqData.pendingUpdates === 'object'
         ? reqData.pendingUpdates
         : {}
 
+    const resolvedName = reqData.proposedName || reqData.currentName
     batch.update(itemRef, {
       ...safeUpdates,
-      name: reqData.proposedName,
+      name: resolvedName,
       lastVerifiedBy: verifiedBy,
       lastVerifiedAt: timestamp,
       updatedAt: timestamp,
@@ -795,18 +824,26 @@ exports.verifyInventoryChangeRequest = onCall({ cors: true }, async (request) =>
 
   await batch.commit()
 
+  const finalName = reqData.proposedName || reqData.currentName
   await recordAuditLog(db, {
     module: 'Inventory',
-    action: reqData.requestType === 'rename' ? 'PRODUCT_RENAMED' : 'PRODUCT_DELETED',
+    action:
+      reqData.requestType === 'delete'
+        ? 'PRODUCT_DELETED'
+        : reqData.proposedName && reqData.proposedName !== reqData.currentName
+          ? 'PRODUCT_RENAMED'
+          : 'PRODUCT_UPDATED',
     summary:
-      reqData.requestType === 'rename'
-        ? `Verified and renamed "${reqData.currentName}" to "${reqData.proposedName}"`
-        : `Verified and deleted product "${reqData.currentName}" (moved to archive)`,
+      reqData.requestType === 'delete'
+        ? `Verified and deleted product "${reqData.currentName}" (moved to archive)`
+        : reqData.proposedName && reqData.proposedName !== reqData.currentName
+          ? `Verified and renamed "${reqData.currentName}" to "${reqData.proposedName}"`
+          : `Verified and updated product "${finalName}"`,
     targetType: 'inventory',
     targetId: reqData.itemId,
-    targetName: reqData.requestType === 'rename' ? reqData.proposedName : reqData.currentName,
+    targetName: reqData.requestType === 'delete' ? reqData.currentName : finalName,
     previousData: { name: reqData.currentName, stock: itemData.stock ?? 0, price: itemData.price ?? 0 },
-    newData: reqData.requestType === 'rename' ? { name: reqData.proposedName } : null,
+    newData: reqData.requestType === 'delete' ? null : { name: finalName, ...(reqData.pendingUpdates || {}) },
     performedBy: reqData.requestedBy || verifiedBy,
     verifiedBy,
     metadata: { requestId, verificationNote },
@@ -816,10 +853,172 @@ exports.verifyInventoryChangeRequest = onCall({ cors: true }, async (request) =>
     ok: true,
     status: 'approved',
     message:
-      reqData.requestType === 'rename'
-        ? `Product renamed to "${reqData.proposedName}".`
-        : `Product "${reqData.currentName}" verified and deleted.`,
+      reqData.requestType === 'delete'
+        ? `Product "${reqData.currentName}" verified and deleted.`
+        : `Product "${finalName}" verified and updated.`,
   }
+})
+
+exports.authorizeInventoryDirectly = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to verify inventory updates.')
+  }
+
+  const callerEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const callerAccess = await getRoleFromEmail(callerEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (!['staff personnel', 'admin', 'superadmin'].includes(callerAccess.role)) {
+    throw new HttpsError('permission-denied', 'Unauthorized operator.')
+  }
+
+  const itemId = String(request.data?.itemId || '').trim()
+  const actionType = String(request.data?.actionType || 'update').trim().toLowerCase()
+  const adminEmail = String(request.data?.adminEmail || '').trim().toLowerCase()
+  const adminPassword = String(request.data?.adminPassword || '').trim()
+  const updates = request.data?.updates && typeof request.data.updates === 'object' ? request.data.updates : {}
+  const verificationNote = String(request.data?.verificationNote || '').trim()
+  const reason = String(request.data?.reason || '').trim()
+
+  if (!itemId) {
+    throw new HttpsError('invalid-argument', 'Target itemId is required.')
+  }
+
+  let verifierUser = null
+  let verifierRole = 'admin'
+
+  // If caller is already admin/superadmin and verifies themselves
+  if (['admin', 'superadmin'].includes(callerAccess.role) && (!adminEmail || adminEmail === callerEmail)) {
+    verifierUser = {
+      uid: request.auth.uid,
+      email: callerEmail,
+      name: callerEmail.split('@')[0],
+      role: callerAccess.role,
+      method: 'admin-session',
+    }
+    verifierRole = callerAccess.role
+  } else {
+    // Caller is staff (or admin verifying with different admin credential)
+    if (!adminEmail || !adminPassword) {
+      throw new HttpsError('invalid-argument', 'Admin email and admin password are required for verification.')
+    }
+
+    const adminAccess = await getRoleFromEmail(adminEmail, {})
+    if (!['admin', 'superadmin'].includes(adminAccess.role)) {
+      throw new HttpsError('permission-denied', 'The provided email does not belong to an authorized administrator.')
+    }
+
+    const apiKey = getWebApiKey()
+    if (!apiKey) {
+      throw new HttpsError('failed-precondition', 'Server API key configuration is missing.')
+    }
+
+    const signInResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: adminEmail,
+          password: adminPassword,
+          returnSecureToken: true,
+        }),
+      },
+    )
+
+    const signInData = await signInResponse.json()
+    if (!signInResponse.ok || signInData?.error) {
+      throw new HttpsError('permission-denied', 'Incorrect administrator credentials. Verification failed.')
+    }
+
+    verifierUser = {
+      uid: signInData.localId || '',
+      email: adminEmail,
+      name: adminEmail.split('@')[0],
+      role: adminAccess.role,
+      method: 'admin-password-on-site',
+    }
+    verifierRole = adminAccess.role
+  }
+
+  const db = admin.firestore()
+  const itemRef = db.collection('inventory').doc(itemId)
+  const itemSnap = await itemRef.get()
+
+  if (!itemSnap.exists) {
+    throw new HttpsError('not-found', 'Inventory product not found.')
+  }
+
+  const itemData = itemSnap.data() || {}
+  const currentName = String(itemData.name || 'Unnamed Product')
+  const timestamp = admin.firestore.FieldValue.serverTimestamp()
+  const performedBy = buildActorFromRequest(request, callerAccess.role)
+
+  if (actionType === 'delete') {
+    const batch = db.batch()
+    const archiveRef = db.collection('deleteArchived').doc(itemId)
+    batch.set(archiveRef, {
+      ...itemData,
+      recordType: 'inventory',
+      deletedAt: timestamp,
+      deletedBy: performedBy.name || performedBy.email,
+      verifiedBy: verifierUser,
+      verifiedAt: timestamp,
+      deletionReason: reason || verificationNote || 'On-site verified deletion',
+      updatedAt: timestamp,
+    })
+    batch.delete(itemRef)
+    await batch.commit()
+
+    await recordAuditLog(db, {
+      module: 'Inventory',
+      action: 'PRODUCT_DELETED',
+      summary: `On-site verified deletion of "${currentName}" (moved to archive)`,
+      targetType: 'inventory',
+      targetId: itemId,
+      targetName: currentName,
+      previousData: { name: currentName, stock: itemData.stock ?? 0, price: itemData.price ?? 0 },
+      newData: null,
+      performedBy,
+      verifiedBy: verifierUser,
+      metadata: { verificationNote, reason },
+    })
+
+    return { ok: true, message: `Product "${currentName}" verified and moved to archive.` }
+  }
+
+  // Update flow
+  const resolvedName = updates.name ? String(updates.name).trim() : currentName
+  const batch = db.batch()
+  batch.update(itemRef, {
+    ...updates,
+    name: resolvedName,
+    lastVerifiedBy: verifierUser,
+    lastVerifiedAt: timestamp,
+    updatedAt: timestamp,
+  })
+  await batch.commit()
+
+  await recordAuditLog(db, {
+    module: 'Inventory',
+    action: resolvedName !== currentName ? 'PRODUCT_RENAMED' : 'PRODUCT_UPDATED',
+    summary:
+      resolvedName !== currentName
+        ? `On-site verified rename of "${currentName}" to "${resolvedName}"`
+        : `On-site verified update of "${resolvedName}"`,
+    targetType: 'inventory',
+    targetId: itemId,
+    targetName: resolvedName,
+    previousData: { name: currentName, price: itemData.price ?? 0, stock: itemData.stock ?? 0 },
+    newData: { name: resolvedName, ...(updates || {}) },
+    performedBy,
+    verifiedBy: verifierUser,
+    metadata: { verificationNote, reason },
+  })
+
+  return { ok: true, message: `Product "${resolvedName}" verified and updated successfully.` }
 })
 
 exports.api = onRequest((request, response) => {

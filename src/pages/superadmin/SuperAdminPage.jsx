@@ -221,6 +221,24 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
       return []
     }
   })
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = window.localStorage.getItem('bykelink-dismissed-notifications')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  const [readAlertIds, setReadAlertIds] = useState(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = window.localStorage.getItem('bykelink-read-alert-ids')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [chatFocusRequest, setChatFocusRequest] = useState(null)
   const { isDarkMode, toggleTheme } = useTheme()
   const { success: toastSuccess, error: toastError } = useToast()
@@ -1060,13 +1078,88 @@ currentAccessRole === 'staff personnel' && currentUser?.email
   const chartBars = useMemo(() => buildChartBars(filteredServiceRequests), [filteredServiceRequests])
 
   const notificationItems = useMemo(() => {
-    return [...chatNotifications]
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .map((item) => ({
+    const items = []
+
+    // 1. Chat notifications
+    chatNotifications.forEach((item) => {
+      items.push({
         ...item,
         time: item.time || formatDate(new Date(item.createdAt || Date.now())),
-      }))
-  }, [chatNotifications])
+      })
+    })
+
+    // 2. Pending inventory verification requests
+    inventoryChangeRequests.forEach((req) => {
+      if (req.status === 'pending') {
+        const id = `inv-req-${req.id}`
+        const isRename = req.requestType === 'rename'
+        const isUpdate = req.requestType === 'update'
+        const typeLabel = isRename ? 'Product Name Change' : isUpdate ? 'Product Update' : 'Product Deletion'
+        const createdDate = req.createdAt?.toDate ? req.createdAt.toDate() : (req.createdAt?.seconds ? new Date(req.createdAt.seconds * 1000) : new Date(req.createdAt || Date.now()))
+
+        items.push({
+          id,
+          type: 'INVENTORY_REQUEST',
+          title: `${typeLabel} Request`,
+          description: `Staff requested ${req.requestType || 'action'} for "${req.currentName || 'Product'}". Verification required.`,
+          time: formatDate(createdDate),
+          createdAt: createdDate.toISOString(),
+          read: readAlertIds.includes(id),
+          targetSection: 'inventory',
+        })
+      }
+    })
+
+    // 3. Low stock and out-of-stock items (stock <= 5)
+    inventory.forEach((prod) => {
+      const stock = Number(prod.stock ?? 0)
+      if (stock <= 5) {
+        const id = `low-stock-${prod.id}`
+        const isOutOfStock = stock <= 0
+        const updatedDate = prod.updatedAt?.toDate ? prod.updatedAt.toDate() : (prod.updatedAt?.seconds ? new Date(prod.updatedAt.seconds * 1000) : new Date())
+
+        items.push({
+          id,
+          type: 'LOW_STOCK',
+          title: isOutOfStock ? 'Out of Stock Alert' : 'Low Stock Warning',
+          description: `"${prod.name || 'Product'}" has only ${stock} unit(s) remaining in inventory.`,
+          time: formatDate(updatedDate),
+          createdAt: updatedDate.toISOString(),
+          read: readAlertIds.includes(id),
+          targetSection: 'inventory',
+        })
+      }
+    })
+
+    // 4. Pending service requests
+    serviceRequests.forEach((sr) => {
+      if (sr.status === 'pending' || sr.status === 'requested') {
+        const id = `srv-req-${sr.id}`
+        const createdDate = sr.createdAt?.toDate ? sr.createdAt.toDate() : (sr.createdAt?.seconds ? new Date(sr.createdAt.seconds * 1000) : new Date(sr.createdAt || Date.now()))
+
+        items.push({
+          id,
+          type: 'SERVICE_BOOKING',
+          title: 'New Service Booking',
+          description: `${sr.customerName || sr.customerEmail || 'Customer'} requested ${sr.serviceType || sr.serviceName || 'service'}${sr.motorcycleModel ? ` for ${sr.motorcycleModel}` : ''}.`,
+          time: formatDate(createdDate),
+          createdAt: createdDate.toISOString(),
+          read: readAlertIds.includes(id),
+          targetSection: 'service-scheduling',
+        })
+      }
+    })
+
+    // Filter out dismissed notifications
+    const activeItems = items.filter((n) => !dismissedNotificationIds.includes(n.id))
+
+    // Sort descending by date
+    return activeItems.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+  }, [chatNotifications, inventoryChangeRequests, inventory, serviceRequests, dismissedNotificationIds, readAlertIds])
+
+  const unreadNotificationCount = useMemo(() => {
+    return notificationItems.filter((item) => !item.read).length
+  }, [notificationItems])
 
   
 
@@ -1569,6 +1662,15 @@ useEffect(() => {
       return
     }
 
+    // Mark clicked alert as read
+    setReadAlertIds((prev) => {
+      const next = Array.from(new Set([...prev, notification.id]))
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('bykelink-read-alert-ids', JSON.stringify(next))
+      }
+      return next
+    })
+
     // Handle password reset notifications from admin reset action
     if (notification.type === 'PASSWORD_RESET') {
       setIsNotificationsOpen(false)
@@ -1593,21 +1695,52 @@ useEffect(() => {
       return
     }
 
-    // Handle chat notifications
-    if (!notification?.conversationId) {
+    // Handle inventory verification requests and low stock alerts
+    if (notification.type === 'INVENTORY_REQUEST' || notification.type === 'LOW_STOCK') {
+      setIsNotificationsOpen(false)
+      setActiveSection('inventory')
+      
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+      
       return
     }
 
-    markConversationNotificationsRead(notification.conversationId)
-    setChatFocusRequest({
-      conversationId: notification.conversationId,
-      requestedAt: Date.now(),
-    })
-    setIsNotificationsOpen(false)
-    setActiveSection('chats-management')
+    // Handle service booking alerts
+    if (notification.type === 'SERVICE_BOOKING') {
+      setIsNotificationsOpen(false)
+      setActiveSection('service-scheduling')
+      
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+      
+      return
+    }
 
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      setIsSidebarOpen(false)
+    // Handle chat notifications
+    if (notification?.conversationId) {
+      markConversationNotificationsRead(notification.conversationId)
+      setChatFocusRequest({
+        conversationId: notification.conversationId,
+        requestedAt: Date.now(),
+      })
+      setIsNotificationsOpen(false)
+      setActiveSection('chats-management')
+
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
+      return
+    }
+
+    if (notification.targetSection) {
+      setIsNotificationsOpen(false)
+      setActiveSection(notification.targetSection)
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setIsSidebarOpen(false)
+      }
     }
   }, [markConversationNotificationsRead])
 
@@ -1629,24 +1762,48 @@ useEffect(() => {
   }, [])
 
   const handleMarkAllAsRead = useCallback(() => {
+    const allIds = notificationItems.map((n) => n.id)
+    setReadAlertIds((prev) => {
+      const next = Array.from(new Set([...prev, ...allIds]))
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('bykelink-read-alert-ids', JSON.stringify(next))
+      }
+      return next
+    })
     setChatNotifications((current) =>
       current.map((item) => ({ ...item, read: true }))
     )
-  }, [])
+  }, [notificationItems])
 
   const confirmNotificationAction = useCallback(async () => {
     if (!notificationConfirmation) return
 
     if (notificationConfirmation.type === 'delete' && notificationConfirmation.notificationId) {
+      const id = notificationConfirmation.notificationId
+      setDismissedNotificationIds((prev) => {
+        const next = Array.from(new Set([...prev, id]))
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('bykelink-dismissed-notifications', JSON.stringify(next))
+        }
+        return next
+      })
       setChatNotifications((current) =>
-        current.filter((item) => item.id !== notificationConfirmation.notificationId)
+        current.filter((item) => item.id !== id)
       )
     } else if (notificationConfirmation.type === 'deleteAll') {
+      const allIds = notificationItems.map((n) => n.id)
+      setDismissedNotificationIds((prev) => {
+        const next = Array.from(new Set([...prev, ...allIds]))
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('bykelink-dismissed-notifications', JSON.stringify(next))
+        }
+        return next
+      })
       setChatNotifications([])
     }
 
     setNotificationConfirmation(null)
-  }, [notificationConfirmation])
+  }, [notificationConfirmation, notificationItems])
 
   const handleLogoutClick = useCallback(() => {
     setLogoutConfirmation(true)
@@ -2270,7 +2427,7 @@ useEffect(() => {
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
           onToggleNotifications={handleToggleNotifications}
-          notificationCount={unreadChatCount}
+          notificationCount={unreadNotificationCount}
           adminName={adminName}
           consoleLabel={consoleLabel}
           onOpenProfile={handleProfileToggle}

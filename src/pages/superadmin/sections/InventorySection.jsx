@@ -1,6 +1,6 @@
 
 import { useMemo, useState, useEffect } from 'react'
-import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc, getDocs } from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp, updateDoc, doc, deleteDoc, setDoc, getDocs, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import CloudUploadRoundedIcon from '@mui/icons-material/CloudUploadRounded'
@@ -13,11 +13,13 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
+import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded'
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { db, functions, storage } from '../../../firebase'
 import { logSystemAuditEvent } from '../../../services/auditLogService'
 import ConfirmationModal from '../components/ConfirmationModal'
 import AdminVerificationModal from '../components/AdminVerificationModal'
+import ReturnDamagedModal from '../components/ReturnDamagedModal'
 import useToast from '../../../context/useToast'
 import './InventorySection.css'
 
@@ -36,6 +38,7 @@ const inventoryTabs = [
   { id: 'all', label: 'All' },
   { id: 'motorcycle-parts', label: 'Motorcycle Units' },
   { id: 'spare-parts', label: 'Spare Parts' },
+  { id: 'returned-damaged', label: 'Returned / Damaged' },
   { id: 'verifications', label: 'Pending Verifications' },
   { id: 'archived', label: 'Deleted Items' },
 ]
@@ -134,7 +137,7 @@ export default function InventorySection({
   const [confirmModal, setConfirmModal] = useState({ open: false, action: null, itemId: null })
   const [adminVerifyModal, setAdminVerifyModal] = useState({
     open: false,
-    mode: 'delete', // 'rename' | 'delete' | 'approve-rename' | 'approve-delete'
+    mode: 'delete', // 'rename' | 'update' | 'delete' | 'approve-rename' | 'approve-update' | 'approve-delete'
     itemId: null,
     item: null,
     itemName: '',
@@ -142,6 +145,7 @@ export default function InventorySection({
     requestId: null,
     requestedBy: null,
     reason: '',
+    pendingUpdates: null,
   })
   const [isVerifyingAction, setIsVerifyingAction] = useState(false)
   const [archivedItems, setArchivedItems] = useState([])
@@ -150,6 +154,56 @@ export default function InventorySection({
   const [stockNumberPadItemId, setStockNumberPadItemId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Returned / Damaged Products State
+  const [damagedReturns, setDamagedReturns] = useState([])
+  const [damagedSearchTerm, setDamagedSearchTerm] = useState('')
+  const [damagedFilterStatus, setDamagedFilterStatus] = useState('all')
+  const [isReturnDamagedModalOpen, setIsReturnDamagedModalOpen] = useState(false)
+
+  // Real-time subscription to damaged & returned products
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'damagedReturns'), (snap) => {
+      const records = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+      records.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0)
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0)
+        return timeB - timeA
+      })
+      setDamagedReturns(records)
+    }, (error) => {
+      console.warn('Unable to subscribe to damagedReturns collection:', error)
+    })
+    return () => unsub()
+  }, [])
+
+  const filteredDamagedReturns = useMemo(() => {
+    return damagedReturns.filter((rec) => {
+      const matchesStatus = damagedFilterStatus === 'all' || rec.dispositionStatus === damagedFilterStatus
+      if (!matchesStatus) return false
+      if (!damagedSearchTerm.trim()) return true
+      const term = damagedSearchTerm.trim().toLowerCase()
+      const name = String(rec.itemName || '').toLowerCase()
+      const sku = String(rec.itemSku || rec.itemId || '').toLowerCase()
+      const cust = String(rec.customerSource || '').toLowerCase()
+      const reason = String(rec.reasonNotes || '').toLowerCase()
+      return name.includes(term) || sku.includes(term) || cust.includes(term) || reason.includes(term)
+    })
+  }, [damagedReturns, damagedFilterStatus, damagedSearchTerm])
+
+  const handleUpdateDisposition = async (recordId, newDisposition) => {
+    try {
+      await updateDoc(doc(db, 'damagedReturns', recordId), {
+        dispositionStatus: newDisposition,
+        updatedAt: serverTimestamp(),
+        updatedBy: currentUser?.displayName || currentUser?.email || 'Staff',
+      })
+      success(`Updated disposition status to ${newDisposition.replace(/_/g, ' ')}`)
+    } catch (err) {
+      console.error('Failed to update disposition status:', err)
+      toastError('Failed to update disposition status.')
+    }
+  }
 
   const { success, error: toastError } = useToast()
   const normalizedRole = normalizeText(currentAccessRole)
@@ -876,31 +930,50 @@ export default function InventorySection({
 
       const isNameChanged = proposedName !== String(editingItem.name || '').trim()
 
-      if (isNameChanged) {
-        if (!isAdminOrSuperadmin) {
-          // Staff product name edits must go through admin verification
-          setIsSavingItem(true)
-          try {
-            const submitRequest = httpsCallable(functions, 'submitInventoryChangeRequest')
-            const response = await submitRequest({
-              itemId: editingItem.id,
-              requestType: 'rename',
-              proposedName,
-              reason: 'Staff requested product name change',
-            })
-            success(response?.data?.message || 'Product name change submitted for admin verification.')
-            setIsEditModalOpen(false)
-            setEditFormData({})
-            setEditingItem(null)
-          } catch (error) {
-            console.error('Error submitting product rename request:', error)
-            toastError(error?.message || 'Unable to submit name change for admin verification.')
-          } finally {
-            setIsSavingItem(false)
-          }
-          return
-        }
+      const colorVariants = editFormData.colorVariants !== undefined ? editFormData.colorVariants : (editingItem.colorVariants ?? [])
+      const editTotalStock = Array.isArray(colorVariants) && colorVariants.length > 0
+        ? colorVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+        : Number(editFormData.stock ?? editingItem.stock ?? 0)
 
+      const updatePayload = {
+        name: proposedName,
+        model: editFormData.model ?? editingItem.model ?? '',
+        modelId: editFormData.modelId ?? editingItem.modelId ?? '',
+        variant: editFormData.variant ?? editingItem.variant ?? '',
+        variantId: editFormData.variantId ?? editingItem.variantId ?? '',
+        stock: editTotalStock,
+        status: getInventoryStatus({ stock: editTotalStock }),
+        price: Number(editFormData.price ?? editingItem.price ?? 0),
+        colorVariants: colorVariants,
+        specs: editFormData.specs ?? editingItem.specs ?? [],
+        equipment: editFormData.equipment ?? editingItem.equipment ?? [],
+        description: editFormData.description ?? editingItem.description ?? '',
+      }
+
+      if (!isAdminOrSuperadmin) {
+        // Staff product updates/renames MUST go through AdminVerificationModal
+        // which supports both on-site admin verification and remote submission
+        setAdminVerifyModal({
+          open: true,
+          mode: isNameChanged ? 'rename' : 'update',
+          itemId: editingItem.id,
+          item: editingItem,
+          itemName: editingItem.name || '',
+          proposedName: isNameChanged ? proposedName : '',
+          pendingUpdates: updatePayload,
+          requestId: null,
+          requestedBy: {
+            uid: currentUser?.uid || '',
+            name: currentUser?.displayName || currentUser?.email || 'Staff',
+            email: currentUser?.email || '',
+            role: currentAccessRole || 'staff',
+          },
+          reason: isNameChanged ? 'Staff renamed product' : 'Staff updated product details',
+        })
+        return
+      }
+
+      if (isNameChanged) {
         // Admin / Superadmin renaming a product: require explicit AdminVerificationModal
         setAdminVerifyModal({
           open: true,
@@ -909,6 +982,7 @@ export default function InventorySection({
           item: editingItem,
           itemName: editingItem.name || '',
           proposedName,
+          pendingUpdates: updatePayload,
           requestId: null,
           requestedBy: null,
           reason: '',
@@ -958,27 +1032,49 @@ export default function InventorySection({
     }
   }
 
-  const handleAdminVerificationConfirm = async ({ verificationNote, verificationMethod }) => {
-    const { mode, itemId, item, itemName, proposedName, requestId } = adminVerifyModal
+  const handleAdminVerificationConfirm = async ({ adminEmail, adminPassword, verificationNote, verificationMethod }) => {
+    const { mode, itemId, item, itemName, proposedName, requestId, pendingUpdates } = adminVerifyModal
     setIsVerifyingAction(true)
-    const verifiedBy = {
-      uid: currentUser?.uid || '',
-      email: String(currentUser?.email || '').trim().toLowerCase(),
-      name: currentUser?.displayName || currentUser?.email || 'Admin',
-      role: currentAccessRole || 'admin',
-      method: verificationMethod,
-    }
 
     try {
-      if (mode === 'rename') {
+      // If staff caller provided on-site admin credentials, verify via server-side callable
+      if (adminEmail && adminPassword) {
+        const authorizeDirectly = httpsCallable(functions, 'authorizeInventoryDirectly')
+        const response = await authorizeDirectly({
+          adminEmail,
+          adminPassword,
+          action: mode === 'delete' ? 'delete' : 'update',
+          itemId,
+          pendingUpdates: pendingUpdates || (mode === 'rename' ? { name: proposedName } : null),
+          verificationNote: verificationNote || '',
+        })
+
+        success(response?.data?.message || 'Admin successfully verified and applied changes.')
+        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '', pendingUpdates: null })
+        setIsEditModalOpen(false)
+        setEditFormData({})
+        setEditingItem(null)
+        handleCollectionUpdate()
+        return
+      }
+
+      const verifiedBy = {
+        uid: currentUser?.uid || '',
+        email: String(currentUser?.email || '').trim().toLowerCase(),
+        name: currentUser?.displayName || currentUser?.email || 'Admin',
+        role: currentAccessRole || 'admin',
+        method: verificationMethod,
+      }
+
+      if (mode === 'rename' || mode === 'update') {
         await handleUpdateItem({
           verifiedBy,
           verificationNote,
-          wasRenamed: true,
+          wasRenamed: mode === 'rename',
           previousName: itemName,
           newName: proposedName,
         })
-        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '' })
+        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '', pendingUpdates: null })
         return
       }
 
@@ -1009,12 +1105,12 @@ export default function InventorySection({
           metadata: { verificationNote },
         })
         success(`"${itemName || itemId}" verified and moved to archive.`)
-        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '' })
+        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '', pendingUpdates: null })
         handleCollectionUpdate()
         return
       }
 
-      if (mode === 'approve-rename' || mode === 'approve-delete') {
+      if (mode === 'approve-rename' || mode === 'approve-delete' || mode === 'approve-update') {
         const verifyRequest = httpsCallable(functions, 'verifyInventoryChangeRequest')
         const response = await verifyRequest({
           requestId,
@@ -1023,7 +1119,7 @@ export default function InventorySection({
           verificationMethod,
         })
         success(response?.data?.message || 'Verification confirmed.')
-        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '' })
+        setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '', pendingUpdates: null })
         handleCollectionUpdate()
       }
     } catch (error) {
@@ -1031,6 +1127,34 @@ export default function InventorySection({
       toastError(error?.message || 'Unable to complete verified action.')
     } finally {
       setIsVerifyingAction(false)
+    }
+  }
+
+  const handleSubmitRemote = async () => {
+    const { itemId, mode, proposedName, pendingUpdates, reason } = adminVerifyModal
+    if (!itemId) return
+    setIsSavingItem(true)
+    try {
+      const submitRequest = httpsCallable(functions, 'submitInventoryChangeRequest')
+      const requestType = mode === 'delete' ? 'delete' : (proposedName ? 'rename' : 'update')
+      const response = await submitRequest({
+        itemId,
+        requestType,
+        proposedName: proposedName || '',
+        pendingUpdates: pendingUpdates || {},
+        reason: reason || 'Staff requested changes via verification modal',
+      })
+      success(response?.data?.message || 'Change request submitted for remote admin verification.')
+      setAdminVerifyModal({ open: false, mode: 'delete', itemId: null, item: null, itemName: '', proposedName: '', requestId: null, requestedBy: null, reason: '', pendingUpdates: null })
+      setIsEditModalOpen(false)
+      setEditFormData({})
+      setEditingItem(null)
+      handleCollectionUpdate()
+    } catch (error) {
+      console.error('Error submitting remote request:', error)
+      toastError(error?.message || 'Failed to submit request for remote verification.')
+    } finally {
+      setIsSavingItem(false)
     }
   }
 
@@ -1199,6 +1323,16 @@ export default function InventorySection({
             <AddRoundedIcon sx={{ fontSize: 18 }} />
             Add Spare Parts
           </button>
+
+          <button
+            type="button"
+            onClick={() => setIsReturnDamagedModalOpen(true)}
+            disabled={!canEditOperations}
+            className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60 bg-gradient-to-r from-red-600/80 to-amber-600/80 hover:from-red-600 hover:to-amber-600"
+          >
+            <ReportProblemRoundedIcon sx={{ fontSize: 18 }} />
+            Return / Damaged
+          </button>
         </div>
       </div>
 
@@ -1228,6 +1362,11 @@ export default function InventorySection({
                   className={`inventory-tab inline-flex items-center gap-2 ${activeTab === tab.id ? 'is-active' : ''}`}
                 >
                   <span>{tab.label}</span>
+                  {tab.id === 'returned-damaged' && damagedReturns.length > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/30 border border-red-500/40 px-1.5 text-[10px] font-black text-red-200">
+                      {damagedReturns.length}
+                    </span>
+                  )}
                   {tab.id === 'verifications' && pendingVerificationRequests.length > 0 && (
                     <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-black text-black">
                       {pendingVerificationRequests.length}
@@ -1238,7 +1377,7 @@ export default function InventorySection({
             </div>
           </div>
 
-          {activeTab !== 'verifications' && (
+          {activeTab !== 'verifications' && activeTab !== 'returned-damaged' && (
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <select
                 value={statusFilter}
@@ -1254,7 +1393,164 @@ export default function InventorySection({
           )}
         </div>
 
-        {activeTab === 'verifications' ? (
+        {activeTab === 'returned-damaged' ? (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white/75 flex items-center gap-2">
+                  <ReportProblemRoundedIcon sx={{ fontSize: 18 }} className="text-amber-400" />
+                  Returned & Damaged Products Log
+                </h3>
+                <p className="text-xs text-white/45 mt-1">
+                  Track customer returns, supplier warranties, transit damage, and manage inventory dispositions.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReturnDamagedModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 px-4 py-2 text-xs font-black text-white transition-all shadow-md"
+              >
+                <ReportProblemRoundedIcon sx={{ fontSize: 16 }} />
+                Record Return / Defect
+              </button>
+            </div>
+
+            {/* Filter and stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">Total Incidents</span>
+                <p className="text-xl font-black text-white mt-1">{damagedReturns.length}</p>
+              </div>
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80">Pending Inspection</span>
+                <p className="text-xl font-black text-amber-300 mt-1">
+                  {damagedReturns.filter((r) => r.dispositionStatus === 'pending_inspection').length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400/80">Returned to Supplier</span>
+                <p className="text-xl font-black text-blue-300 mt-1">
+                  {damagedReturns.filter((r) => r.dispositionStatus === 'returned_to_supplier').length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-400/80">Written Off / Disposed</span>
+                <p className="text-xl font-black text-red-300 mt-1">
+                  {damagedReturns.filter((r) => ['written_off', 'disposed'].includes(r.dispositionStatus)).length}
+                </p>
+              </div>
+            </div>
+
+            {/* Search and disposition filter */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-sm">
+                <SearchRoundedIcon sx={{ fontSize: 18 }} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                <input
+                  type="search"
+                  value={damagedSearchTerm}
+                  onChange={(e) => setDamagedSearchTerm(e.target.value)}
+                  placeholder="Search item, code, customer, reason..."
+                  className="w-full rounded-xl border border-white/10 bg-white/5 pl-9 pr-3 py-2 text-xs text-white placeholder-white/40 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={damagedFilterStatus}
+                  onChange={(e) => setDamagedFilterStatus(e.target.value)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white focus:outline-none"
+                >
+                  <option value="all">All Dispositions</option>
+                  <option value="pending_inspection">Pending Inspection</option>
+                  <option value="returned_to_supplier">Returned to Supplier</option>
+                  <option value="written_off">Written Off</option>
+                  <option value="repaired_restocked">Repaired & Restocked</option>
+                  <option value="disposed">Scrapped / Disposed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Damaged returns table */}
+            {filteredDamagedReturns.length > 0 ? (
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full text-left text-xs text-white">
+                  <thead className="bg-white/5 text-[10px] font-black uppercase tracking-wider text-white/60">
+                    <tr>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Product / SKU</th>
+                      <th className="p-3">Qty</th>
+                      <th className="p-3">Condition</th>
+                      <th className="p-3">Customer / Source</th>
+                      <th className="p-3">Stock Action</th>
+                      <th className="p-3">Disposition Status</th>
+                      <th className="p-3">Reason / Notes</th>
+                      <th className="p-3">Logged By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredDamagedReturns.map((record) => {
+                      const dateDisplay = record.createdAt?.toDate
+                        ? record.createdAt.toDate().toLocaleDateString()
+                        : (record.createdAt?.seconds ? new Date(record.createdAt.seconds * 1000).toLocaleDateString() : 'N/A')
+                      return (
+                        <tr key={record.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="p-3 whitespace-nowrap opacity-75">{dateDisplay}</td>
+                          <td className="p-3">
+                            <strong className="block text-white font-semibold">{record.itemName}</strong>
+                            <span className="text-[11px] font-mono opacity-60">{record.itemSku || record.itemId}</span>
+                          </td>
+                          <td className="p-3 font-bold text-red-400">{record.quantity}</td>
+                          <td className="p-3">
+                            <span className="inline-flex rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold">
+                              {(record.condition || 'defective').replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td className="p-3 opacity-80">{record.customerSource || 'N/A'}</td>
+                          <td className="p-3">
+                            {record.deductedFromStock ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 text-red-300 px-2 py-0.5 text-[10px] font-bold">
+                                Deducted
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-white/10 text-white/60 px-2 py-0.5 text-[10px]">
+                                Not Deducted
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <select
+                              value={record.dispositionStatus || 'pending_inspection'}
+                              onChange={(e) => handleUpdateDisposition(record.id, e.target.value)}
+                              className="rounded-lg border border-white/15 bg-black/40 px-2 py-1 text-[11px] font-bold text-white focus:outline-none"
+                            >
+                              <option value="pending_inspection">Pending Inspection</option>
+                              <option value="returned_to_supplier">Returned to Supplier</option>
+                              <option value="written_off">Written Off</option>
+                              <option value="repaired_restocked">Repaired & Restocked</option>
+                              <option value="disposed">Scrapped / Disposed</option>
+                            </select>
+                          </td>
+                          <td className="p-3 max-w-[200px] truncate opacity-75" title={record.reasonNotes}>
+                            {record.reasonNotes || '—'}
+                          </td>
+                          <td className="p-3 whitespace-nowrap opacity-65">
+                            {record.loggedBy?.name || record.loggedBy?.email || 'Staff'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-10 text-center">
+                <ReportProblemRoundedIcon sx={{ fontSize: 32 }} className="text-white/30 mb-2" />
+                <p className="text-sm font-bold text-white/60">No returned or damaged product records found.</p>
+                <p className="text-xs text-white/40 mt-1">Click &ldquo;Record Return / Defect&rdquo; to log a damaged product or customer return.</p>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'verifications' ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 px-1">
               <div>
@@ -1262,7 +1558,7 @@ export default function InventorySection({
                   Admin Verification Queue
                 </h3>
                 <p className="text-xs text-white/45 mt-1">
-                  Product name edits and deletion requests require admin verification before taking effect.
+                  Product name edits, detail updates, and deletion requests require admin verification before taking effect.
                 </p>
               </div>
               <span className="text-xs font-bold text-white/50">
@@ -1275,6 +1571,7 @@ export default function InventorySection({
                 {inventoryChangeRequests.map((req) => {
                   const isPending = req.status === 'pending'
                   const isRename = req.requestType === 'rename'
+                  const isUpdate = req.requestType === 'update'
                   return (
                     <div
                       key={req.id}
@@ -1288,10 +1585,12 @@ export default function InventorySection({
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${isRename
                               ? 'bg-amber-500/20 text-amber-300'
-                              : 'bg-red-500/20 text-red-300'
+                              : isUpdate
+                                ? 'bg-blue-500/20 text-blue-300'
+                                : 'bg-red-500/20 text-red-300'
                               }`}
                           >
-                            {isRename ? 'Product Name Edit' : 'Product Deletion'}
+                            {isRename ? 'Product Name Edit' : isUpdate ? 'Product Update' : 'Product Deletion'}
                           </span>
                           <span
                             className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${req.status === 'approved'
@@ -1311,6 +1610,20 @@ export default function InventorySection({
                               <span className="line-through text-red-400">{req.currentName}</span>
                               <span className="mx-2 text-white/40">→</span>
                               <span className="text-emerald-400">{req.proposedName}</span>
+                            </>
+                          ) : isUpdate ? (
+                            <>
+                              <span>Update details for &ldquo;{req.currentName}&rdquo;</span>
+                              {req.pendingUpdates?.price !== undefined && (
+                                <span className="ml-2 text-xs text-emerald-400">
+                                  ₱{Number(req.pendingUpdates.price).toLocaleString()}
+                                </span>
+                              )}
+                              {req.pendingUpdates?.stock !== undefined && (
+                                <span className="ml-2 text-xs text-amber-400">
+                                  Stock: {req.pendingUpdates.stock}
+                                </span>
+                              )}
                             </>
                           ) : (
                             <span>Delete &ldquo;{req.currentName}&rdquo;</span>
@@ -1338,11 +1651,12 @@ export default function InventorySection({
                             onClick={() =>
                               setAdminVerifyModal({
                                 open: true,
-                                mode: isRename ? 'approve-rename' : 'approve-delete',
+                                mode: isRename ? 'approve-rename' : isUpdate ? 'approve-update' : 'approve-delete',
                                 itemId: req.itemId,
                                 item: req.itemSnapshot || null,
                                 itemName: req.currentName || '',
                                 proposedName: req.proposedName || '',
+                                pendingUpdates: req.pendingUpdates || null,
                                 requestId: req.id,
                                 requestedBy: req.requestedBy || null,
                                 reason: req.reason || '',
@@ -1369,7 +1683,7 @@ export default function InventorySection({
               </div>
             ) : (
               <div className="inventory-empty rounded-2xl px-4 py-10 text-center text-white/50">
-                No product name edit or deletion verification requests yet.
+                No product name edit, update, or deletion verification requests yet.
               </div>
             )}
           </div>
@@ -3447,9 +3761,11 @@ export default function InventorySection({
         requestedBy={adminVerifyModal.requestedBy}
         reason={adminVerifyModal.reason}
         currentUser={currentUser}
+        currentUserRole={currentAccessRole}
         isDarkMode={isDarkMode}
         isLoading={isVerifyingAction || isSavingItem}
         onVerify={handleAdminVerificationConfirm}
+        onSubmitRemote={handleSubmitRemote}
         onCancel={() =>
           setAdminVerifyModal({
             open: false,
@@ -3461,8 +3777,22 @@ export default function InventorySection({
             requestId: null,
             requestedBy: null,
             reason: '',
+            pendingUpdates: null,
           })
         }
+      />
+
+      <ReturnDamagedModal
+        open={isReturnDamagedModalOpen}
+        onClose={() => setIsReturnDamagedModalOpen(false)}
+        inventoryItems={items}
+        currentUser={currentUser}
+        currentAccessRole={currentAccessRole}
+        isDarkMode={isDarkMode}
+        onSuccess={() => {
+          handleCollectionUpdate?.()
+          success('Returned/damaged product logged successfully.')
+        }}
       />
     </section>
   )

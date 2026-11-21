@@ -500,6 +500,38 @@
   font-weight: 650;
 }
 
+/* Most Sold Spare Parts Performance Panel */
+.analytics-top-parts-panel {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.analytics-podium-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+.analytics-podium-card {
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(8px);
+}
+
+.analytics-podium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 860px) {
+  .analytics-podium-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .analytics-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

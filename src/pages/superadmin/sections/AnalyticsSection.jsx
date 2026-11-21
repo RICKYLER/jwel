@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded'
 import { summarizeSaleItems } from './superadminUtils'
 import './AnalyticsSection.css'
 
@@ -9,6 +12,11 @@ export default function AnalyticsSection({
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [paymentFilter, setPaymentFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
+  const [partsSearchTerm, setPartsSearchTerm] = useState('')
+  const [partsSortBy, setPartsSortBy] = useState('qty') // 'qty' | 'revenue'
+  const [partsPage, setPartsPage] = useState(1)
+  const partsPageSize = 8
   const [fromDateFilter, setFromDateFilter] = useState(() => {
     const initialDate = new Date()
     return `${initialDate.getFullYear()}-${String(initialDate.getMonth() + 1).padStart(2, '0')}-${String(initialDate.getDate()).padStart(2, '0')}`
@@ -65,6 +73,41 @@ export default function AnalyticsSection({
   })
 
   const totalSales = selectedDateTransactions.reduce((sum, log) => sum + Number(log.grandTotal || 0), 0)
+  const {
+    sparePartsSales,
+    serviceSales,
+    serviceTransactionCount,
+  } = selectedDateTransactions.reduce(
+    (acc, log) => {
+      const grandTotal = Number(log.grandTotal || 0)
+      const summary = summarizeSaleItems(log.items, log.totalQuantity, log.subtotal)
+      const partsRaw =
+        log.partsSubtotal !== undefined && log.partsSubtotal !== null && summary.serviceSubtotal === 0
+          ? Number(log.partsSubtotal || 0)
+          : summary.partsSubtotal
+      const serviceRaw =
+        log.serviceSubtotal !== undefined && log.serviceSubtotal !== null && Number(log.serviceSubtotal) > 0
+          ? Number(log.serviceSubtotal || 0)
+          : summary.serviceSubtotal
+      const combinedRaw = partsRaw + serviceRaw
+
+      let serviceShare = 0
+      if (combinedRaw > 0 && serviceRaw > 0) {
+        serviceShare = Number(((grandTotal * serviceRaw) / combinedRaw).toFixed(2))
+      } else if (summary.hasServices && grandTotal > 0 && partsRaw === 0) {
+        serviceShare = grandTotal
+      }
+      const partsShare = Number((grandTotal - serviceShare).toFixed(2))
+
+      return {
+        sparePartsSales: Number((acc.sparePartsSales + partsShare).toFixed(2)),
+        serviceSales: Number((acc.serviceSales + serviceShare).toFixed(2)),
+        serviceTransactionCount: acc.serviceTransactionCount + (serviceRaw > 0 || summary.hasServices ? 1 : 0),
+      }
+    },
+    { sparePartsSales: 0, serviceSales: 0, serviceTransactionCount: 0 },
+  )
+
   const cashSales = selectedDateTransactions
     .filter((log) => String(log.paymentMethodKey || log.paymentMethod || '').toLowerCase() === 'cash')
     .reduce((sum, log) => sum + Number(log.grandTotal || 0), 0)
@@ -85,13 +128,17 @@ export default function AnalyticsSection({
   const filteredSales = sortedSales.filter((log) => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
     const method = String(log.paymentMethodKey || log.paymentMethod || '').toLowerCase()
-    const itemSummary = summarizeSaleItems(log.items, log.totalQuantity)
+    const itemSummary = summarizeSaleItems(log.items, log.totalQuantity, log.subtotal)
     const searchableText = `${log.transactionId || log.id} ${log.customer || ''} ${log.paymentMethod || ''} ${itemSummary.searchableText}`.toLowerCase()
 
     const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch)
     const matchesPayment = paymentFilter === 'all' || method === paymentFilter
+    const matchesType =
+      typeFilter === 'all' ||
+      (typeFilter === 'with-service' && itemSummary.hasServices) ||
+      (typeFilter === 'parts-only' && !itemSummary.hasServices)
 
-    return matchesSearch && matchesPayment
+    return matchesSearch && matchesPayment && matchesType
   })
 
   const totalPages = Math.max(1, Math.ceil(filteredSales.length / pageSize))
@@ -126,8 +173,87 @@ export default function AnalyticsSection({
     })
   }
 
+  const topSoldSpareParts = useMemo(() => {
+    const partsMap = new Map()
+
+    selectedDateTransactions.forEach((log) => {
+      const items = Array.isArray(log.items) ? log.items : []
+      items.forEach((entry) => {
+        if (!entry) return
+        const id = String(entry.id || entry.sku || entry.name || '').trim()
+        const sku = String(entry.sku || '').trim()
+        const name = String(entry.name || entry.item || 'Spare Part').trim()
+        const isService =
+          entry.type === 'service' ||
+          id.startsWith('service-') ||
+          sku.toUpperCase() === 'SERVICE'
+        if (isService) return
+
+        const qty = Number(entry.qty || 0)
+        const unitPrice = Number(entry.unitPrice || 0)
+        const subtotal =
+          entry.subtotal !== undefined && entry.subtotal !== null
+            ? Number(entry.subtotal)
+            : Number((qty * unitPrice).toFixed(2))
+
+        const key = (sku && sku !== '—' ? sku : id) || name
+        const existing = partsMap.get(key) || {
+          key,
+          name,
+          sku: sku && sku !== '—' ? sku : 'N/A',
+          totalQty: 0,
+          totalRevenue: 0,
+          transactionCount: 0,
+          unitPrice,
+        }
+        existing.totalQty += qty
+        existing.totalRevenue += subtotal
+        existing.transactionCount += 1
+        if (unitPrice > 0) existing.unitPrice = unitPrice
+        partsMap.set(key, existing)
+      })
+    })
+
+    const list = Array.from(partsMap.values())
+    return list.sort((a, b) => {
+      if (partsSortBy === 'revenue') {
+        return b.totalRevenue - a.totalRevenue
+      }
+      return b.totalQty - a.totalQty
+    })
+  }, [selectedDateTransactions, partsSortBy])
+
+  const filteredSpareParts = useMemo(() => {
+    if (!partsSearchTerm.trim()) return topSoldSpareParts
+    const q = partsSearchTerm.trim().toLowerCase()
+    return topSoldSpareParts.filter(
+      (part) =>
+        part.name.toLowerCase().includes(q) ||
+        part.sku.toLowerCase().includes(q),
+    )
+  }, [topSoldSpareParts, partsSearchTerm])
+
+  const maxPartQty = useMemo(() => {
+    return Math.max(...topSoldSpareParts.map((p) => p.totalQty), 1)
+  }, [topSoldSpareParts])
+
+  const totalSparePartsUnits = useMemo(() => {
+    return topSoldSpareParts.reduce((sum, p) => sum + p.totalQty, 0)
+  }, [topSoldSpareParts])
+
+  const paginatedSpareParts = useMemo(() => {
+    const startIndex = (partsPage - 1) * partsPageSize
+    return filteredSpareParts.slice(startIndex, startIndex + partsPageSize)
+  }, [filteredSpareParts, partsPage, partsPageSize])
+
+  const totalPartsPages = Math.max(1, Math.ceil(filteredSpareParts.length / partsPageSize))
+
   const selectedSummary = selectedTransaction
-    ? summarizeSaleItems(selectedTransaction.items, selectedTransaction.totalQuantity)
+    ? summarizeSaleItems(
+        selectedTransaction.items,
+        selectedTransaction.totalQuantity,
+        selectedTransaction.subtotal,
+      )
     : null
 
   return (
@@ -136,7 +262,7 @@ export default function AnalyticsSection({
         <div>
           <p className="analytics-eyebrow">Operations report</p>
           <h1>Sales Analytics</h1>
-          <p className="analytics-report-subtitle">Sales totals and transaction activity for the selected date range</p>
+          <p className="analytics-report-subtitle">Spare parts, service fees, and transaction activity for the selected date range</p>
         </div>
         <div className="analytics-report-date">
           <span>Reporting period</span>
@@ -147,18 +273,28 @@ export default function AnalyticsSection({
       <div className="analytics-kpi-grid">
         <article className="analytics-kpi-card analytics-kpi-card--primary">
           <span>Total sales</span>
-          <strong>₱ {totalSales.toLocaleString('en-PH')}</strong>
-          <small>For the selected date range</small>
+          <strong>{formatPeso(totalSales)}</strong>
+          <small>Combined parts &amp; service sales</small>
+        </article>
+        <article className="analytics-kpi-card">
+          <span>Spare parts sales</span>
+          <strong>{formatPeso(sparePartsSales)}</strong>
+          <small>{totalSparePartsUnits} units sold in range</small>
+        </article>
+        <article className="analytics-kpi-card analytics-kpi-card--service">
+          <span>Service sales</span>
+          <strong>{formatPeso(serviceSales)}</strong>
+          <small>{serviceTransactionCount} transaction(s) with service</small>
         </article>
         <article className="analytics-kpi-card">
           <span>Cash sales</span>
-          <strong>₱ {cashSales.toLocaleString('en-PH')}</strong>
+          <strong>{formatPeso(cashSales)}</strong>
           <small>For the selected date range</small>
         </article>
         <article className="analytics-kpi-card">
           <span>Online payments</span>
-          <strong>₱ {onlineSales.toLocaleString('en-PH')}</strong>
-          <small>GCash, card, and bank transfer in the selected range</small>
+          <strong>{formatPeso(onlineSales)}</strong>
+          <small>GCash, card, and bank transfer</small>
         </article>
         <article className="analytics-kpi-card">
           <span>Transactions</span>
@@ -166,6 +302,196 @@ export default function AnalyticsSection({
           <small>In the selected date range</small>
         </article>
       </div>
+
+      {/* MOST SOLD SPARE PARTS SECTION */}
+      <article className="analytics-table-panel analytics-top-parts-panel mb-8">
+        <div className="analytics-panel-heading">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400">
+              <ConstructionRoundedIcon sx={{ fontSize: 20 }} />
+            </div>
+            <div>
+              <p className="analytics-eyebrow">Product Performance</p>
+              <h2>Most Sold Spare Parts</h2>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="analytics-record-count">
+              {topSoldSpareParts.length} distinct spare part(s) sold
+            </span>
+          </div>
+        </div>
+
+        {/* Podium Top 3 */}
+        {topSoldSpareParts.length > 0 && (
+          <div className="analytics-podium-grid">
+            {topSoldSpareParts.slice(0, 3).map((part, index) => {
+              const medalColors = [
+                'from-amber-500/20 to-amber-700/5 border-amber-500/40 text-amber-300',
+                'from-slate-300/20 to-slate-500/5 border-slate-300/40 text-slate-200',
+                'from-amber-700/20 to-amber-900/5 border-amber-700/40 text-amber-500',
+              ]
+              const medalLabels = ['#1 Top Seller', '#2 Runner Up', '#3 Third Place']
+              return (
+                <div
+                  key={part.key}
+                  className={`analytics-podium-card rounded-2xl border p-4 bg-linear-to-b ${medalColors[index] || ''}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/40 text-[11px] font-black uppercase tracking-wider">
+                      <EmojiEventsRoundedIcon sx={{ fontSize: 15 }} />
+                      {medalLabels[index]}
+                    </span>
+                    <span className="text-xs font-bold opacity-70">SKU: {part.sku}</span>
+                  </div>
+                  <h4 className="mt-2.5 text-base font-black truncate" title={part.name}>
+                    {part.name}
+                  </h4>
+                  <div className="mt-3 flex items-baseline justify-between">
+                    <div>
+                      <span className="text-2xl font-black">{part.totalQty}</span>
+                      <span className="ml-1 text-xs opacity-70">pcs sold</span>
+                    </div>
+                    <strong className="text-sm font-bold text-emerald-400">
+                      {formatPeso(part.totalRevenue)}
+                    </strong>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Filter bar for spare parts */}
+        <div className="analytics-filter-bar">
+          <label className="analytics-search-field">
+            <span>Search Spare Parts</span>
+            <input
+              type="search"
+              value={partsSearchTerm}
+              onChange={(e) => {
+                setPartsSearchTerm(e.target.value)
+                setPartsPage(1)
+              }}
+              placeholder="Search part name or SKU..."
+            />
+          </label>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={`analytics-filter-clear ${partsSortBy === 'qty' ? 'is-active font-bold text-white bg-amber-600/30 border-amber-500' : ''}`}
+              onClick={() => setPartsSortBy('qty')}
+            >
+              Sort by Units Sold
+            </button>
+            <button
+              type="button"
+              className={`analytics-filter-clear ${partsSortBy === 'revenue' ? 'is-active font-bold text-white bg-emerald-600/30 border-emerald-500' : ''}`}
+              onClick={() => setPartsSortBy('revenue')}
+            >
+              Sort by Revenue
+            </button>
+          </div>
+        </div>
+
+        {/* Table of ranked spare parts */}
+        {paginatedSpareParts.length > 0 ? (
+          <div className="analytics-table-wrap">
+            <table className="analytics-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '60px' }}>Rank</th>
+                  <th>Spare Part Name</th>
+                  <th>SKU</th>
+                  <th style={{ minWidth: '220px' }}>Units Sold</th>
+                  <th className="analytics-table-amount">Unit Price</th>
+                  <th className="analytics-table-amount">Total Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedSpareParts.map((part, idx) => {
+                  const rank = (partsPage - 1) * partsPageSize + idx + 1
+                  const pct = Math.max(8, Math.round((part.totalQty / maxPartQty) * 100))
+                  return (
+                    <tr key={part.key}>
+                      <td>
+                        <span className={`inline-flex items-center justify-center h-6 w-6 rounded-full text-xs font-black ${
+                          rank === 1
+                            ? 'bg-amber-500 text-black'
+                            : rank === 2
+                              ? 'bg-slate-300 text-black'
+                              : rank === 3
+                                ? 'bg-amber-700 text-white'
+                                : 'bg-white/10 text-white/70'
+                        }`}>
+                          {rank}
+                        </span>
+                      </td>
+                      <td>
+                        <strong className="text-white text-sm">{part.name}</strong>
+                      </td>
+                      <td>
+                        <span className="text-xs font-mono opacity-70">{part.sku}</span>
+                      </td>
+                      <td>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-black text-amber-400">{part.totalQty} pcs</span>
+                            <span className="opacity-60">{part.transactionCount} order(s)</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-red-500"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="analytics-table-amount">
+                        {formatPeso(part.unitPrice)}
+                      </td>
+                      <td className="analytics-table-amount">
+                        <strong className="text-emerald-400 font-bold">{formatPeso(part.totalRevenue)}</strong>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="analytics-empty-state">
+            {topSoldSpareParts.length === 0
+              ? 'No spare parts sold in the selected date range.'
+              : 'No spare parts match your search filter.'}
+          </div>
+        )}
+
+        {filteredSpareParts.length > partsPageSize && (
+          <div className="analytics-pagination">
+            <span>
+              Showing {(partsPage - 1) * partsPageSize + 1}-{Math.min(partsPage * partsPageSize, filteredSpareParts.length)} of {filteredSpareParts.length}
+            </span>
+            <div className="analytics-pagination-actions">
+              <button
+                type="button"
+                disabled={partsPage === 1}
+                onClick={() => setPartsPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <strong>Page {partsPage} of {totalPartsPages}</strong>
+              <button
+                type="button"
+                disabled={partsPage === totalPartsPages}
+                onClick={() => setPartsPage((p) => Math.min(totalPartsPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </article>
 
       <article className="analytics-table-panel">
         <div className="analytics-panel-heading">

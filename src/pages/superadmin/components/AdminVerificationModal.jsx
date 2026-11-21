@@ -14,22 +14,27 @@ import CircularProgress from '@mui/material/CircularProgress'
  */
 export default function AdminVerificationModal({
   open,
-  mode = 'delete', // 'rename' | 'delete' | 'approve-rename' | 'approve-delete' | 'permanent-delete'
+  mode = 'delete', // 'rename' | 'update' | 'delete' | 'approve-rename' | 'approve-delete' | 'permanent-delete'
   itemName = '',
   proposedName = '',
   requestedBy = null,
   reason = '',
   currentUser = null,
+  currentUserRole = '',
   isDarkMode = true,
   isLoading = false,
   onVerify,
+  onSubmitRemote = null,
   onCancel,
 }) {
+  const [adminEmail, setAdminEmail] = useState('')
   const [password, setPassword] = useState('')
   const [typedConfirmation, setTypedConfirmation] = useState('')
   const [verificationNote, setVerificationNote] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isVerifying, setIsVerifying] = useState(false)
+
+  const isStaffCaller = !['admin', 'superadmin'].includes(String(currentUserRole || '').trim().toLowerCase())
 
   const hasPasswordProvider = Boolean(
     currentUser?.email &&
@@ -59,6 +64,7 @@ export default function AdminVerificationModal({
 
   const titleByMode = {
     rename: 'Admin Verification: Rename Product',
+    update: 'Admin Verification: Update Product',
     delete: 'Admin Verification: Delete Product',
     'approve-rename': 'Verify & Confirm Product Rename',
     'approve-delete': 'Verify & Confirm Product Deletion',
@@ -66,6 +72,7 @@ export default function AdminVerificationModal({
   }
 
   const resetFormState = () => {
+    setAdminEmail('')
     setPassword('')
     setTypedConfirmation('')
     setVerificationNote('')
@@ -83,6 +90,26 @@ export default function AdminVerificationModal({
     event.preventDefault()
     if (busy) return
     setErrorMessage('')
+
+    if (isStaffCaller) {
+      const emailTrimmed = adminEmail.trim().toLowerCase()
+      if (!emailTrimmed || !emailTrimmed.includes('@')) {
+        setErrorMessage('Enter the verifying administrator\'s email address.')
+        return
+      }
+      if (!password) {
+        setErrorMessage('Enter the verifying administrator\'s password.')
+        return
+      }
+
+      await onVerify?.({
+        adminEmail: emailTrimmed,
+        adminPassword: password,
+        verificationNote: verificationNote.trim(),
+        verificationMethod: 'admin-password-on-site',
+      })
+      return
+    }
 
     if (hasPasswordProvider) {
       if (!password) {
@@ -219,7 +246,60 @@ export default function AdminVerificationModal({
             )}
           </div>
 
-          {hasPasswordProvider ? (
+          {isStaffCaller ? (
+            <div className="space-y-3">
+              <div
+                className={`rounded-xl border p-3 text-xs leading-relaxed ${
+                  isDarkMode ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-800'
+                }`}
+              >
+                <strong>Admin Authorization Required:</strong> An authorized Administrator or Superadmin must enter their credentials below to confirm this action on-site.
+              </div>
+
+              <label className="block space-y-1.5">
+                <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                  Admin Email
+                </span>
+                <input
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => {
+                    setAdminEmail(e.target.value)
+                    setErrorMessage('')
+                  }}
+                  placeholder="admin@bykelink.com"
+                  autoFocus
+                  disabled={busy}
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors ${
+                    isDarkMode
+                      ? 'border-white/15 bg-black/40 text-white focus:border-red-500'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-red-600'
+                  }`}
+                />
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
+                  Admin Password
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    setErrorMessage('')
+                  }}
+                  placeholder="Enter admin password"
+                  disabled={busy}
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors ${
+                    isDarkMode
+                      ? 'border-white/15 bg-black/40 text-white focus:border-red-500'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-red-600'
+                  }`}
+                />
+              </label>
+            </div>
+          ) : hasPasswordProvider ? (
             <label className="block space-y-1.5">
               <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
                 Enter Admin Password ({currentUser?.email})
@@ -273,7 +353,7 @@ export default function AdminVerificationModal({
               type="text"
               value={verificationNote}
               onChange={(e) => setVerificationNote(e.target.value)}
-              placeholder="e.g., Verified physical count / approved rename"
+              placeholder="e.g., Verified physical count / approved update"
               disabled={busy}
               className={`w-full rounded-xl border px-3.5 py-2 text-sm outline-none transition-colors ${
                 isDarkMode
@@ -289,37 +369,56 @@ export default function AdminVerificationModal({
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 pt-2">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={busy}
-              className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors disabled:opacity-50 ${
-                isDarkMode
-                  ? 'bg-white/10 text-white hover:bg-white/15'
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors disabled:opacity-60 ${
-                isDeleteFlow ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-            >
-              {busy ? (
-                <>
-                  <CircularProgress size={16} color="inherit" />
-                  Verifying...
-                </>
-              ) : isDeleteFlow ? (
-                'Verify & Confirm Delete'
-              ) : (
-                'Verify & Confirm Update'
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-2.5 pt-2">
+            <div>
+              {isStaffCaller && onSubmitRemote && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleClose()
+                    onSubmitRemote()
+                  }}
+                  disabled={busy}
+                  className={`text-xs font-bold underline transition-colors ${
+                    isDarkMode ? 'text-amber-400 hover:text-amber-300' : 'text-amber-700 hover:text-amber-800'
+                  }`}
+                >
+                  Admin not present? Submit for Remote Approval ›
+                </button>
               )}
-            </button>
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={busy}
+                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors disabled:opacity-50 ${
+                  isDarkMode
+                    ? 'bg-white/10 text-white hover:bg-white/15'
+                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-black text-white transition-colors disabled:opacity-60 ${
+                  isDeleteFlow ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {busy ? (
+                  <>
+                    <CircularProgress size={16} color="inherit" />
+                    Verifying...
+                  </>
+                ) : isDeleteFlow ? (
+                  'Verify & Confirm Delete'
+                ) : (
+                  'Verify & Confirm Update'
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

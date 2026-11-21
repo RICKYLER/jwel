@@ -207,6 +207,12 @@ match /authorizedPersonnel/{docId} {
       allow update, delete: if isAdminOrHigher();
     }
 
+    match /damagedReturns/{docId} {
+      allow read: if isAdminOrHigher() || (isSignedIn() && signedInRole() == 'staff personnel');
+      allow create: if isAdminOrHigher() || (isSignedIn() && signedInRole() == 'staff personnel');
+      allow update, delete: if isAdminOrHigher();
+    }
+
     match /deleteArchived/{docId} {
       allow read: if isAdminOrHigher();
       allow create, update: if isAdminOrHigher();

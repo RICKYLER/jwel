@@ -39,6 +39,7 @@ export default function CashierPage({
   const [isPriceCheckOpen, setIsPriceCheckOpen] = useState(false)
   const [notes, setNotes] = useState('')
   const [transactionId, setTransactionId] = useState('')
+  const [saleError, setSaleError] = useState('')
 
   useEffect(() => {
     const unsubscribe = onSnapshot(query(collection(db, 'inventory')), (snapshot) => {
@@ -91,7 +92,7 @@ export default function CashierPage({
           snapshot.docs
             .map((serviceDoc) => {
               const data = serviceDoc.data()
-              const fee = Number(data.cost ?? data.fee ?? 0)
+              const fee = Number(data.cost ?? data.fee ?? data.price ?? data.amount ?? 0)
 
               return {
                 id: serviceDoc.id,
@@ -122,6 +123,10 @@ export default function CashierPage({
         }))
 
         setTransactionLogs(nextLogs)
+      },
+      (error) => {
+        console.warn('Transaction logs stream unavailable for this role:', error?.code || error?.message)
+        setTransactionLogs([])
       },
     )
 
@@ -228,6 +233,7 @@ export default function CashierPage({
           id: item.id,
           name: item.name,
           sku: item.sku,
+          type: 'product',
           qty: 1,
           unitPrice: item.price || 0,
         },
@@ -276,7 +282,11 @@ export default function CashierPage({
     setQtyEditorItem(null)
   }
 
-  const addServiceToCart = (service) => {
+  const addServiceToCart = async (service) => {
+    if (!transactionId) {
+      await requestTransactionId()
+    }
+
     setCartItems((current) => {
       const serviceCartId = `service-${service.id}`
       const existing = current.find((entry) => entry.id === serviceCartId)
@@ -293,6 +303,7 @@ export default function CashierPage({
           id: serviceCartId,
           name: service.name,
           sku: 'SERVICE',
+          type: 'service',
           qty: 1,
           unitPrice: service.fee,
         },
@@ -419,12 +430,14 @@ export default function CashierPage({
     if (!canCompleteSale || isCompletingSale) return
 
     setIsCompletingSale(true)
+    setSaleError('')
 
     try {
-      const finalTransactionId = transactionId || (await requestTransactionId())
+      const generatedFallbackId = `TX-${Date.now().toString().slice(-8)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`
+      const finalTransactionId = transactionId || (await requestTransactionId()) || generatedFallbackId
 
       const receiptPayload = {
-        id: finalTransactionId || 'TX-PENDING',
+        id: finalTransactionId,
         timestamp: new Date().toLocaleString('en-PH', {
           dateStyle: 'medium',
           timeStyle: 'short',
@@ -452,6 +465,8 @@ export default function CashierPage({
         console.log('[Cashier] completeSaleTransaction response received', saleResponse?.data)
       } catch (error) {
         console.error('Failed to finalize sale in backend:', error)
+        setSaleError(error?.message || 'Unable to record sale in backend. Please verify Cloud Functions deployment and try again.')
+        return
       }
 
       setIsPrintingReceipt(true)
@@ -778,6 +793,23 @@ export default function CashierPage({
               <span>Change</span>
               <strong>₱ {change.toLocaleString('en-PH')}</strong>
             </div>
+            {saleError && (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: '0.65rem',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(239, 68, 68, 0.45)',
+                  background: 'rgba(239, 68, 68, 0.14)',
+                  color: '#fca5a5',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                }}
+              >
+                {saleError}
+              </div>
+            )}
             <button
               type="button"
               className="cashier-complete-sale"
