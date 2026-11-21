@@ -1,14 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import { summarizeSaleItems } from './superadminUtils'
 import './AnalyticsSection.css'
 
 export default function AnalyticsSection({
-  users,
-  authorizedAdmins,
-  serviceRequests,
-  inventory,
-  technicians,
-  roleOptions,
-  normalizeText,
   transactionLogs = [],
   isDarkMode = true,
 }) {
@@ -23,6 +18,7 @@ export default function AnalyticsSection({
     return `${initialDate.getFullYear()}-${String(initialDate.getMonth() + 1).padStart(2, '0')}-${String(initialDate.getDate()).padStart(2, '0')}`
   })
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedTransaction, setSelectedTransaction] = useState(null)
   const pageSize = 6
 
   const getLogDate = (log) => {
@@ -89,7 +85,8 @@ export default function AnalyticsSection({
   const filteredSales = sortedSales.filter((log) => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
     const method = String(log.paymentMethodKey || log.paymentMethod || '').toLowerCase()
-    const searchableText = `${log.transactionId || log.id} ${log.customer || ''} ${log.paymentMethod || ''}`.toLowerCase()
+    const itemSummary = summarizeSaleItems(log.items, log.totalQuantity)
+    const searchableText = `${log.transactionId || log.id} ${log.customer || ''} ${log.paymentMethod || ''} ${itemSummary.searchableText}`.toLowerCase()
 
     const matchesSearch = !normalizedSearch || searchableText.includes(normalizedSearch)
     const matchesPayment = paymentFilter === 'all' || method === paymentFilter
@@ -104,16 +101,18 @@ export default function AnalyticsSection({
     safeCurrentPage * pageSize,
   )
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, paymentFilter, fromDateFilter, toDateFilter])
-
   const formatLogDate = (log) => {
     const date = getLogDate(log)
     return date
       ? date.toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })
       : 'Date unavailable'
   }
+
+  const formatPeso = (value) =>
+    `₱ ${Number(value || 0).toLocaleString('en-PH', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`
 
   const formatReportDate = (dateValue) => {
     if (!dateValue) {
@@ -126,6 +125,10 @@ export default function AnalyticsSection({
       year: 'numeric',
     })
   }
+
+  const selectedSummary = selectedTransaction
+    ? summarizeSaleItems(selectedTransaction.items, selectedTransaction.totalQuantity)
+    : null
 
   return (
     <section className={`analytics-section ${!isDarkMode ? 'light-mode' : ''}`}>
@@ -170,7 +173,7 @@ export default function AnalyticsSection({
             <p className="analytics-eyebrow">Transaction register</p>
             <h2>Sales activity</h2>
           </div>
-          <span className="analytics-record-count">{transactionCount} records</span>
+          <span className="analytics-record-count">{transactionCount} records • Click a row to view items</span>
         </div>
 
         <div className="analytics-filter-bar">
@@ -179,8 +182,11 @@ export default function AnalyticsSection({
             <input
               type="search"
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search transaction or customer"
+              onChange={(event) => {
+                setSearchTerm(event.target.value)
+                setCurrentPage(1)
+              }}
+              placeholder="Search transaction, customer, or product"
             />
           </label>
           <label className="analytics-date-field">
@@ -189,7 +195,10 @@ export default function AnalyticsSection({
               type="date"
               value={fromDateFilter}
               max={toDateFilter || undefined}
-              onChange={(event) => setFromDateFilter(event.target.value)}
+              onChange={(event) => {
+                setFromDateFilter(event.target.value)
+                setCurrentPage(1)
+              }}
               aria-label="From date"
             />
           </label>
@@ -199,13 +208,22 @@ export default function AnalyticsSection({
               type="date"
               value={toDateFilter}
               min={fromDateFilter || undefined}
-              onChange={(event) => setToDateFilter(event.target.value)}
+              onChange={(event) => {
+                setToDateFilter(event.target.value)
+                setCurrentPage(1)
+              }}
               aria-label="To date"
             />
           </label>
           <label className="analytics-select-field">
             <span>Payment method</span>
-            <select value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}>
+            <select
+              value={paymentFilter}
+              onChange={(event) => {
+                setPaymentFilter(event.target.value)
+                setCurrentPage(1)
+              }}
+            >
               <option value="all">All methods</option>
               <option value="cash">Cash</option>
               <option value="gcash">GCash</option>
@@ -223,6 +241,7 @@ export default function AnalyticsSection({
                 setPaymentFilter('all')
                 setFromDateFilter(todayDateValue)
                 setToDateFilter(todayDateValue)
+                setCurrentPage(1)
               }}
             >
               Clear filters
@@ -237,21 +256,53 @@ export default function AnalyticsSection({
                 <tr>
                   <th>Transaction</th>
                   <th>Customer</th>
+                  <th>Products / Qty</th>
                   <th>Payment method</th>
                   <th>Date and time</th>
                   <th className="analytics-table-amount">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedSales.map((log) => (
-                  <tr key={log.id}>
-                    <td><strong>{log.transactionId || log.id}</strong></td>
-                    <td>{log.customer || 'Walk-in Customer'}</td>
-                    <td><span className="analytics-payment-label">{log.paymentMethod || 'Cash'}</span></td>
-                    <td>{formatLogDate(log)}</td>
-                    <td className="analytics-table-amount"><strong>₱ {Number(log.grandTotal || 0).toLocaleString('en-PH')}</strong></td>
-                  </tr>
-                ))}
+                {paginatedSales.map((log) => {
+                  const summary = summarizeSaleItems(log.items, log.totalQuantity)
+                  return (
+                    <tr
+                      key={log.id}
+                      className="is-clickable"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`View purchased items for ${log.transactionId || log.id}`}
+                      onClick={() => setSelectedTransaction(log)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setSelectedTransaction(log)
+                        }
+                      }}
+                    >
+                      <td><strong>{log.transactionId || log.id}</strong></td>
+                      <td>{log.customer || 'Walk-in Customer'}</td>
+                      <td>
+                        <div className="analytics-items-cell">
+                          <span className="analytics-items-summary">{summary.summaryLabel}</span>
+                          <div className="analytics-items-badges">
+                            {summary.totalQuantity > 0 && (
+                              <span className="analytics-qty-badge">
+                                {summary.totalQuantity} {summary.totalQuantity === 1 ? 'pc' : 'pcs'}
+                              </span>
+                            )}
+                            {summary.isBulk && (
+                              <span className="analytics-bulk-badge">Bulk</span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td><span className="analytics-payment-label">{log.paymentMethod || 'Cash'}</span></td>
+                      <td>{formatLogDate(log)}</td>
+                      <td className="analytics-table-amount"><strong>{formatPeso(log.grandTotal)}</strong></td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -290,6 +341,121 @@ export default function AnalyticsSection({
           </div>
         )}
       </article>
+
+      {selectedTransaction && selectedSummary && (
+        <div
+          className="analytics-detail-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="analytics-tx-detail-title"
+          onClick={() => setSelectedTransaction(null)}
+        >
+          <div
+            className="analytics-detail-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="analytics-detail-header">
+              <div>
+                <p className="analytics-eyebrow">Walk-in Purchase Breakdown</p>
+                <h3 id="analytics-tx-detail-title">
+                  {selectedTransaction.transactionId || selectedTransaction.id}
+                </h3>
+                <p className="analytics-detail-meta">
+                  {selectedTransaction.customer || 'Walk-in Customer'} • {formatLogDate(selectedTransaction)} •{' '}
+                  {selectedTransaction.paymentMethod || 'Cash'}
+                </p>
+              </div>
+              <div className="analytics-detail-header-right">
+                {selectedSummary.isBulk ? (
+                  <span className="analytics-bulk-badge">Bulk Purchase ({selectedSummary.totalQuantity} pcs)</span>
+                ) : (
+                  selectedSummary.totalQuantity > 0 && (
+                    <span className="analytics-qty-badge">{selectedSummary.totalQuantity} {selectedSummary.totalQuantity === 1 ? 'pc' : 'pcs'}</span>
+                  )
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedTransaction(null)}
+                  className="analytics-detail-close"
+                  aria-label="Close transaction details"
+                >
+                  <CloseRoundedIcon sx={{ fontSize: 18 }} />
+                </button>
+              </div>
+            </div>
+
+            <div className="analytics-detail-body">
+              {selectedSummary.items.length > 0 ? (
+                <div className="analytics-detail-items-wrap">
+                  <table className="analytics-detail-items-table">
+                    <thead>
+                      <tr>
+                        <th>Product / Item</th>
+                        <th>SKU</th>
+                        <th>Qty</th>
+                        <th className="analytics-table-amount">Unit Price</th>
+                        <th className="analytics-table-amount">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedSummary.items.map((item, idx) => (
+                        <tr key={`${item.id || item.name}-${idx}`}>
+                          <td><strong>{item.name}</strong></td>
+                          <td>{item.sku || '—'}</td>
+                          <td>
+                            <span className="analytics-qty-badge">×{item.qty}</span>
+                          </td>
+                          <td className="analytics-table-amount">{formatPeso(item.unitPrice)}</td>
+                          <td className="analytics-table-amount"><strong>{formatPeso(item.subtotal)}</strong></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="analytics-detail-empty">
+                  No itemized product list was saved on this legacy transaction record.
+                </div>
+              )}
+
+              <div className="analytics-detail-totals">
+                <div>
+                  <span>Subtotal</span>
+                  <strong>{formatPeso(selectedTransaction.subtotal)}</strong>
+                </div>
+                {Number(selectedTransaction.discount || 0) > 0 && (
+                  <div>
+                    <span>Discount</span>
+                    <strong>- {formatPeso(selectedTransaction.discount)}</strong>
+                  </div>
+                )}
+                <div>
+                  <span>VAT (12%)</span>
+                  <strong>{formatPeso(selectedTransaction.vat)}</strong>
+                </div>
+                <div className="is-grand">
+                  <span>Grand Total</span>
+                  <strong>{formatPeso(selectedTransaction.grandTotal)}</strong>
+                </div>
+                <div>
+                  <span>Amount Tendered</span>
+                  <strong>{formatPeso(selectedTransaction.amountTendered)}</strong>
+                </div>
+                <div>
+                  <span>Change</span>
+                  <strong>{formatPeso(selectedTransaction.change)}</strong>
+                </div>
+              </div>
+
+              {selectedTransaction.notes && (
+                <p className="analytics-detail-notes">
+                  <strong>Notes:</strong> {selectedTransaction.notes}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

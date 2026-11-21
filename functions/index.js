@@ -87,8 +87,8 @@ const getDashboardPath = (role, explicitPath = '') => {
 const getWebApiKey = () =>
   String(
     process.env.FIREBASE_WEB_API_KEY ||
-      process.env.WEB_API_KEY ||
-      'AIzaSyACbx4Fg8mqeGHVfJZNqUcdA3q4PLUrlPQ',
+    process.env.WEB_API_KEY ||
+    'AIzaSyACbx4Fg8mqeGHVfJZNqUcdA3q4PLUrlPQ',
   ).trim()
 
 const sendFirebaseVerificationEmail = async ({ email, temporaryPassword }) => {
@@ -252,18 +252,18 @@ const getRoleFromEmail = async (email = '', options = {}) => {
 
       const role = normalizeRole(
         data.role ||
-          data.personnelRole ||
-          data.assignedRole ||
-          data.accessRole ||
-          data.accountRole ||
-          fallbackRole,
+        data.personnelRole ||
+        data.assignedRole ||
+        data.accessRole ||
+        data.accountRole ||
+        fallbackRole,
       )
 
       if (role === 'customer') {
         return null
       }
 
-      
+
       return {
         role,
         dashboardPath: getDashboardPath(
@@ -363,13 +363,71 @@ const getRoleFromEmail = async (email = '', options = {}) => {
   }
 
 
-const resolved = buildResolvedAccessProfile(resolvedProfiles, 'customer')
+  const resolved = buildResolvedAccessProfile(resolvedProfiles, 'customer')
 
-return {
-  ...resolved,
-  accessibleSections:
-    resolvedProfiles.find(profile => profile?.accessibleSections)?.accessibleSections || [],
+  return {
+    ...resolved,
+    accessibleSections:
+      resolvedProfiles.find(profile => profile?.accessibleSections)?.accessibleSections || [],
+  }
 }
+
+const buildActorFromRequest = (request, roleOverride = '') => {
+  const email = String(request?.auth?.token?.email || '').trim().toLowerCase()
+  const name = String(
+    request?.auth?.token?.name ||
+    (email ? email.split('@')[0] : '') ||
+    'System',
+  ).trim()
+
+  return {
+    uid: request?.auth?.uid || '',
+    email,
+    name,
+    role: String(roleOverride || request?.auth?.token?.role || 'unknown').toLowerCase(),
+  }
+}
+
+const recordAuditLog = async (db, entry = {}) => {
+  try {
+    const eventId = String(
+      entry.eventId ||
+      `AUD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+    )
+
+    await db.collection('auditLogs').doc(eventId).set({
+      eventId,
+      module: String(entry.module || 'System'),
+      action: String(entry.action || 'SYSTEM_EVENT'),
+      summary: String(entry.summary || ''),
+      targetType: String(entry.targetType || ''),
+      targetId: String(entry.targetId || ''),
+      targetName: String(entry.targetName || ''),
+      previousData: entry.previousData ?? null,
+      newData: entry.newData ?? null,
+      amount:
+        entry.amount !== undefined &&
+          entry.amount !== null &&
+          Number.isFinite(Number(entry.amount))
+          ? Number(entry.amount)
+          : null,
+      performedBy: entry.performedBy || {
+        uid: '',
+        email: 'system',
+        name: 'System',
+        role: 'system',
+      },
+      verifiedBy: entry.verifiedBy || null,
+      metadata: entry.metadata || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+  } catch (error) {
+    logger.warn('Failed to record audit log entry', {
+      action: entry.action,
+      details: error.message,
+      structuredData: true,
+    })
+  }
 }
 
 exports.generateTransactionId = onCall({ cors: true }, async () => {
@@ -413,10 +471,25 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
   const receipt = request.data?.receipt || {}
   const cartItems = Array.isArray(request.data?.cartItems) ? request.data.cartItems : []
 
-  const inventoryUpdates = cartItems.filter((entry) => {
-    const id = String(entry?.id || '')
-    return id && !id.startsWith('service-')
-  })
+  const normalizedItems = cartItems
+    .filter((entry) => entry && (entry.id || entry.name))
+    .map((entry) => {
+      const id = String(entry.id || '')
+      const qty = Number(entry.qty || 0)
+      const unitPrice = Number(entry.unitPrice || 0)
+      return {
+        id,
+        name: String(entry.name || entry.item || 'Item'),
+        sku: String(entry.sku || ''),
+        type: id.startsWith('service-') ? 'service' : 'product',
+        qty,
+        unitPrice,
+        subtotal: Number((qty * unitPrice).toFixed(2)),
+      }
+    })
+
+  const inventoryUpdates = normalizedItems.filter((entry) => entry.id && !entry.id.startsWith('service-'))
+  const totalQuantity = normalizedItems.reduce((sum, entry) => sum + Number(entry.qty || 0), 0)
 
   const paymentMethodKey = String(receipt.paymentMethodKey || receipt.paymentMethod || 'cash').toLowerCase().trim()
 
@@ -432,19 +505,15 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
     amountTendered: Number(receipt.amountTendered || 0),
     change: Number(receipt.change || 0),
     notes: receipt.notes || '',
+    itemCount: normalizedItems.length,
+    totalQuantity,
+    isBulkOrder: totalQuantity >= 5,
     timestamp: receipt.timestamp || new Date().toLocaleString('en-PH', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    items: inventoryUpdates.map((entry) => ({
-      id: entry.id,
-      name: entry.name,
-      sku: entry.sku || '',
-      qty: Number(entry.qty || 0),
-      unitPrice: Number(entry.unitPrice || 0),
-      subtotal: Number((Number(entry.qty || 0) * Number(entry.unitPrice || 0)).toFixed(2)),
-    })),
+    items: normalizedItems,
   }
 
   const inventoryBatch = admin.firestore().batch()
@@ -474,6 +543,33 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
   inventoryBatch.set(transactionRef, transactionLog)
   await inventoryBatch.commit()
 
+  const posActor = request.auth
+    ? buildActorFromRequest(request, 'cashier personnel')
+    : { uid: '', email: 'pos-cashier', name: 'Cashier POS', role: 'cashier personnel' }
+
+  await recordAuditLog(admin.firestore(), {
+    eventId: `SALE-${transactionLog.transactionId}`,
+    module: 'POS',
+    action: 'SALE_COMPLETED',
+    summary: `POS sale ${transactionLog.transactionId} (${transactionLog.paymentMethod}) for ${transactionLog.customer} — ${totalQuantity} pc${totalQuantity === 1 ? '' : 's'}`,
+    targetType: 'transaction',
+    targetId: transactionLog.transactionId,
+    targetName: transactionLog.customer,
+    newData: {
+      paymentMethod: transactionLog.paymentMethod,
+      subtotal: transactionLog.subtotal,
+      vat: transactionLog.vat,
+      discount: transactionLog.discount,
+      grandTotal: transactionLog.grandTotal,
+      itemCount: transactionLog.itemCount,
+      totalQuantity: transactionLog.totalQuantity,
+      isBulkOrder: transactionLog.isBulkOrder,
+      items: transactionLog.items,
+    },
+    amount: transactionLog.grandTotal,
+    performedBy: posActor,
+  })
+
   logger.info('Sale transaction completed server-side', {
     structuredData: true,
     transactionId: transactionLog.transactionId,
@@ -484,6 +580,245 @@ exports.completeSaleTransaction = onCall({ cors: true }, async (request) => {
     ok: true,
     transactionId: transactionLog.transactionId,
     message: 'Inventory deducted and transaction recorded successfully.',
+  }
+})
+
+exports.submitInventoryChangeRequest = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to submit an inventory verification request.')
+  }
+
+  const requesterEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const requesterAccess = await getRoleFromEmail(requesterEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (!['staff personnel', 'admin', 'superadmin'].includes(requesterAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only staff or administrators can request inventory changes.')
+  }
+
+  const itemId = String(request.data?.itemId || '').trim()
+  const requestType = String(request.data?.requestType || '').trim().toLowerCase()
+  const proposedName = String(request.data?.proposedName || '').trim()
+  const reason = String(request.data?.reason || '').trim()
+  const pendingUpdates =
+    request.data?.pendingUpdates && typeof request.data.pendingUpdates === 'object'
+      ? request.data.pendingUpdates
+      : null
+
+  if (!itemId || !['rename', 'delete'].includes(requestType)) {
+    throw new HttpsError('invalid-argument', 'Valid itemId and requestType (rename or delete) are required.')
+  }
+
+  if (requestType === 'rename' && !proposedName) {
+    throw new HttpsError('invalid-argument', 'A new product name is required for a rename request.')
+  }
+
+  const db = admin.firestore()
+  const itemRef = db.collection('inventory').doc(itemId)
+  const itemSnap = await itemRef.get()
+
+  if (!itemSnap.exists) {
+    throw new HttpsError('not-found', 'Inventory product was not found.')
+  }
+
+  const itemData = itemSnap.data() || {}
+  const currentName = String(itemData.name || 'Unnamed Product')
+  const requestedBy = buildActorFromRequest(request, requesterAccess.role)
+
+  const requestRef = db.collection('inventoryChangeRequests').doc()
+  await requestRef.set({
+    requestId: requestRef.id,
+    requestType,
+    status: 'pending',
+    itemId,
+    currentName,
+    proposedName: requestType === 'rename' ? proposedName : '',
+    pendingUpdates: requestType === 'rename' ? pendingUpdates : null,
+    itemSnapshot: {
+      name: currentName,
+      model: itemData.model || '',
+      category: itemData.category || '',
+      sku: itemData.sku || '',
+      stock: Number(itemData.stock ?? 0),
+      price: Number(itemData.price ?? 0),
+      imageUrl: itemData.imageUrl || '',
+    },
+    reason,
+    requestedBy,
+    verifiedBy: null,
+    verificationNote: '',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  })
+
+  await recordAuditLog(db, {
+    module: 'Inventory',
+    action: requestType === 'rename' ? 'PRODUCT_RENAME_REQUESTED' : 'PRODUCT_DELETE_REQUESTED',
+    summary:
+      requestType === 'rename'
+        ? `Requested rename of "${currentName}" to "${proposedName}" (awaiting admin verification)`
+        : `Requested deletion of "${currentName}" (awaiting admin verification)`,
+    targetType: 'inventory',
+    targetId: itemId,
+    targetName: currentName,
+    previousData: { name: currentName },
+    newData: requestType === 'rename' ? { name: proposedName } : null,
+    performedBy: requestedBy,
+    metadata: { requestId: requestRef.id, reason },
+  })
+
+  return {
+    ok: true,
+    requestId: requestRef.id,
+    message:
+      requestType === 'rename'
+        ? 'Product name change submitted for admin verification.'
+        : 'Product deletion request submitted for admin verification.',
+  }
+})
+
+exports.verifyInventoryChangeRequest = onCall({ cors: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to verify inventory requests.')
+  }
+
+  const verifierEmail = String(request.auth.token.email || '').trim().toLowerCase()
+  const verifierAccess = await getRoleFromEmail(verifierEmail, {
+    uid: request.auth.uid,
+    claimsRole: request.auth.token.role,
+  })
+
+  if (!['admin', 'superadmin'].includes(verifierAccess.role)) {
+    throw new HttpsError('permission-denied', 'Only admin or superadmin can verify product name edits or deletions.')
+  }
+
+  const requestId = String(request.data?.requestId || '').trim()
+  const decision = String(request.data?.decision || '').trim().toLowerCase()
+  const verificationNote = String(request.data?.verificationNote || '').trim()
+  const verificationMethod = String(request.data?.verificationMethod || 'admin-verification').trim()
+
+  if (!requestId || !['approve', 'reject'].includes(decision)) {
+    throw new HttpsError('invalid-argument', 'Valid requestId and decision (approve or reject) are required.')
+  }
+
+  const db = admin.firestore()
+  const changeReqRef = db.collection('inventoryChangeRequests').doc(requestId)
+  const changeReqSnap = await changeReqRef.get()
+
+  if (!changeReqSnap.exists) {
+    throw new HttpsError('not-found', 'Verification request not found.')
+  }
+
+  const reqData = changeReqSnap.data() || {}
+  if (reqData.status !== 'pending') {
+    throw new HttpsError('failed-precondition', `This request has already been ${reqData.status}.`)
+  }
+
+  const verifiedBy = {
+    ...buildActorFromRequest(request, verifierAccess.role),
+    method: verificationMethod,
+  }
+  const timestamp = admin.firestore.FieldValue.serverTimestamp()
+
+  if (decision === 'reject') {
+    await changeReqRef.update({
+      status: 'rejected',
+      verifiedBy,
+      verificationNote,
+      verifiedAt: timestamp,
+      updatedAt: timestamp,
+    })
+
+    await recordAuditLog(db, {
+      module: 'Inventory',
+      action: 'PRODUCT_CHANGE_REJECTED',
+      summary: `Rejected ${reqData.requestType} request for "${reqData.currentName}"`,
+      targetType: 'inventory',
+      targetId: reqData.itemId,
+      targetName: reqData.currentName,
+      previousData: { name: reqData.currentName },
+      newData: reqData.proposedName ? { name: reqData.proposedName } : null,
+      performedBy: reqData.requestedBy || verifiedBy,
+      verifiedBy,
+      metadata: { requestId, verificationNote },
+    })
+
+    return { ok: true, status: 'rejected', message: 'Request rejected.' }
+  }
+
+  const itemRef = db.collection('inventory').doc(reqData.itemId)
+  const itemSnap = await itemRef.get()
+  if (!itemSnap.exists) {
+    throw new HttpsError('not-found', 'Target inventory product no longer exists.')
+  }
+
+  const itemData = itemSnap.data() || {}
+  const batch = db.batch()
+
+  if (reqData.requestType === 'rename') {
+    const safeUpdates =
+      reqData.pendingUpdates && typeof reqData.pendingUpdates === 'object'
+        ? reqData.pendingUpdates
+        : {}
+
+    batch.update(itemRef, {
+      ...safeUpdates,
+      name: reqData.proposedName,
+      lastVerifiedBy: verifiedBy,
+      lastVerifiedAt: timestamp,
+      updatedAt: timestamp,
+    })
+  } else if (reqData.requestType === 'delete') {
+    const archiveRef = db.collection('deleteArchived').doc(reqData.itemId)
+    batch.set(archiveRef, {
+      ...itemData,
+      recordType: 'inventory',
+      deletedAt: timestamp,
+      deletedBy: reqData.requestedBy?.name || reqData.requestedBy?.email || verifierEmail,
+      verifiedBy,
+      verifiedAt: timestamp,
+      deletionReason: reqData.reason || verificationNote || '',
+      updatedAt: timestamp,
+    })
+    batch.delete(itemRef)
+  }
+
+  batch.update(changeReqRef, {
+    status: 'approved',
+    verifiedBy,
+    verificationNote,
+    verifiedAt: timestamp,
+    updatedAt: timestamp,
+  })
+
+  await batch.commit()
+
+  await recordAuditLog(db, {
+    module: 'Inventory',
+    action: reqData.requestType === 'rename' ? 'PRODUCT_RENAMED' : 'PRODUCT_DELETED',
+    summary:
+      reqData.requestType === 'rename'
+        ? `Verified and renamed "${reqData.currentName}" to "${reqData.proposedName}"`
+        : `Verified and deleted product "${reqData.currentName}" (moved to archive)`,
+    targetType: 'inventory',
+    targetId: reqData.itemId,
+    targetName: reqData.requestType === 'rename' ? reqData.proposedName : reqData.currentName,
+    previousData: { name: reqData.currentName, stock: itemData.stock ?? 0, price: itemData.price ?? 0 },
+    newData: reqData.requestType === 'rename' ? { name: reqData.proposedName } : null,
+    performedBy: reqData.requestedBy || verifiedBy,
+    verifiedBy,
+    metadata: { requestId, verificationNote },
+  })
+
+  return {
+    ok: true,
+    status: 'approved',
+    message:
+      reqData.requestType === 'rename'
+        ? `Product renamed to "${reqData.proposedName}".`
+        : `Product "${reqData.currentName}" verified and deleted.`,
   }
 })
 
@@ -527,10 +862,10 @@ exports.syncUserAccess = onCall(async (request) => {
       [
         request.auth.token.role
           ? {
-              role: request.auth.token.role,
-              dashboardPath: getDashboardPath(request.auth.token.role),
-              source: 'auth-claim-fallback',
-            }
+            role: request.auth.token.role,
+            dashboardPath: getDashboardPath(request.auth.token.role),
+            source: 'auth-claim-fallback',
+          }
           : null,
       ],
       'customer',
@@ -666,23 +1001,23 @@ exports.createOperatorAccount = onCall(async (request) => {
   if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'Enter a valid operator email address.')
   }
-  
-const ROLE_HIERARCHY = {
-  superadmin: ['superadmin', 'admin', ...personnelRoles],
-  admin: personnelRoles,
-}
 
-// Already normalized earlier
-const allowedRoles = ROLE_HIERARCHY[inviterAccess.role] || []
+  const ROLE_HIERARCHY = {
+    superadmin: ['superadmin', 'admin', ...personnelRoles],
+    admin: personnelRoles,
+  }
 
-if (!allowedRoles.includes(role)) {
-  throw new HttpsError(
-    'permission-denied',
-    inviterAccess.role === 'admin'
-      ? 'Admin can only create non-admin operator accounts.'
-      : 'You are not allowed to assign this role.'
-  )
-}
+  // Already normalized earlier
+  const allowedRoles = ROLE_HIERARCHY[inviterAccess.role] || []
+
+  if (!allowedRoles.includes(role)) {
+    throw new HttpsError(
+      'permission-denied',
+      inviterAccess.role === 'admin'
+        ? 'Admin can only create non-admin operator accounts.'
+        : 'You are not allowed to assign this role.'
+    )
+  }
 
   const inviterCanCreateRole = allowedRoles.includes(role)
 
@@ -829,6 +1164,17 @@ if (!allowedRoles.includes(role)) {
     structuredData: true,
   })
 
+  await recordAuditLog(admin.firestore(), {
+    module: 'User Management',
+    action: 'USER_CREATED',
+    summary: `Created ${role} operator account for ${fullName} (${email})`,
+    targetType: 'user',
+    targetId: email,
+    targetName: fullName,
+    newData: { email, role, status, active },
+    performedBy: buildActorFromRequest(request, inviterAccess.role),
+  })
+
   return {
     ok: true,
     email,
@@ -938,6 +1284,18 @@ exports.archiveOperatorAccount = onCall(async (request) => {
     throw new HttpsError('internal', `Unable to move the user into Delete Archived. ${error.message}`)
   }
 
+  await recordAuditLog(admin.firestore(), {
+    module: 'User Management',
+    action: 'USER_ARCHIVED',
+    summary: `Archived ${role} account for ${fullName || email} (${email})`,
+    targetType: 'user',
+    targetId: email,
+    targetName: fullName || email,
+    previousData: { role, status: accessRecord.status || 'active' },
+    newData: { status: 'archived' },
+    performedBy: buildActorFromRequest(request, requesterAccess.role),
+  })
+
   return {
     ok: true,
     email,
@@ -1006,6 +1364,17 @@ exports.deleteArchivedUserPermanently = onCall(async (request) => {
   } catch (error) {
     throw new HttpsError('internal', `Unable to permanently delete the archived user. ${error.message}`)
   }
+
+  await recordAuditLog(admin.firestore(), {
+    module: 'User Management',
+    action: 'USER_PERMANENTLY_DELETED',
+    summary: `Permanently deleted archived user ${archivedData.fullName || email} (${email})`,
+    targetType: 'user',
+    targetId: email,
+    targetName: archivedData.fullName || email,
+    previousData: { email, role: archivedData.role || 'unknown' },
+    performedBy: buildActorFromRequest(request, requesterAccess.role),
+  })
 
   return {
     ok: true,
@@ -1129,10 +1498,10 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
       [
         request.auth.token.role
           ? {
-              role: request.auth.token.role,
-              dashboardPath: getDashboardPath(request.auth.token.role),
-              source: 'auth-claim-fallback',
-            }
+            role: request.auth.token.role,
+            dashboardPath: getDashboardPath(request.auth.token.role),
+            source: 'auth-claim-fallback',
+          }
           : null,
       ],
       'customer',
@@ -1143,14 +1512,14 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
   const shouldSyncUsersCollection = !isAuthorizedCollectionSource(accessRecord.source)
   const accessCollectionsToSync = email
     ? [
-        accessRecord.source === 'authorizedSuperadmin' || role === 'superadmin'
-          ? 'authorizedSuperadmin'
-          : role === 'admin'
-            ? 'authorizedAdmin'
-            : personnelRoles.includes(role) || role === 'staff'
-              ? 'authorizedPersonnel'
-              : null,
-      ].filter(Boolean)
+      accessRecord.source === 'authorizedSuperadmin' || role === 'superadmin'
+        ? 'authorizedSuperadmin'
+        : role === 'admin'
+          ? 'authorizedAdmin'
+          : personnelRoles.includes(role) || role === 'staff'
+            ? 'authorizedPersonnel'
+            : null,
+    ].filter(Boolean)
     : []
 
   try {
@@ -1188,19 +1557,19 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
     await Promise.all([
       ...(shouldSyncUsersCollection
         ? [
-            admin.firestore().collection('users').doc(uid).set(
-              {
-                mustChangePassword: false,
-                firstLoginRequired: false,
-                temporaryPassword: '',
-                accessibleSections,
-                emailVerified: Boolean(request.auth.token.email_verified),
-                passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-              },
-              { merge: true },
-            ),
-          ]
+          admin.firestore().collection('users').doc(uid).set(
+            {
+              mustChangePassword: false,
+              firstLoginRequired: false,
+              temporaryPassword: '',
+              accessibleSections,
+              emailVerified: Boolean(request.auth.token.email_verified),
+              passwordChangedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true },
+          ),
+        ]
         : []),
       ...accessCollectionsToSync.map((collectionName) =>
         admin.firestore().collection(collectionName).doc(email).set(
@@ -1236,158 +1605,6 @@ exports.completeFirstLoginSetup = onCall(async (request) => {
     role,
     dashboardPath,
     firestoreSyncCompleted,
-  }
-})
-
-exports.submitFinancingApplication = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to submit a financing application.')
-  }
-
-  const motorcycle = request.data?.motorcycle || {}
-  const applicant = request.data?.applicant || {}
-  const terms = request.data?.terms || {}
-
-  const motorcycleId = String(motorcycle.id || '').trim()
-  const motorcycleName = String(motorcycle.name || '').trim()
-  const fullName = String(applicant.fullName || '').trim()
-  const contactNumber = String(applicant.contactNumber || '').trim()
-  const address = String(applicant.address || '').trim()
-  const incomeRange = String(terms.incomeRange || '').trim()
-
-  if (!motorcycleId || !motorcycleName) {
-    throw new HttpsError('invalid-argument', 'Motorcycle details are required.')
-  }
-
-  if (!fullName || !contactNumber || !address) {
-    throw new HttpsError('invalid-argument', 'Full name, contact number, and address are required.')
-  }
-
-  const currentYear = new Date().getFullYear()
-  const randomSuffix = String(Math.floor(1000 + Math.random() * 9000))
-  const referenceId = `REF-YAM-${currentYear}-${randomSuffix}`
-
-  const applicationRef = admin.firestore().collection('financingApplications').doc()
-
-  const payload = {
-    referenceId,
-    status: 'submitted',
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    submittedBy: {
-      uid: request.auth.uid,
-      email: String(request.auth.token.email || applicant.email || '').trim().toLowerCase(),
-    },
-    applicant: {
-      fullName,
-      contactNumber,
-      address,
-      identityFileName: String(applicant.identityFileName || '').trim(),
-      identityFileUrl: String(applicant.identityFileUrl || '').trim(),
-    },
-    motorcycle: {
-      id: motorcycleId,
-      name: motorcycleName,
-      price: Number(motorcycle.price || 0),
-      imageUrl: String(motorcycle.imageUrl || '').trim(),
-    },
-    terms: {
-      downPaymentPercent: Number(terms.downPaymentPercent || 0),
-      paymentTerm: Number(terms.paymentTerm || 0),
-      incomeRange,
-      downPaymentAmount: Number(terms.downPaymentAmount || 0),
-      remainingBalance: Number(terms.remainingBalance || 0),
-      monthlyAmortization: Number(terms.monthlyAmortization || 0),
-    },
-  }
-
-  await applicationRef.set(payload)
-
-  logger.info('Financing application submitted.', {
-    applicationId: applicationRef.id,
-    referenceId,
-    uid: request.auth.uid,
-    motorcycleId,
-    structuredData: true,
-  })
-
-  return {
-    ok: true,
-    applicationId: applicationRef.id,
-    referenceId,
-  }
-})
-
-exports.getFinancingApplicationStatus = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to view financing status.')
-  }
-
-  const referenceId = String(request.data?.referenceId || '').trim()
-
-  if (!referenceId) {
-    throw new HttpsError('invalid-argument', 'Reference ID is required.')
-  }
-
-  const snapshot = await admin
-    .firestore()
-    .collection('financingApplications')
-    .where('referenceId', '==', referenceId)
-    .limit(1)
-    .get()
-
-  if (snapshot.empty) {
-    throw new HttpsError('not-found', 'Application not found for the provided reference ID.')
-  }
-
-  const applicationDoc = snapshot.docs[0]
-  const data = applicationDoc.data() || {}
-  const ownerUid = String(data.submittedBy?.uid || '')
-
-  if (!ownerUid || ownerUid !== request.auth.uid) {
-    throw new HttpsError('permission-denied', 'You can only view your own financing applications.')
-  }
-
-  const submittedAtDate = data.createdAt?.toDate ? data.createdAt.toDate() : null
-  const formattedSubmittedAt = submittedAtDate
-    ? submittedAtDate.toLocaleString('en-PH', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : 'Pending timestamp'
-
-  const monthlyAmortization = Number(data.terms?.monthlyAmortization || 0)
-  const motorcyclePrice = Number(data.motorcycle?.price || 0)
-  const downPaymentAmount = Number(data.terms?.downPaymentAmount || 0)
-  const downPaymentPercent = Number(data.terms?.downPaymentPercent || 0)
-  const interestRate = Number(data.terms?.interestRate || 0)
-  const apr = Number(data.terms?.apr || 0)
-
-  return {
-    ok: true,
-    referenceId,
-    status: String(data.status || 'submitted').toLowerCase(),
-    applicantName: String(data.applicant?.fullName || ''),
-    motorcycleName: String(data.motorcycle?.name || ''),
-    motorcycleImageUrl: String(data.motorcycle?.imageUrl || ''),
-    motorcyclePrice: motorcyclePrice,
-    paymentTerm: Number(data.terms?.paymentTerm || 0),
-    monthlyAmortization: monthlyAmortization,
-    downPaymentAmount: downPaymentAmount,
-    downPaymentPercent: downPaymentPercent,
-    interestRate: interestRate,
-    apr: apr,
-    submittedAt: formattedSubmittedAt,
-    stage: Number(data.stage || 1),
-    message:
-      data.status === 'approved'
-        ? 'Your application is approved. Please check your email for final instructions.'
-        : data.status === 'rejected'
-          ? 'Your application was not approved at this time. You may re-apply after updating requirements.'
-          : 'Your application is currently under review by our financing specialists.',
   }
 })
 
@@ -1682,287 +1899,21 @@ exports.updateUserAccess = onCall(async (request) => {
     };
 
     await userRef.set(updateData, { merge: true });
+    await recordAuditLog(db, {
+      module: 'User Management',
+      action: 'USER_ACCESS_UPDATED',
+      summary: `Updated access for ${fullName} (${email}) — Role: ${role}, Status: ${status}`,
+      targetType: 'user',
+      targetId: email.trim().toLowerCase(),
+      targetName: fullName,
+      newData: { role, status, accessibleSections },
+      performedBy: buildActorFromRequest(request),
+    })
     return { ok: true, message: 'Access updated successfully.' };
   } catch (error) {
     throw new HttpsError('internal', `Failed to update access. ${error.message}`);
   }
 });
-
-exports.approveFinancingApplication = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to approve applications.')
-  }
-
-  const applicationId = String(request.data?.applicationId || '').trim()
-  const reviewNote = String(request.data?.reviewNote || '').trim()
-
-  if (!applicationId) {
-    throw new HttpsError('invalid-argument', 'Application ID is required.')
-  }
-
-  try {
-    const db = admin.firestore()
-    
-    // Get the application from financingApplications collection
-    const applicationRef = db.collection('financingApplications').doc(applicationId)
-    const applicationDoc = await applicationRef.get()
-
-    if (!applicationDoc.exists) {
-      logger.warn('Application not found for approval', {
-        applicationId,
-        uid: request.auth.uid,
-        structuredData: true,
-      })
-      throw new HttpsError('not-found', 'Application not found.')
-    }
-
-    const applicationData = applicationDoc.data()
-
-    // Create approved application in approvedApplications collection
-    const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
-    
-    const approvedData = {
-      ...applicationData,
-      status: 'approved',
-      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy: {
-        uid: request.auth.uid,
-        email: String(request.auth.token.email || '').trim().toLowerCase(),
-      },
-      reviewNote: reviewNote,
-      originalApplicationId: applicationId,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }
-
-    // Set the approved application in the new collection
-    await approvedApplicationRef.set(approvedData)
-
-    // Update the status in the original collection
-    await applicationRef.update({
-      status: 'approved',
-      reviewNote: reviewNote,
-      approvedAt: admin.firestore.FieldValue.serverTimestamp(),
-      approvedBy: {
-        uid: request.auth.uid,
-        email: String(request.auth.token.email || '').trim().toLowerCase(),
-      },
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    })
-
-    logger.info('Financing application approved successfully.', {
-      applicationId,
-      referenceId: applicationData.referenceId,
-      uid: request.auth.uid,
-      structuredData: true,
-    })
-
-    return {
-      ok: true,
-      applicationId,
-      referenceId: applicationData.referenceId,
-      message: 'Application approved successfully.',
-    }
-  } catch (error) {
-    logger.error('Error approving financing application.', {
-      applicationId: request.data?.applicationId,
-      uid: request.auth.uid,
-      errorCode: error.code,
-      errorMessage: error.message,
-      structuredData: true,
-    })
-
-    if (error instanceof HttpsError) {
-      throw error
-    }
-
-    throw new HttpsError('internal', `Failed to approve application: ${error.message}`)
-  }
-})
-
-exports.updateFinancingApplicationStatus = onCall({ cors: true }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'You must be signed in to update applications.')
-  }
-
-  const applicationId = String(request.data?.applicationId || '').trim()
-  const status = String(request.data?.status || '').trim().toLowerCase()
-  const reviewNote = String(request.data?.reviewNote || '').trim()
-
-  if (!applicationId) {
-    throw new HttpsError('invalid-argument', 'Application ID is required.')
-  }
-
-  if (!['approved', 'rejected', 'completed'].includes(status)) {
-    throw new HttpsError('invalid-argument', 'Status must be approved, rejected, or completed.')
-  }
-
-  const email = String(request.auth.token.email || '').trim().toLowerCase()
-  const accessProfile = await getRoleFromEmail(email, {
-    uid: request.auth.uid,
-    claimsRole: request.auth.token.role,
-  })
-
-  if (!['admin', 'superadmin'].includes(accessProfile.role)) {
-    throw new HttpsError('permission-denied', 'Only administrators can update application status.')
-  }
-
-  try {
-    const db = admin.firestore()
-    const applicationRef = db.collection('financingApplications').doc(applicationId)
-    const applicationDoc = await applicationRef.get()
-
-    if (!applicationDoc.exists) {
-      throw new HttpsError('not-found', 'Application not found.')
-    }
-
-    const applicationData = applicationDoc.data() || {}
-    const reviewer = {
-      uid: request.auth.uid,
-      email,
-    }
-    const timestamp = admin.firestore.FieldValue.serverTimestamp()
-
-    if (status === 'completed') {
-      if (String(applicationData.status || '').toLowerCase() !== 'approved') {
-        throw new HttpsError('failed-precondition', 'Only approved applications can be finalized.')
-      }
-
-      const inventoryId = String(
-        applicationData.motorcycle?.id ||
-        applicationData.inventoryId ||
-        applicationData.inventoryItemId ||
-        '',
-      ).trim()
-
-      if (!inventoryId) {
-        throw new HttpsError('failed-precondition', 'This application is missing its inventory item reference.')
-      }
-
-      const inventoryRef = db.collection('inventory').doc(inventoryId)
-      const transactionResult = await db.runTransaction(async (transaction) => {
-        const [currentApplicationDoc, inventoryDoc] = await Promise.all([
-          transaction.get(applicationRef),
-          transaction.get(inventoryRef),
-        ])
-
-        if (!currentApplicationDoc.exists) {
-          throw new HttpsError('not-found', 'Application not found.')
-        }
-
-        const currentApplication = currentApplicationDoc.data() || {}
-        if (String(currentApplication.status || '').toLowerCase() !== 'approved') {
-          throw new HttpsError('failed-precondition', 'Only approved applications can be finalized.')
-        }
-
-        if (!inventoryDoc.exists) {
-          throw new HttpsError('not-found', 'The selected motorcycle inventory item was not found.')
-        }
-
-        const inventoryData = inventoryDoc.data() || {}
-        const currentStock = Number(inventoryData.stock ?? inventoryData.quantity ?? inventoryData.onHand ?? 0)
-
-        if (!Number.isFinite(currentStock) || currentStock < 1) {
-          throw new HttpsError('failed-precondition', 'The selected motorcycle is out of stock.')
-        }
-
-        const nextStock = currentStock - 1
-        const completionData = {
-          status: 'completed',
-          finalizedAt: timestamp,
-          finalizedBy: reviewer,
-          inventoryDeducted: true,
-          inventoryId,
-          updatedAt: timestamp,
-        }
-
-        transaction.update(applicationRef, completionData)
-        transaction.update(inventoryRef, {
-          stock: nextStock,
-          quantity: nextStock,
-          onHand: nextStock,
-          updatedAt: timestamp,
-        })
-
-        const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
-        transaction.set(approvedApplicationRef, completionData, { merge: true })
-
-        return { nextStock }
-      })
-
-      logger.info('Approved financing application finalized and inventory deducted.', {
-        applicationId,
-        inventoryId,
-        remainingStock: transactionResult.nextStock,
-        uid: request.auth.uid,
-        structuredData: true,
-      })
-
-      return {
-        ok: true,
-        applicationId,
-        referenceId: applicationData.referenceId,
-        status,
-        inventoryId,
-        message: 'Application finalized and motorcycle inventory deducted successfully.',
-      }
-    }
-
-    const updateData = {
-      status,
-      reviewNote,
-      reviewedAt: timestamp,
-      reviewedBy: reviewer,
-      updatedAt: timestamp,
-    }
-    const batch = db.batch()
-
-    batch.update(applicationRef, updateData)
-
-    if (status === 'approved') {
-      const approvedApplicationRef = db.collection('approvedApplications').doc(applicationId)
-      batch.set(approvedApplicationRef, {
-        ...applicationData,
-        ...updateData,
-        approvedAt: timestamp,
-        approvedBy: reviewer,
-        originalApplicationId: applicationId,
-      })
-    }
-
-    await batch.commit()
-
-    logger.info('Financing application status updated.', {
-      applicationId,
-      status,
-      referenceId: applicationData.referenceId,
-      uid: request.auth.uid,
-      structuredData: true,
-    })
-
-    return {
-      ok: true,
-      applicationId,
-      referenceId: applicationData.referenceId,
-      status,
-      message: `Application ${status} successfully.`,
-    }
-  } catch (error) {
-    logger.error('Error updating financing application status.', {
-      applicationId,
-      status,
-      uid: request.auth.uid,
-      errorCode: error.code,
-      errorMessage: error.message,
-      structuredData: true,
-    })
-
-    if (error instanceof HttpsError) {
-      throw error
-    }
-
-    throw new HttpsError('internal', `Failed to update application: ${error.message}`)
-  }
-})
 
 exports.checkEmailExists = onCall(async (request) => {
   // No authentication required - this is for the forgot password page
@@ -2021,7 +1972,7 @@ exports.checkEmailExists = onCall(async (request) => {
           if (!authMethods || authMethods.length === 0) {
             resolvedAuthMethods = userData.providers || []
           }
-          
+
           logger.info('Email found in Firestore', {
             email,
             collection: collectionName,
@@ -2189,6 +2140,17 @@ exports.resetUserPassword = onCall(async (request) => {
       structuredData: true,
     })
 
+    await recordAuditLog(admin.firestore(), {
+      module: 'User Management',
+      action: 'USER_PASSWORD_RESET',
+      summary: `Reset password to default for ${email} (${targetUserRole})`,
+      targetType: 'user',
+      targetId: email,
+      targetName: email,
+      newData: { mustChangePassword: true },
+      performedBy: buildActorFromRequest(request, requesterAccess.role),
+    })
+
     return {
       success: true,
       message: `Password reset successfully for ${email}`,
@@ -2209,20 +2171,20 @@ exports.resetUserPassword = onCall(async (request) => {
 // Send verification email
 exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
-  
+
   if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'A valid email address is required.')
   }
 
   const { generateVerificationCode, sendVerificationEmail: sendEmail } = require('./email-service')
-  
+
   try {
     // Generate verification code
     const verificationCode = generateVerificationCode()
-    
+
     // Store in Firestore with expiry (24 hours)
     const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
-    
+
     await admin.firestore().collection('emailVerifications').doc(email).set(
       {
         code: verificationCode,
@@ -2233,15 +2195,15 @@ exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
       },
       { merge: true }
     )
-    
+
     // Send email
     await sendEmail(email, verificationCode)
-    
+
     logger.info('Verification email sent successfully', {
       email,
       structuredData: true,
     })
-    
+
     return {
       success: true,
       message: 'Verification email sent successfully. Please check your inbox.',
@@ -2260,62 +2222,62 @@ exports.sendVerificationEmail = onCall({ cors: true }, async (request) => {
 exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
   const code = String(request.data?.code || '').trim()
-  
+
   if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'A valid email address is required.')
   }
-  
+
   if (!code) {
     throw new HttpsError('invalid-argument', 'Verification code is required.')
   }
-  
+
   try {
     const docSnapshot = await admin.firestore().collection('emailVerifications').doc(email).get()
-    
+
     if (!docSnapshot.exists) {
       throw new HttpsError('not-found', 'No verification record found for this email.')
     }
-    
+
     const data = docSnapshot.data()
-    
+
     // Check if expired
     const expiresAt = data.expiresAt?.toDate ? data.expiresAt.toDate() : new Date(data.expiresAt)
     if (new Date() > expiresAt) {
       throw new HttpsError('invalid-argument', 'Verification code has expired. Please request a new one.')
     }
-    
+
     // Check if already verified
     if (data.verified) {
       throw new HttpsError('invalid-argument', 'This email has already been verified.')
     }
-    
+
     // Check code
     if (data.code !== code) {
       throw new HttpsError('invalid-argument', 'Invalid verification code.')
     }
-    
+
     // Mark as verified in Firestore
-      await admin.firestore().collection('emailVerifications').doc(email).update({
-        verified: true,
-        verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-      })
+    await admin.firestore().collection('emailVerifications').doc(email).update({
+      verified: true,
+      verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
 
-      // ✅ Also update Firebase Auth user
-      const userRecord = await admin.auth().getUserByEmail(email)
-      await admin.auth().updateUser(userRecord.uid, { emailVerified: true })
+    // ✅ Also update Firebase Auth user
+    const userRecord = await admin.auth().getUserByEmail(email)
+    await admin.auth().updateUser(userRecord.uid, { emailVerified: true })
 
-      logger.info('Email verified successfully', { email, structuredData: true })
+    logger.info('Email verified successfully', { email, structuredData: true })
 
-      return {
-        success: true,
-        message: 'Email verified successfully!',
-        email: email,
-      }
+    return {
+      success: true,
+      message: 'Email verified successfully!',
+      email: email,
+    }
   } catch (error) {
     if (error instanceof HttpsError) {
       throw error
     }
-    
+
     logger.error('Email verification failed', {
       email,
       errorMessage: error.message,
@@ -2328,20 +2290,20 @@ exports.verifyEmailCode = onCall({ cors: true }, async (request) => {
 // Resend verification email
 exports.resendVerificationEmail = onCall({ cors: true }, async (request) => {
   const email = String(request.data?.email || '').trim().toLowerCase()
-  
+
   if (!email || !email.includes('@')) {
     throw new HttpsError('invalid-argument', 'A valid email address is required.')
   }
-  
+
   const { generateVerificationCode, sendVerificationEmail: sendEmail } = require('./email-service')
-  
+
   try {
     // Generate new code
     const verificationCode = generateVerificationCode()
-    
+
     // Update in Firestore with new expiry
     const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    
+
     await admin.firestore().collection('emailVerifications').doc(email).set(
       {
         code: verificationCode,
@@ -2352,15 +2314,15 @@ exports.resendVerificationEmail = onCall({ cors: true }, async (request) => {
       },
       { merge: false } // Overwrite to reset
     )
-    
+
     // Send email
     await sendEmail(email, verificationCode)
-    
+
     logger.info('Verification email resent successfully', {
       email,
       structuredData: true,
     })
-    
+
     return {
       success: true,
       message: 'Verification email has been resent. Please check your inbox.',

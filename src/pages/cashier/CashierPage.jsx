@@ -390,12 +390,12 @@ export default function CashierPage({
       notes: log.notes || '',
       items: Array.isArray(log.items)
         ? log.items.map((item) => ({
-            id: item.id || `${log.transactionId}-${item.name}`,
-            item: item.name || item.item || 'Item',
-            qty: Number(item.qty || 0),
-            unitPrice: Number(item.unitPrice || 0),
-            subtotal: Number(item.subtotal || 0),
-          }))
+          id: item.id || `${log.transactionId}-${item.name}`,
+          item: item.name || item.item || 'Item',
+          qty: Number(item.qty || 0),
+          unitPrice: Number(item.unitPrice || 0),
+          subtotal: Number(item.subtotal || 0),
+        }))
         : [],
     }
 

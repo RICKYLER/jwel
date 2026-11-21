@@ -7,6 +7,7 @@ import AnalyticsRoundedIcon from '@mui/icons-material/AnalyticsRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded'
 import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded'
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
 import ManageAccountsRoundedIcon from '@mui/icons-material/ManageAccountsRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import TwoWheelerRoundedIcon from '@mui/icons-material/TwoWheelerRounded'
@@ -30,18 +31,15 @@ import InventorySection from './sections/InventorySection'
 import InventoryReportsSection from './sections/InventoryReportsSection'
 import InventoryDeleteArchivedSection from './sections/InventoryDeleteArchivedSection'
 import MasterDataManagementSection from './sections/MasterDataManagementSection'
-import FinancingApplicationsSection from './sections/FinancingApplicationsSection'
-import ApprovedApplicationsSection from './sections/ApprovedApplicationsSection'
-import FinancingApplicationDetailSection from './sections/FinancingApplicationDetailSection'
 import ServiceRequestsSection from './sections/ServiceRequestsSection'
 import TechniciansSection from './sections/TechniciansSection'
+import TransactionHistorySection from './sections/TransactionHistorySection'
 import UserManagementSection from './sections/UserManagementSection'
 import ServiceTypeSection from './sections/ServiceTypeSection'
 import { saveAccessAssignment } from '../../services/userService';
 import {
   buildChartBars,
   fallbackTechnicians,
-  financingStatusOptions,
   formatCurrency,
   formatDate,
   getStatusClasses,
@@ -77,8 +75,6 @@ const baseSidebarItems = [
       { id: 'master-variants', label: 'Variants' },
     ],
   },
-  { id: 'financing-applications', label: 'Financing Applications', icon: TrendingUpRoundedIcon },
-  { id: 'approved-applications', label: 'Approved Applications', icon: TrendingUpRoundedIcon },
   { id: 'chats-management', label: 'Chats Management', icon: ChatBubbleRoundedIcon },
   { 
     id: 'service-management', 
@@ -90,6 +86,7 @@ const baseSidebarItems = [
     ]
   },
   { id: 'analytics', label: 'Sales Analytics', icon: AnalyticsRoundedIcon },
+  { id: 'transaction-history', label: 'Transaction History', icon: HistoryRoundedIcon },
   { id: 'profile', label: 'Profile', icon: PersonRoundedIcon },
 ]
 
@@ -152,15 +149,13 @@ const defaultEditUserForm = {
   accessibleSections: [],
 }
 
-export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', initialFinancingApplicationId = '', onNavigateDashboardPath }) {
+export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser, accessProfile, dashboardPath = '/superadmin', currentPath = '/superadmin', initialSection = 'dashboard', onNavigateDashboardPath }) {
 
-  const [activeSection, setActiveSection] = useState(initialFinancingApplicationId ? 'financing-application-detail' : initialSection)
+  const [activeSection, setActiveSection] = useState(initialSection)
   const [searchTerm, setSearchTerm] = useState('')
   const [users, setUsers] = useState([])
   const [userProfile, setUserProfile] = useState(null)
   const [serviceRequests, setServiceRequests] = useState([])
-  const [financingApplications, setFinancingApplications] = useState([])
-  const [selectedFinancingApplication, setSelectedFinancingApplication] = useState(null)
   const [inventory, setInventory] = useState([])
   const [technicians, setTechnicians] = useState([])
   const [authorizedAdmins, setAuthorizedAdmins] = useState([])
@@ -171,6 +166,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [variants, setVariants] = useState([])
   const [inventoryLogs, setInventoryLogs] = useState([])
   const [transactionLogs, setTransactionLogs] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [inventoryChangeRequests, setInventoryChangeRequests] = useState([])
   const [deletedItems, setDeletedItems] = useState([])
   const [unreadChatCount, setUnreadChatCount] = useState(0)
   const [previousUnreadCount, setPreviousUnreadCount] = useState(0)
@@ -182,7 +179,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [loadingState, setLoadingState] = useState({
     users: true,
     serviceRequests: true,
-    financingApplications: true,
     inventory: true,
     technicians: true,
     authorizedAdmins: true,
@@ -193,6 +189,8 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
     variants: true,
     inventoryLogs: true,
     transactionLogs: true,
+    auditLogs: true,
+    inventoryChangeRequests: true,
     conversations: true,
   })
   const [actionMessage, setActionMessage] = useState(null)
@@ -241,7 +239,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
   const [pendingSection, setPendingSection] = useState(null)
 
   const sectionTitle = useMemo(() => {
-    if (activeSection === 'financing-application-detail') return 'Financing Application Detail'
     return baseSidebarItems.find((item) => item.id === activeSection)?.label ?? 'Dashboard'
   }, [activeSection])
 
@@ -481,11 +478,6 @@ export default function SuperAdminPage({ onNavigateHome, onSignOut, currentUser,
         limitCount: null,
       }),
       subscribeToCollection({
-        collectionName: 'financingApplications',
-        stateKey: 'financingApplications',
-        setter: setFinancingApplications,
-      }),
-      subscribeToCollection({
         collectionName: 'inventory',
         stateKey: 'inventory',
         setter: setInventory,
@@ -555,6 +547,22 @@ currentAccessRole === 'staff personnel' && currentUser?.email
         collectionName: 'transactionLogs',
         stateKey: 'transactionLogs',
         setter: setTransactionLogs,
+        shouldSubscribe: canManageAccess,
+        orderField: 'createdAt',
+        limitCount: null,
+      }),
+      subscribeToCollection({
+        collectionName: 'auditLogs',
+        stateKey: 'auditLogs',
+        setter: setAuditLogs,
+        shouldSubscribe: canManageAccess,
+        orderField: 'createdAt',
+        limitCount: null,
+      }),
+      subscribeToCollection({
+        collectionName: 'inventoryChangeRequests',
+        stateKey: 'inventoryChangeRequests',
+        setter: setInventoryChangeRequests,
         shouldSubscribe: canEditOperations,
         orderField: 'createdAt',
         limitCount: null,
@@ -904,20 +912,6 @@ currentAccessRole === 'staff personnel' && currentUser?.email
     });
   }, [technicians, serviceRequests]);
 
-  const filteredFinancingApplications = useMemo(() => {
-    return financingApplications.filter((application) => {
-      const haystack = [
-        application.referenceId,
-        application.status,
-        application.applicant?.fullName,
-        application.submittedBy?.email,
-        application.motorcycle?.name,
-      ].join(' ')
-
-      return haystack.toLowerCase().includes(normalizedSearchTerm)
-    })
-  }, [financingApplications, normalizedSearchTerm])
-
   const filteredInventory = useMemo(() => {
     return inventory.filter((item) => {
       const haystack = [item.name, item.category, item.status].join(' ')
@@ -1111,28 +1105,38 @@ const allowedSectionIds = useMemo(() => {
 useEffect(() => {
   if (!allowedSectionIds) return
 
-  const requiredSection = activeSection === 'financing-application-detail'
-    ? 'financing-applications'
-    : activeSection
-
-  if (!allowedSectionIds.has(requiredSection)) {
+  if (!allowedSectionIds.has(activeSection)) {
     setActiveSection('dashboard')
   }
 }, [activeSection, allowedSectionIds])
 
-const sidebarItems = useMemo(() => {
+  const sidebarItems = useMemo(() => {
+  const pendingInventoryVerifications = inventoryChangeRequests.filter(
+    (req) => req.status === 'pending',
+  ).length
+
   return baseSidebarItems
+    .filter((item) => item.id !== 'transaction-history' || canManageAccess)
     .map((item) => {
       const visibleSubitems = item.subitems?.filter(
         (subitem) => !allowedSectionIds || allowedSectionIds.has(subitem.id),
-      ).map((subitem) => subitem.id === 'service-logs'
-        ? {
+      ).map((subitem) => {
+        if (subitem.id === 'service-logs') {
+          return {
             ...subitem,
             badge: serviceRequests.filter(
               (request) => String(request.status || 'pending').toLowerCase() === 'pending',
             ).length || null,
           }
-        : subitem)
+        }
+        if (subitem.id === 'inventory') {
+          return {
+            ...subitem,
+            badge: pendingInventoryVerifications > 0 ? pendingInventoryVerifications : null,
+          }
+        }
+        return subitem
+      })
 
       return item.subitems ? { ...item, subitems: visibleSubitems } : item
     })
@@ -1142,28 +1146,6 @@ const sidebarItems = useMemo(() => {
       item.subitems?.length > 0,
     )
     .map((item) => {
-      if (item.id === 'financing-applications') {
-        const upcomingApplicationsCount = financingApplications.filter(
-          (application) => String(application.status || 'submitted').toLowerCase() === 'submitted',
-        ).length
-
-        return {
-          ...item,
-          badge: upcomingApplicationsCount > 0 ? upcomingApplicationsCount : null,
-        }
-      }
-
-      if (item.id === 'approved-applications') {
-        const applicationsToFinalizeCount = financingApplications.filter(
-          (application) => String(application.status || '').toLowerCase() === 'approved',
-        ).length
-
-        return {
-          ...item,
-          badge: applicationsToFinalizeCount > 0 ? applicationsToFinalizeCount : null,
-        }
-      }
-
       if (item.id === 'chats-management') {
         return {
           ...item,
@@ -1173,7 +1155,7 @@ const sidebarItems = useMemo(() => {
 
       return item
     })
-  }, [allowedSectionIds, financingApplications, serviceRequests, unreadChatCount])
+  }, [allowedSectionIds, canManageAccess, inventoryChangeRequests, serviceRequests, unreadChatCount])
 
 
 
@@ -1242,20 +1224,6 @@ const sidebarItems = useMemo(() => {
         text: `Unable to update ${collectionName}. ${error.message}`,
       })
     }
-  }
-
-  const handleFinancingStatusUpdate = async (applicationId, status) => {
-    if (!canEditOperations) {
-      throw new Error('Your current role can view this data but cannot change it.')
-    }
-
-    const updateFinancingApplicationStatus = httpsCallable(functions, 'updateFinancingApplicationStatus')
-    const response = await updateFinancingApplicationStatus({ applicationId, status })
-
-    setActionMessage({
-      type: 'success',
-      text: response?.data?.message || 'Financing application status updated successfully.',
-    })
   }
 
   const handleOpenNewUserModal = () => {
@@ -1427,33 +1395,10 @@ const sidebarItems = useMemo(() => {
     }
   }
 
-  const handleOpenFinancingApplication = (application) => {
-    setSelectedFinancingApplication(application || null)
-    setActiveSection('financing-application-detail')
-    onNavigateDashboardPath?.(`${dashboardPath}/financing-applications/${encodeURIComponent(application?.id || '')}`)
-  }
-
-  const handleBackToFinancingApplications = () => {
-    setSelectedFinancingApplication(null)
-    handleSectionChange('financing-applications')
-  }
-
-  useEffect(() => {
-    if (!initialFinancingApplicationId) return
-
-    const matchedApplication = financingApplications.find((application) => application.id === initialFinancingApplicationId)
-    if (matchedApplication) {
-      setSelectedFinancingApplication(matchedApplication)
-      setActiveSection('financing-application-detail')
-    }
-  }, [financingApplications, initialFinancingApplicationId])
-
   const handleSectionChange = (sectionId) => {
-    const requiredSection = sectionId === 'financing-application-detail'
-      ? 'financing-applications'
-      : sectionId
+    if (sectionId === 'transaction-history' && !canManageAccess) return
 
-    if (allowedSectionIds && !allowedSectionIds.has(requiredSection)) return
+    if (allowedSectionIds && !allowedSectionIds.has(sectionId)) return
 
     // If navigating away from profile and there are unsaved changes, confirm
     const hasUnsaved = (() => {
@@ -2059,6 +2004,8 @@ const sidebarItems = useMemo(() => {
             formatCurrency={formatCurrency}
             formatDate={formatDate}
             getStatusClasses={getStatusClasses}
+            currentUser={currentUser}
+            currentAccessRole={currentAccessRole}
             isDarkMode={isDarkMode}
           />
         )
@@ -2078,6 +2025,8 @@ const sidebarItems = useMemo(() => {
       case 'service-type':
         return (
           <ServiceTypeSection
+            currentUser={currentUser}
+            currentAccessRole={currentAccessRole}
             isDarkMode={isDarkMode}
           />
         )
@@ -2106,6 +2055,16 @@ const sidebarItems = useMemo(() => {
             isDarkMode={isDarkMode}
           />
         )
+      case 'transaction-history':
+        return canManageAccess ? (
+          <TransactionHistorySection
+            auditLogs={auditLogs}
+            transactionLogs={transactionLogs}
+            formatDate={formatDate}
+            formatCurrency={formatCurrency}
+            isDarkMode={isDarkMode}
+          />
+        ) : null
       case 'user-management':
         return (
           <UserManagementSection
@@ -2142,40 +2101,6 @@ const sidebarItems = useMemo(() => {
             isDarkMode={isDarkMode}
           />
         )
-      case 'financing-applications':
-        return (
-          <FinancingApplicationsSection
-            applications={filteredFinancingApplications}
-            canEditOperations={canEditOperations}
-            handleCollectionUpdate={handleCollectionUpdate}
-            formatCurrency={formatCurrency}
-            onOpenApplication={handleOpenFinancingApplication}
-            isDarkMode={isDarkMode}
-          />
-        )
-      case 'financing-application-detail':
-        return (
-          <FinancingApplicationDetailSection
-            application={selectedFinancingApplication}
-            canEditOperations={canEditOperations}
-            handleFinancingStatusUpdate={handleFinancingStatusUpdate}
-            formatCurrency={formatCurrency}
-            formatDate={formatDate}
-            onBack={handleBackToFinancingApplications}
-            isDarkMode={isDarkMode}
-          />
-        )
-      case 'approved-applications':
-        return (
-          <ApprovedApplicationsSection
-            applications={filteredFinancingApplications}
-            canEditOperations={canEditOperations}
-            handleFinancingStatusUpdate={handleFinancingStatusUpdate}
-            formatCurrency={formatCurrency}
-            onOpenApplication={handleOpenFinancingApplication}
-            isDarkMode={isDarkMode}
-          />
-        )
       case 'inventory':
         return (
           <InventorySection
@@ -2189,6 +2114,8 @@ const sidebarItems = useMemo(() => {
             models={models}
             variants={variants}
             currentUser={currentUser}
+            currentAccessRole={currentAccessRole}
+            inventoryChangeRequests={inventoryChangeRequests}
             isDarkMode={isDarkMode}
           />
         )
@@ -2224,6 +2151,8 @@ const sidebarItems = useMemo(() => {
             categories={categories}
             models={models}
             canEditOperations={canEditOperations}
+            currentUser={currentUser}
+            currentAccessRole={currentAccessRole}
             isDarkMode={isDarkMode}
           />
         )

@@ -8,7 +8,6 @@ export const roleOptions = [
   'superadmin',
 ]
 export const serviceStatusOptions = ['Pending', 'In Progress', 'Completed', 'Cancelled']
-export const financingStatusOptions = ['Submitted', 'Reviewing', 'Approved', 'Rejected']
 export const technicianStatusOptions = ['Online', 'Busy', 'Offline']
 export const inventoryStatusOptions = ['In Stock', 'Low Stock', 'Out of Stock']
 
@@ -99,4 +98,57 @@ export const buildChartBars = (items) => {
   const maxBucket = Math.max(...buckets, 1)
 
   return buckets.map((bucket) => Math.max(14, Math.round((bucket / maxBucket) * 100)))
+}
+
+export const BULK_PURCHASE_THRESHOLD = 5
+
+/**
+ * Normalizes and summarizes purchased items for a POS transaction log or audit entry.
+ */
+export const summarizeSaleItems = (rawItems = [], fallbackTotalQty = 0) => {
+  const items = Array.isArray(rawItems)
+    ? rawItems
+        .filter(Boolean)
+        .map((entry) => {
+          const qty = Number(entry.qty || 0)
+          const unitPrice = Number(entry.unitPrice || 0)
+          const subtotal =
+            entry.subtotal !== undefined && entry.subtotal !== null
+              ? Number(entry.subtotal)
+              : Number((qty * unitPrice).toFixed(2))
+          return {
+            id: String(entry.id || ''),
+            name: String(entry.name || entry.item || 'Unnamed Item'),
+            sku: String(entry.sku || ''),
+            qty,
+            unitPrice,
+            subtotal,
+          }
+        })
+    : []
+
+  const computedQty = items.reduce((sum, item) => sum + Number(item.qty || 0), 0)
+  const totalQuantity = computedQty > 0 ? computedQty : Number(fallbackTotalQty || 0)
+  const isBulk =
+    totalQuantity >= BULK_PURCHASE_THRESHOLD ||
+    items.some((item) => Number(item.qty || 0) >= BULK_PURCHASE_THRESHOLD)
+
+  const primaryItem = items[0]
+  const extraCount = Math.max(0, items.length - 1)
+  const summaryLabel = primaryItem
+    ? `${primaryItem.name} (×${primaryItem.qty})${extraCount > 0 ? ` + ${extraCount} more` : ''}`
+    : 'No item details recorded'
+
+  const searchableText = items
+    .map((item) => `${item.name} ${item.sku}`)
+    .join(' ')
+
+  return {
+    items,
+    itemCount: items.length,
+    totalQuantity,
+    isBulk,
+    summaryLabel,
+    searchableText,
+  }
 }
