@@ -613,20 +613,19 @@ export default function TransactionHistorySection({
                   <strong>Amount:</strong> {formatCurrency(selectedEntry.amount)}
                 </p>
               )}
-
-              {selectedEntry.previousData && (
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider opacity-60 mb-1">Before State</p>
-                  <pre className="rounded-xl bg-black/30 p-3 text-xs overflow-x-auto">
-                    {JSON.stringify(selectedEntry.previousData, null, 2)}
-                  </pre>
-                </div>
+              {selectedEntry.newData?.paymentMethod && (
+                <p>
+                  <strong>Payment Method:</strong>{' '}
+                  <span className="font-semibold text-emerald-400">
+                    {selectedEntry.newData.paymentMethod}
+                  </span>
+                </p>
               )}
 
               {Array.isArray(selectedEntry.newData?.items) && selectedEntry.newData.items.length > 0 && (() => {
                 const detailSale = summarizeSaleItems(selectedEntry.newData.items, selectedEntry.newData.totalQuantity)
                 return (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-2 border-t border-white/10">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-black uppercase tracking-wider opacity-60">
                         Purchased Items ({detailSale.totalQuantity} {detailSale.totalQuantity === 1 ? 'pc' : 'pcs'})
@@ -664,15 +663,6 @@ export default function TransactionHistorySection({
                   </div>
                 )
               })()}
-
-              {selectedEntry.newData && (
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider opacity-60 mb-1">After State</p>
-                  <pre className="rounded-xl bg-black/30 p-3 text-xs overflow-x-auto">
-                    {JSON.stringify(selectedEntry.newData, null, 2)}
-                  </pre>
-                </div>
-              )}
             </div>
           </div>
         </div>
