@@ -1189,25 +1189,30 @@ export default function InventorySection({
       }
 
       if (!isAdminOrSuperadmin) {
-        // Staff product updates/renames MUST go through AdminVerificationModal
-        // which supports both on-site admin verification and remote submission
-        setAdminVerifyModal({
-          open: true,
-          mode: isNameChanged ? 'rename' : 'update',
-          itemId: editingItem.id,
-          item: editingItem,
-          itemName: editingItem.name || '',
-          proposedName: isNameChanged ? proposedName : '',
-          pendingUpdates: updatePayload,
-          requestId: null,
-          requestedBy: {
-            uid: currentUser?.uid || '',
-            name: currentUser?.displayName || currentUser?.email || 'Staff',
-            email: currentUser?.email || '',
-            role: currentAccessRole || 'staff',
-          },
-          reason: isNameChanged ? 'Staff renamed product' : 'Staff updated product details',
-        })
+        setIsSavingItem(true)
+        try {
+          const submitRequest = httpsCallable(functions, 'submitInventoryChangeRequest')
+          const requestType = isNameChanged ? 'rename' : 'update'
+          const response = await submitRequest({
+            itemId: editingItem.id,
+            requestType,
+            proposedName: isNameChanged ? proposedName : '',
+            pendingUpdates: updatePayload,
+            reason: isNameChanged
+              ? `Staff requested rename from "${editingItem.name}" to "${proposedName}"`
+              : 'Staff requested product update',
+          })
+          success(response?.data?.message || 'Change request submitted successfully to Super Admin for verification!')
+          setIsEditModalOpen(false)
+          setEditFormData({})
+          setEditingItem(null)
+          handleCollectionUpdate?.()
+        } catch (error) {
+          console.error('Error submitting change request:', error)
+          toastError(error?.message || 'Unable to submit change request for admin verification.')
+        } finally {
+          setIsSavingItem(false)
+        }
         return
       }
 
@@ -1566,7 +1571,7 @@ export default function InventorySection({
             type="button"
             onClick={() => setIsReturnDamagedModalOpen(true)}
             disabled={!canEditOperations}
-            className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60 bg-gradient-to-r from-red-600/80 to-amber-600/80 hover:from-red-600 hover:to-amber-600"
+            className="inventory-add-button inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white disabled:opacity-60"
           >
             <ReportProblemRoundedIcon sx={{ fontSize: 18 }} />
             Return / Damaged
@@ -1686,7 +1691,7 @@ export default function InventorySection({
                 <button
                   type="button"
                   onClick={() => setIsReturnDamagedModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 px-4 py-2 text-xs font-black text-white transition-all shadow-md"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#C51D34] hover:bg-[#A01728] px-4 py-2 text-xs font-black text-white transition-all shadow-md"
                 >
                   <ReportProblemRoundedIcon sx={{ fontSize: 16 }} />
                   Record Return / Defect
@@ -3083,6 +3088,14 @@ export default function InventorySection({
                     Edit {editingItem?.category === 'Spare Parts' ? 'Spare Part' : editingItem?.itemType === 'Spare Parts' ? 'Spare Part' : editingItem?.category === 'Motorcycle Units' ? 'Motorcycle' : 'Item'}
                   </h3>
                   <p className={`inventory-modal-copy ${!isDarkMode ? 'light-mode-text' : ''}`}>Editing: <strong>{editingItem?.name || 'Unknown'}</strong> • Update item details. Stock and Status are locked and cannot be changed in edit mode.</p>
+                  {!isAdminOrSuperadmin && (
+                    <div className="mt-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200 flex items-center gap-2">
+                      <span className="text-base">🛡️</span>
+                      <span>
+                        <strong>Staff Mode:</strong> Products cannot be updated directly. Submitting will send an approval request to the Super Admin for verification.
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -3838,7 +3851,7 @@ export default function InventorySection({
                   className="inventory-submit-button inline-flex items-center justify-center gap-2"
                 >
                   <SaveRoundedIcon sx={{ fontSize: 18 }} />
-                  {isSavingItem ? 'Updating...' : 'Update Item'}
+                  {isSavingItem ? 'Submitting...' : isAdminOrSuperadmin ? 'Update Item' : 'Submit for Admin Approval'}
                 </button>
                 <button
                   type="button"
@@ -3989,7 +4002,7 @@ export default function InventorySection({
           confirmModal.action === 'add-unit-confirm' ? 'Confirm Save Unit' :
             confirmModal.action === 'add-spare-parts-confirm' ? 'Confirm Save Spare Part' :
               confirmModal.action === 'edit-confirm' ? 'Edit Item' :
-                confirmModal.action === 'edit-update' ? 'Update Item' :
+                confirmModal.action === 'edit-update' ? (isAdminOrSuperadmin ? 'Update Item' : 'Submit for Admin Verification') :
                   confirmModal.action === 'edit-cancel' ? 'Discard Changes' :
                     confirmModal.action === 'update-stocks' ? 'Confirm Stock Update' :
                       confirmModal.action === 'update-stocks-cancel' ? 'Discard Stock Changes' :
@@ -4002,7 +4015,7 @@ export default function InventorySection({
           confirmModal.action === 'add-unit-confirm' ? 'Are you sure you want to save this unit? It will be added to the inventory and published to the showroom.' :
             confirmModal.action === 'add-spare-parts-confirm' ? 'Are you sure you want to save this spare part? It will be added to the inventory and published to the showroom.' :
               confirmModal.action === 'edit-confirm' ? 'Edit item details?' :
-                confirmModal.action === 'edit-update' ? 'Are you sure you want to update this item? Note: product name changes require admin verification.' :
+                confirmModal.action === 'edit-update' ? (!isAdminOrSuperadmin ? 'Submit these product updates for Super Admin verification and approval?' : 'Are you sure you want to update this item? Note: product name changes require admin verification.') :
                   confirmModal.action === 'edit-cancel' ? 'You have unsaved changes. Are you sure you want to discard them?' :
                     confirmModal.action === 'update-stocks' ? 'Are you sure you want to update the stock levels? This will permanently change the inventory counts.' :
                       confirmModal.action === 'update-stocks-cancel' ? 'You have unsaved stock changes. Are you sure you want to discard them?' :
@@ -4015,7 +4028,7 @@ export default function InventorySection({
           confirmModal.action === 'add-unit-confirm' ? 'Yes, Save Unit' :
             confirmModal.action === 'add-spare-parts-confirm' ? 'Yes, Save Spare Part' :
               confirmModal.action === 'edit-confirm' ? 'Edit' :
-                confirmModal.action === 'edit-update' ? 'Update' :
+                confirmModal.action === 'edit-update' ? (!isAdminOrSuperadmin ? 'Submit for Verification' : 'Update') :
                   confirmModal.action === 'edit-cancel' ? 'Discard' :
                     confirmModal.action === 'update-stocks' ? 'Update Stocks' :
                       confirmModal.action === 'update-stocks-cancel' ? 'Discard' :
@@ -4064,6 +4077,7 @@ export default function InventorySection({
       <ReturnDamagedModal
         open={isReturnDamagedModalOpen}
         onClose={() => setIsReturnDamagedModalOpen(false)}
+        inventory={items}
         inventoryItems={items}
         currentUser={currentUser}
         currentAccessRole={currentAccessRole}

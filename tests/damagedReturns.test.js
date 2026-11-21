@@ -6,6 +6,8 @@ import {
   shouldRestoreStockOnDispositionChange,
   calculateRestoredStock,
   calculateDamagedFinancialLoss,
+  resolveActiveInventory,
+  filterInventoryForReturn,
 } from '../src/pages/superadmin/sections/damagedReturnsUtils.js'
 import { mockDamagedReturns } from './fixtures/testData.js'
 
@@ -152,6 +154,70 @@ describe('damagedReturns: Intake, Disposition Lifecycle & Restocking Suite', () 
         { dispositionStatus: 'repaired_restocked', quantity: 2, unitCost: 100 },
       ]
       expect(calculateDamagedFinancialLoss(records)).toBe(0)
+    })
+  })
+
+  describe('resolveActiveInventory: Prop Name Fallback', () => {
+    it('prefers inventory prop when provided and non-empty', () => {
+      const inv = [{ id: '1', name: 'Item 1' }]
+      const items = [{ id: '2', name: 'Item 2' }]
+      expect(resolveActiveInventory(inv, items)).toBe(inv)
+    })
+
+    it('falls back to inventoryItems prop when inventory is empty or undefined', () => {
+      const items = [{ id: '2', name: 'Yamaha Lube' }]
+      expect(resolveActiveInventory([], items)).toBe(items)
+      expect(resolveActiveInventory(undefined, items)).toBe(items)
+      expect(resolveActiveInventory(null, items)).toBe(items)
+    })
+
+    it('returns empty array when neither are provided or arrays', () => {
+      expect(resolveActiveInventory(null, null)).toEqual([])
+      expect(resolveActiveInventory([], [])).toEqual([])
+    })
+  })
+
+  describe('filterInventoryForReturn: Search and Category Filtering', () => {
+    const mockItems = [
+      { id: '1', name: 'Yamaha Lube 4T 800ml', sku: 'SKU-YAM-001', category: 'Oils & Fluids', stock: 24, price: 280 },
+      { id: '2', name: 'Nissin Brake Pad Front', sku: 'SKU-DHWT4Q', category: 'Spare Parts', stock: 12, price: 500 },
+      { id: '3', name: 'Spark Plug NGK', sku: 'SKU-GVUAWI', category: 'Spare Parts', stock: 0, price: 190 },
+      { id: '4', name: 'Yamaha NMAX 155', sku: 'SKU-MC-001', category: 'Motorcycles', stock: 3, price: 151900 },
+    ]
+
+    it('matches product by name case-insensitively (e.g. "yamahalube" matches "Yamaha Lube")', () => {
+      const result = filterInventoryForReturn(mockItems, 'yamahalube')
+      expect(result.length).toBe(1)
+      expect(result[0].name).toBe('Yamaha Lube 4T 800ml')
+    })
+
+    it('matches product by SKU', () => {
+      const result = filterInventoryForReturn(mockItems, 'DHWT4Q')
+      expect(result.length).toBe(1)
+      expect(result[0].sku).toBe('SKU-DHWT4Q')
+    })
+
+    it('filters by category chip', () => {
+      const spareParts = filterInventoryForReturn(mockItems, '', 'Spare Parts')
+      expect(spareParts.length).toBe(2)
+
+      const motorcycles = filterInventoryForReturn(mockItems, '', 'Motorcycles')
+      expect(motorcycles.length).toBe(1)
+      expect(motorcycles[0].name).toBe('Yamaha NMAX 155')
+    })
+
+    it('combines category filter and text query', () => {
+      const filtered = filterInventoryForReturn(mockItems, 'spark', 'Spare Parts')
+      expect(filtered.length).toBe(1)
+      expect(filtered[0].name).toBe('Spark Plug NGK')
+
+      const noMatch = filterInventoryForReturn(mockItems, 'yamaha', 'Spare Parts')
+      expect(noMatch.length).toBe(0)
+    })
+
+    it('returns all items when query is empty and category is ALL', () => {
+      const result = filterInventoryForReturn(mockItems, '', 'ALL')
+      expect(result.length).toBe(mockItems.length)
     })
   })
 })

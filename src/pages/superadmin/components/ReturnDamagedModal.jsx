@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded'
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded'
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded'
+import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
 import CircularProgress from '@mui/material/CircularProgress'
 import { db } from '../../../firebase'
 import { logSystemAuditEvent } from '../../../services/auditLogService'
+import { resolveActiveInventory, filterInventoryForReturn } from '../sections/damagedReturnsUtils'
 
 const RETURN_CONDITIONS = [
   'Customer Return - Defective',
@@ -28,6 +34,7 @@ export default function ReturnDamagedModal({
   open,
   onClose,
   inventory = [],
+  inventoryItems = [],
   onSuccess,
   currentUser = null,
   currentAccessRole = '',
@@ -35,6 +42,8 @@ export default function ReturnDamagedModal({
 }) {
   const [selectedItemId, setSelectedItemId] = useState('')
   const [itemSearch, setItemSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('ALL')
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
   const [condition, setCondition] = useState(RETURN_CONDITIONS[0])
   const [disposition, setDisposition] = useState(DISPOSITION_OPTIONS[0])
@@ -44,10 +53,54 @@ export default function ReturnDamagedModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
+  const dropdownRef = useRef(null)
+
+  // Support both 'inventory' and 'inventoryItems' prop names to prevent empty inventory bugs
+  const activeInventory = useMemo(() => {
+    return resolveActiveInventory(inventory, inventoryItems)
+  }, [inventory, inventoryItems])
+
+  // Extract distinct categories from inventory for quick filtering
+  const availableCategories = useMemo(() => {
+    const cats = new Set()
+    activeInventory.forEach((item) => {
+      const cat = String(item.category || item.type || '').trim()
+      if (cat) cats.add(cat)
+    })
+    return ['ALL', ...Array.from(cats).sort()]
+  }, [activeInventory])
+
+  // Filter inventory based on search query and category chip
+  const filteredInventory = useMemo(() => {
+    return filterInventoryForReturn(activeInventory, itemSearch, categoryFilter)
+  }, [activeInventory, itemSearch, categoryFilter])
+
+  // Get currently selected item details
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId) return null
+    return activeInventory.find((item) => item.id === selectedItemId) || null
+  }, [activeInventory, selectedItemId])
+
+  // Close dropdown when user clicks outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Reset state when modal opens or closes
   useEffect(() => {
     if (!open) {
       setSelectedItemId('')
       setItemSearch('')
+      setCategoryFilter('ALL')
+      setIsDropdownOpen(false)
       setQuantity(1)
       setCondition(RETURN_CONDITIONS[0])
       setDisposition(DISPOSITION_OPTIONS[0])
@@ -70,19 +123,21 @@ export default function ReturnDamagedModal({
 
   if (!open) return null
 
-  const selectedItem = inventory.find((item) => item.id === selectedItemId) || null
+  const handleSelectItem = (item) => {
+    setSelectedItemId(item.id)
+    setIsDropdownOpen(false)
+    setItemSearch('')
+    setErrorMessage('')
+  }
 
-  const filteredInventory = inventory
-    .filter((item) => {
-      if (!itemSearch.trim()) return true
-      const q = itemSearch.toLowerCase()
-      return (
-        String(item.name || '').toLowerCase().includes(q) ||
-        String(item.sku || '').toLowerCase().includes(q) ||
-        String(item.category || '').toLowerCase().includes(q)
-      )
-    })
-    .slice(0, 15)
+  const handleClearSelection = () => {
+    setSelectedItemId('')
+    setItemSearch('')
+    setIsDropdownOpen(true)
+  }
+
+  const currentStock = Number(selectedItem?.stock ?? selectedItem?.quantity ?? 0)
+  const remainingStock = Math.max(0, currentStock - Number(quantity || 0))
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -138,13 +193,10 @@ export default function ReturnDamagedModal({
 
       // Optionally deduct stock from live inventory
       if (deductStock && selectedItem.id) {
-        const currentStock = Number(selectedItem.stock ?? selectedItem.quantity ?? 0)
-        const nextStock = Math.max(0, currentStock - qtyNumber)
-
         try {
           await updateDoc(doc(db, 'inventory', selectedItem.id), {
-            stock: nextStock,
-            quantity: nextStock,
+            stock: remainingStock,
+            quantity: remainingStock,
             updatedAt: timestamp,
           })
         } catch (stockError) {
@@ -197,16 +249,19 @@ export default function ReturnDamagedModal({
       <div
         className={`w-full max-w-xl rounded-2xl p-6 sm:p-7 shadow-2xl max-h-[90vh] overflow-y-auto ${
           isDarkMode
-            ? 'bg-linear-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/15 text-white'
+            ? 'bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-white/15 text-white'
             : 'bg-white border border-gray-200 text-gray-900'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
-              isDarkMode ? 'bg-amber-950/60 text-amber-400' : 'bg-amber-100 text-amber-600'
-            }`}>
+            <div
+              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+                isDarkMode ? 'bg-amber-950/60 text-amber-400' : 'bg-amber-100 text-amber-600'
+              }`}
+            >
               <ReportProblemRoundedIcon sx={{ fontSize: 22 }} />
             </div>
             <div>
@@ -227,54 +282,238 @@ export default function ReturnDamagedModal({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <label className="block space-y-1.5">
+          {/* Product Selector Section */}
+          <div className="space-y-1.5" ref={dropdownRef}>
             <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
               Select Product / Spare Part *
             </span>
-            <input
-              type="search"
-              value={itemSearch}
-              onChange={(e) => setItemSearch(e.target.value)}
-              placeholder="Search by product name, SKU, or category..."
-              className={`w-full rounded-xl border px-3.5 py-2 text-sm outline-none transition-colors mb-2 ${
-                isDarkMode
-                  ? 'border-white/15 bg-black/40 text-white focus:border-amber-500'
-                  : 'border-gray-300 bg-white text-gray-900 focus:border-amber-600'
-              }`}
-            />
-            <select
-              value={selectedItemId}
-              onChange={(e) => setSelectedItemId(e.target.value)}
-              required
-              className={`w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors ${
-                isDarkMode
-                  ? 'border-white/15 bg-black/40 text-white focus:border-amber-500'
-                  : 'border-gray-300 bg-white text-gray-900 focus:border-amber-600'
-              }`}
-            >
-              <option value="">-- Choose from inventory ({filteredInventory.length} matches) --</option>
-              {filteredInventory.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} {item.sku ? `(${item.sku})` : ''} — Stock: {item.stock ?? 0}
-                </option>
-              ))}
-            </select>
-          </label>
 
-          {selectedItem && (
-            <div className={`rounded-xl border p-3 text-xs flex items-center justify-between ${
-              isDarkMode ? 'border-white/10 bg-white/4' : 'border-gray-200 bg-gray-50'
-            }`}>
-              <div>
-                <span className="font-bold">{selectedItem.name}</span>
-                <span className="block opacity-65">{selectedItem.category || 'General'} • SKU: {selectedItem.sku || 'N/A'}</span>
+            {selectedItem ? (
+              /* Selected Product Summary Card */
+              <div
+                className={`rounded-xl border p-3.5 transition-all ${
+                  isDarkMode
+                    ? 'border-amber-500/40 bg-amber-500/10 text-white'
+                    : 'border-amber-400 bg-amber-50 text-gray-900'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+                      <Inventory2RoundedIcon sx={{ fontSize: 18 }} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black leading-tight text-amber-400 sm:text-base">
+                        {selectedItem.name}
+                      </h4>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs opacity-80">
+                        {selectedItem.sku && (
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[11px] font-bold">
+                            SKU: {selectedItem.sku}
+                          </span>
+                        )}
+                        <span>{selectedItem.category || 'General Product'}</span>
+                        {selectedItem.price !== undefined && selectedItem.price !== null && (
+                          <span className="font-semibold text-emerald-400">
+                            ₱{Number(selectedItem.price || 0).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-bold text-white transition-colors hover:bg-white/20"
+                    title="Change selected product"
+                  >
+                    <SwapHorizRoundedIcon sx={{ fontSize: 15 }} />
+                    Change
+                  </button>
+                </div>
+
+                {/* Stock deduction live calculation */}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2 text-[11px]">
+                  <span className="font-semibold opacity-75">
+                    Current Stock: <strong className="text-white">{currentStock} unit(s)</strong>
+                  </span>
+                  {deductStock && (
+                    <span className="font-bold text-amber-300">
+                      After Return Deduction: {currentStock} → {remainingStock} unit(s)
+                    </span>
+                  )}
+                </div>
               </div>
-              <span className="rounded-full px-2.5 py-1 text-[11px] font-black border border-white/10">
-                Current Stock: {selectedItem.stock ?? 0}
-              </span>
-            </div>
-          )}
+            ) : (
+              /* Searchable Combobox Dropdown */
+              <div className="relative">
+                {/* Search Input Trigger */}
+                <div
+                  className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 transition-all ${
+                    isDropdownOpen
+                      ? isDarkMode
+                        ? 'border-amber-500 bg-black/60 ring-2 ring-amber-500/20'
+                        : 'border-amber-600 bg-white ring-2 ring-amber-500/20'
+                      : isDarkMode
+                      ? 'border-white/15 bg-black/40 text-white hover:border-white/30'
+                      : 'border-gray-300 bg-white text-gray-900 hover:border-gray-400'
+                  }`}
+                  onClick={() => setIsDropdownOpen(true)}
+                >
+                  <SearchRoundedIcon
+                    sx={{ fontSize: 18 }}
+                    className={isDarkMode ? 'text-white/40' : 'text-gray-400'}
+                  />
+                  <input
+                    type="text"
+                    value={itemSearch}
+                    onChange={(e) => {
+                      setItemSearch(e.target.value)
+                      if (!isDropdownOpen) setIsDropdownOpen(true)
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    placeholder="Search by product name, SKU, or category..."
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-xs placeholder:opacity-50"
+                  />
+                  {itemSearch && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setItemSearch('')
+                      }}
+                      className="p-1 text-xs opacity-60 hover:opacity-100"
+                    >
+                      <CloseRoundedIcon sx={{ fontSize: 16 }} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsDropdownOpen((prev) => !prev)
+                    }}
+                    className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`}
+                  >
+                    <ExpandMoreRoundedIcon sx={{ fontSize: 20 }} />
+                  </button>
+                </div>
 
+                {/* Dropdown Popover */}
+                {isDropdownOpen && (
+                  <div
+                    className={`absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border shadow-2xl backdrop-blur-md ${
+                      isDarkMode
+                        ? 'border-white/20 bg-[#161616]/98 text-white'
+                        : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    {/* Category Filter Chips */}
+                    {availableCategories.length > 1 && (
+                      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-white/10 p-2.5 scrollbar-thin">
+                        {availableCategories.map((cat) => {
+                          const isSelected = categoryFilter.toLowerCase() === cat.toLowerCase()
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setCategoryFilter(cat)}
+                              className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                                isSelected
+                                  ? 'bg-amber-500 text-black'
+                                  : isDarkMode
+                                  ? 'bg-white/10 text-white/70 hover:bg-white/15 hover:text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Results Counter */}
+                    <div className="flex items-center justify-between border-b border-white/5 px-3 py-1.5 text-[10px] uppercase tracking-wider opacity-60">
+                      <span>Available Products</span>
+                      <span>
+                        Showing {filteredInventory.length} of {activeInventory.length}
+                      </span>
+                    </div>
+
+                    {/* Product List */}
+                    <div className="max-h-56 overflow-y-auto divide-y divide-white/5">
+                      {filteredInventory.length > 0 ? (
+                        filteredInventory.map((item) => {
+                          const stockCount = Number(item.stock ?? item.quantity ?? 0)
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => handleSelectItem(item)}
+                              className={`flex w-full items-center justify-between gap-3 p-3 text-left transition-colors ${
+                                isDarkMode ? 'hover:bg-white/8' : 'hover:bg-gray-100'
+                              }`}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-black sm:text-sm">
+                                  {item.name || item.productName || 'Unnamed Item'}
+                                </p>
+                                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] opacity-70">
+                                  {item.sku && (
+                                    <span className="font-mono text-amber-400/90 font-semibold">
+                                      {item.sku}
+                                    </span>
+                                  )}
+                                  <span>• {item.category || item.type || 'General'}</span>
+                                  {item.price !== undefined && item.price !== null && (
+                                    <span>• ₱{Number(item.price || 0).toLocaleString()}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 text-right">
+                                <span
+                                  className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-black ${
+                                    stockCount > 5
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                      : stockCount > 0
+                                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                      : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                  }`}
+                                >
+                                  Stock: {stockCount}
+                                </span>
+                              </div>
+                            </button>
+                          )
+                        })
+                      ) : (
+                        <div className="p-6 text-center text-xs opacity-60">
+                          <p>No products found matching &ldquo;{itemSearch}&rdquo;.</p>
+                          {(itemSearch || categoryFilter !== 'ALL') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setItemSearch('')
+                                setCategoryFilter('ALL')
+                              }}
+                              className="mt-2 text-xs font-bold text-amber-400 underline hover:text-amber-300"
+                            >
+                              Reset filters & show all products
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quantity & Condition */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block space-y-1.5">
               <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
@@ -315,6 +554,7 @@ export default function ReturnDamagedModal({
             </label>
           </div>
 
+          {/* Disposition & Customer/Source */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block space-y-1.5">
               <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
@@ -353,6 +593,7 @@ export default function ReturnDamagedModal({
             </label>
           </div>
 
+          {/* Damage Details */}
           <label className="block space-y-1.5">
             <span className={`block text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-white/70' : 'text-gray-700'}`}>
               Damage Details / Reason for Return *
@@ -371,6 +612,7 @@ export default function ReturnDamagedModal({
             />
           </label>
 
+          {/* Deduct Stock Checkbox */}
           <label className="flex items-center gap-2.5 cursor-pointer pt-1">
             <input
               type="checkbox"
@@ -383,12 +625,14 @@ export default function ReturnDamagedModal({
             </span>
           </label>
 
+          {/* Error Message */}
           {errorMessage && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-semibold text-red-400">
               {errorMessage}
             </div>
           )}
 
+          {/* Action Buttons */}
           <div className="flex justify-end gap-2.5 pt-3 border-t border-white/10">
             <button
               type="button"

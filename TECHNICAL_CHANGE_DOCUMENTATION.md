@@ -1031,3 +1031,58 @@ Verified directly against firestore.rules:
   - tests/posInvoiceService.test.js:
       12-test automated unit suite verifying item classification, tax calculations,
       change math, and customer details management.
+
+
+================================================================================
+13. PHASE 7: STAFF EDIT WORKFLOW & SEARCHABLE RETURNED PRODUCT SELECTOR
+================================================================================
+
+Date: November 21, 2026 - Operational Usability Release
+
+13.1 Staff Product Modification Approval Flow
+  - Context & Issue:
+    When staff personnel edited products in `InventorySection.jsx`, the UI
+    previously launched `AdminVerificationModal` requesting on-site administrator
+    credentials. On staff terminals where no admin is physically present or when
+    the admin credentials use OAuth or non-password providers, this resulted in
+    authentication errors.
+  - Resolution:
+    - Updated `handleSaveProductEdit` in `InventorySection.jsx` to detect staff role
+      and directly submit the product modification request to `submitInventoryChangeRequest`.
+    - Added an amber informational notice in the edit modal clearly informing staff:
+      "Staff Mode: Changes will be submitted for Superadmin verification before applying."
+    - Re-labeled action button to "Submit for Admin Approval" for non-admin staff.
+    - Updated confirmation modal messaging to clearly indicate submission to the approval queue.
+    - The pending update is dispatched directly into the Super Admin's verification queue
+      and notification drawer.
+
+13.2 Hassle-Free Searchable Dropdown for Returned / Damaged Products
+  - Context & Root Cause:
+    When opening the "Record Returned / Damaged Product" modal (`ReturnDamagedModal.jsx`),
+    users typing product names (such as "YamahaLube") encountered "-- Choose from inventory (0 matches) --".
+    Two root causes were identified:
+    1. Prop Mismatch: `InventorySection.jsx` was passing `inventoryItems={items}`, while
+       `ReturnDamagedModal.jsx` expected `inventory = []`. Thus `inventory` was always empty.
+    2. Exact-String Mismatch: Native string matching failed when users typed words without spaces
+       (e.g., "YamahaLube") against database titles with spaces (e.g., "Yamaha Lube 4T 800ml").
+    3. Clunky UI: The modal required typing in an isolated text box and then selecting from a
+       separate native `<select>` dropdown.
+  - Resolution & Features:
+    - Modular Utility Functions (`src/pages/superadmin/sections/damagedReturnsUtils.js`):
+      * `resolveActiveInventory(inventory, inventoryItems)`: Supports both prop names with graceful fallback.
+      * `filterInventoryForReturn(items, query, category)`: Implements normalized whitespace-insensitive
+        and tokenized matching. "yamahalube" matches "Yamaha Lube", "brakepad" matches "Brake Pad", and
+        "DHWT4Q" matches "SKU-DHWT4Q".
+    - Rich Combobox UI (`src/pages/superadmin/components/ReturnDamagedModal.jsx`):
+      * Single integrated search & trigger field with dropdown chevron and clear button.
+      * Category filter chips (`ALL`, `Spare Parts`, `Oils & Fluids`, `Motorcycles`, etc.).
+      * Rich product rows showing Product Name, SKU, Category, Price (`₱XXX`), and Stock Badge
+        (green if >5, amber if 1-5, red if 0).
+      * Selected Item Summary Card: Replaces dropdown with an amber-accented card showing
+        product name, SKU, price, current in-stock count, live stock deduction calculation
+        (`Stock: 24 → 23 units`), and a "Change" button.
+      * Outside-click dismissal and automatic filter reset controls.
+    - Automated Test Verification (`tests/damagedReturns.test.js`):
+      * Added 8 new unit tests covering prop resolution fallback, case-insensitive and
+        whitespace-insensitive token matching, SKU matching, category chips, and combined filters.
+      * 100% pass across all 80 tests in the test suite.

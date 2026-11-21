@@ -86,3 +86,46 @@ export function calculateDamagedFinancialLoss(records = []) {
       return sum + qty * cost
     }, 0)
 }
+
+/**
+ * Resolves active inventory from either `inventory` or `inventoryItems` props.
+ */
+export function resolveActiveInventory(inventory, inventoryItems) {
+  if (Array.isArray(inventory) && inventory.length > 0) return inventory
+  if (Array.isArray(inventoryItems) && inventoryItems.length > 0) return inventoryItems
+  return []
+}
+
+/**
+ * Filters inventory items based on text search query and category filter.
+ * Supports token matching and whitespace/punctuation-insensitive fuzzy matching
+ * (e.g. "yamahalube" matches "Yamaha Lube", "brakepad" matches "Brake Pad").
+ */
+export function filterInventoryForReturn(items = [], query = '', category = 'ALL') {
+  const q = String(query || '').trim().toLowerCase()
+  const catFilter = String(category || 'ALL').trim().toLowerCase()
+
+  const qNormalized = q.replace(/[\s\-_]/g, '')
+  const tokens = q.split(/\s+/).filter(Boolean)
+
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    if (catFilter !== 'all') {
+      const itemCat = String(item.category || item.type || '').trim().toLowerCase()
+      if (itemCat !== catFilter) return false
+    }
+    if (!q) return true
+
+    const name = String(item.name || item.productName || item.model || '').toLowerCase()
+    const sku = String(item.sku || item.code || '').toLowerCase()
+    const brand = String(item.brand || '').toLowerCase()
+    const itemCat = String(item.category || item.type || '').toLowerCase()
+
+    const combined = `${name} ${sku} ${brand} ${itemCat}`
+    const combinedNormalized = combined.replace(/[\s\-_]/g, '')
+
+    const matchesTokens = tokens.length > 0 && tokens.every((t) => combined.includes(t))
+    const matchesNormalized = qNormalized.length > 0 && combinedNormalized.includes(qNormalized)
+
+    return matchesTokens || matchesNormalized
+  })
+}
