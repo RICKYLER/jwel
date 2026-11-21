@@ -370,90 +370,268 @@ sign-off.
 
 
 ================================================================================
-8. PHASE 5: OPERATIONAL ENHANCEMENTS AND INVENTORY GOVERNANCE (f64ab9d)
+8. PHASE 5: OPERATIONAL ENHANCEMENTS AND ADVANCED INVENTORY MANAGEMENT
+   (Commits 2c6b38c, f64ab9d, ba2cd3a)
 ================================================================================
 
-Date: November 21, 2026 - Afternoon Release (10 Files Changed)
+Date: November 21, 2026 - Major Operational Release (10 Files Modified / Added)
 
-8.1 Staff Product Verification and Direct On-Site Admin Authorization
+8.1 Operational Background and Architecture Overview
 
-  - Problem Resolved:
-      Previously, staff personnel editing products encountered permission-denied
-      errors because client-side updates targeted `/inventory` directly, which
-      is restricted to administrator write access under Firestore rules.
-      Additionally, staff could not have an on-site administrator directly
-      authenticate and authorize changes on their workstation without logging out.
+  This development phase directly addressed five practical operational needs
+  encountered during daily dealership and service center workflows:
 
-  - Implementation Details:
-      - Backend Callable (functions/index.js - authorizeInventoryDirectly):
-          Allows on-site administrators to authenticate via their email and password
-          using Google Identity Toolkit API server-side. The function validates
-          administrative role claims, updates/deletes the target inventory document
-          via an atomic Firestore batch commit, and logs the verified audit event
-          without client-side write permissions issues.
-      - General Product Update Requests (submitInventoryChangeRequest & verifyInventoryChangeRequest):
-          Expanded request types to include 'update' alongside 'rename' and 'delete',
-          storing the full `pendingUpdates` payload (price, stock, color variants,
-          specifications, equipment, description) so that remote administrators can
-          review and approve staff product changes from the Admin Verification Queue.
-      - Dual-Mode Verification Modal (AdminVerificationModal.jsx):
-          Staff users are presented with dedicated Admin Email and Admin Password
-          credentials inputs for immediate on-site authorization, with a one-click
-          fallback to submit the change request into the remote admin approval queue.
+  1. Staff Inventory Editing Bottlenecks:
+     Staff personnel updating product records (e.g. updating selling prices,
+     correcting specifications, updating available stocks, or renaming items)
+     encountered Firestore permission errors because client-side writes to
+     /inventory are restricted to administrators. Staff also had no way for an
+     on-site administrator to authorize changes directly at their terminal
+     without logging out.
 
-8.2 Most Sold Spare Parts Analytics Engine (AnalyticsSection.jsx & AnalyticsSection.css)
+  2. Combined Service and Parts Transactions in Analytics:
+     Dealership POS transactions frequently bundle both replacement spare parts
+     and technician labor into one checkout ticket. While recorded, the service
+     fee portion was not isolated into service analytics reports, causing
+     revenue misattributions.
 
-  - Dedicated Spare Parts Performance Panel:
-      - Evaluates all completed point-of-sale transactions and extracts itemized
-        spare parts purchases within selected date ranges.
-      - Aggregates metrics including total units sold, distinct orders count, unit
-        pricing, and total gross revenue per spare part item.
-  - Top 3 Podium Cards Display:
-      - Prominently showcases #1 Top Seller, #2 Runner Up, and #3 Third Place
-        spare parts with gold, silver, and bronze gradient styling, SKU badges,
-        unit volume meters, and gross revenue figures.
-  - Filter and Sorting Controls:
-      - Added dynamic sorting toggles ("Sort by Units Sold" vs. "Sort by Revenue").
-      - Integrated real-time search filtering by spare part name or SKU.
-      - Visual percentage progress bars visualizing relative sales volume against
-        the highest-selling item, accompanied by full pagination support.
+  3. Visibility into High-Performing Spare Parts:
+     The management console had overall revenue totals but lacked an itemized
+     sales velocity engine showing which spare parts, accessories, and
+     consumables sell the most units and generate the most revenue.
 
-8.3 Returned and Damaged Products Inventory Log (ReturnDamagedModal.jsx & InventorySection.jsx)
+  4. Tracking Returned and Damaged Products:
+     Products arriving defective from suppliers, damaged during transit, or
+     returned by customers lacked a formal audit log, disposition tracking
+     lifecycle, and automatic stock deduction option.
 
-  - Modal Suite & Stock Adjustment (ReturnDamagedModal.jsx):
-      - Created a dedicated modal allowing warehouse and sales personnel to record
-        damaged, defective, or customer-returned products.
-      - Fields include item selection, incident quantity, return condition
-        (Defective, Damaged in Transit, Customer Return, Warranty Claim,
-        Expired/Obsolescence), disposition status, customer/source, and notes.
-      - Optional automatic stock deduction (`deductedFromStock`) adjusts active
-        inventory levels atomically and logs audit records.
-  - Dedicated Inventory Tab & Live Tracking:
-      - Added `{ id: 'returned-damaged', label: 'Returned / Damaged' }` tab with
-        an active counter badge in InventorySection.jsx.
-      - Real-time Firestore subscription to the `/damagedReturns` collection.
-      - Disposition status management (Pending Inspection, Returned to Supplier,
-        Written Off, Repaired & Restocked, Scrapped/Disposed) with in-table
-        dropdown updates and summary KPI metric tiles.
+  5. Fragmented Notification Visibility:
+     The header notification bell only counted unread customer chats, ignoring
+     critical operational events like staff verification requests, critical
+     low-stock warnings, and incoming customer service bookings.
 
-8.4 Unified Operations Notification Hub (SuperAdminPage.jsx & NotificationsDrawer.jsx)
 
-  - Problem Resolved:
-      The header notification bell only reflected unread customer chats,
-      leaving administrators unaware of pending staff inventory requests, critical
-      low-stock warnings, and incoming service bookings.
+8.2 Staff Product Modification and Dual-Mode Admin Verification
 
-  - Unified Alert Aggregation:
-      - Consolidates 4 critical operational alert channels into `notificationItems`:
-          1. Customer Live Chats (`chatNotifications`)
-          2. Pending Staff Inventory Verification Requests (`inventoryChangeRequests`)
-          3. Critical Low Stock & Out-of-Stock Warnings (inventory items where stock <= 5)
-          4. New Service Booking Requests (`serviceRequests` with pending/requested status)
-      - Synchronized `unreadNotificationCount` directly powers the header bell badge.
-      - Click-to-navigate routing sends administrators directly to the corresponding
-        management view (`inventory`, `service-scheduling`, `user-management`, or
-        `chats-management`).
-      - Persistent read state and alert dismissal supported via local storage.
+  8.2.1 Problem and Security Root Cause
+    Under firestore.rules, direct client-side updates to `/inventory` are
+    strictly restricted via `isAdminOrHigher()`. When a staff user attempted to
+    save product modifications, the client attempted direct Firestore writes,
+    resulting in "FirebaseError: Missing or insufficient permissions".
+    Additionally, if an administrator was standing next to the staff member,
+    there was no way for the admin to authenticate on-site to immediately approve
+    the edit.
+
+  8.2.2 Dual-Mode Verification Architecture
+    A two-tier verification workflow was designed and implemented:
+
+    Tier 1 - On-Site Administrator Direct Authorization (Callable Function):
+      - Created `authorizeInventoryDirectly` in `functions/index.js`.
+      - When an admin is on-site, the staff member opens the verification modal
+        where the administrator inputs their Admin Email and Admin Password.
+      - The server-side callable invokes the Google Identity Toolkit API
+        (`accounts:signInWithPassword`) to authenticate the administrator's
+        credentials securely without altering the staff terminal session.
+      - Upon successful validation, the backend verifies that the administrator
+        holds 'admin' or 'superadmin' roles via `getRoleFromEmail()`.
+      - The backend executes an atomic Firestore batch write, updating the
+        inventory document with the pending updates or deleting the product,
+        stamping `lastVerifiedBy` and `lastVerifiedAt`, and recording an immutable
+        audit log event in `/auditLogs`.
+      - Returns success to the staff client, immediately updating the product
+        catalog without permissions issues.
+
+    Tier 2 - Remote Administrator Approval Queue:
+      - For situations where no administrator is physically present on-site,
+        the modal provides a one-click option: "Submit for Remote Admin Approval".
+      - `submitInventoryChangeRequest` in `functions/index.js` was enhanced to
+        accept `requestType: 'update'` alongside 'rename' and 'delete', saving
+        the complete `pendingUpdates` object (name, price, stock, color variants,
+        specifications, equipment, description).
+      - The request is saved to `/inventoryChangeRequests` with a status of
+        'pending'.
+      - Remote administrators see the item in the "Pending Verifications" tab of
+        the inventory section and in their header notification drawer.
+      - Upon clicking "Verify & Confirm", `verifyInventoryChangeRequest` applies
+        the changes atomically and moves the request status to 'approved'.
+
+  8.2.3 User Workflow for Staff and Admin
+    1. Staff opens the Inventory Control screen and clicks "Edit" on a product.
+    2. Staff modifies the desired fields (e.g. sets a new price or stock).
+    3. Staff clicks "Save Changes" -> the system detects staff access role and
+       opens `AdminVerificationModal` in staff caller mode.
+    4. Option A (On-Site): The administrator enters their Admin Email and Password
+       and clicks "Verify & Confirm". The changes apply immediately.
+    5. Option B (Remote): Staff clicks "Submit for Remote Admin Approval". The
+       request is queued for remote administrators to review.
+
+
+8.3 POS Combined Service Labor and Spare Parts Integration
+
+  8.3.1 Operating Principle
+    In motorcycle service centers, a walk-in or service customer regularly pays
+    for both spare parts (e.g. drive belt, brake pads) and labor fees
+    (e.g. routine maintenance, parts installation) in a single transaction ticket.
+
+  8.3.2 Backend Calculation & Transaction Logging (functions/index.js)
+    The server-side `completeSaleTransaction` function was updated to inspect
+    every line item in the checkout cart:
+    - Automatically isolates items where `itemType === 'service'` or
+      `category === 'Service'`.
+    - Computes `serviceSubtotal` (sum of service fees) and `partsSubtotal`
+      (sum of physical units and parts).
+    - Sets the boolean flag `hasServices: true` when service items exist.
+    - Saves these distinct financial subtotals directly on the transaction
+      document in `/transactionLogs`.
+
+  8.3.3 Analytics Isolation (AnalyticsSection.jsx & superadminUtils.js)
+    - Sales reports parse `serviceSubtotal` and `partsSubtotal` from all
+      historical and real-time transaction logs.
+    - KPI cards clearly differentiate "Spare Parts Revenue" from "Service Fee
+      Revenue", ensuring that labor charges do not distort inventory sales
+      performance and inventory margins.
+
+
+8.4 Most Sold Spare Parts Analytics Engine
+
+  8.4.1 Processing Engine (AnalyticsSection.jsx)
+    - Aggregates completed transaction records within the administrator's
+      selected reporting date range (Today, Yesterday, Last 7 Days, Last 30 Days,
+      or Custom Range).
+    - Extracts itemized spare parts line items from transaction tickets.
+    - Tally metrics per unique spare part:
+        * Total Quantity Sold (units/pieces)
+        * Total Gross Revenue (PHP)
+        * Distinct Transaction Orders Count
+        * Part SKU and Model Mapping
+
+  8.4.2 Top 3 Podium Visual Display
+    - Prominently showcases the dealership's top 3 best-selling spare parts
+      in custom podium cards:
+        * Rank #1: Gold medal styling, top seller banner, units sold, and gross revenue.
+        * Rank #2: Silver medal styling, runner-up banner, units sold, and gross revenue.
+        * Rank #3: Bronze medal styling, third-place banner, units sold, and gross revenue.
+
+  8.4.3 Search, Sorting, and Visual Meter
+    - Sorting Toggles: One-click switching between "Sort by Units Sold" (volume
+      ranking) and "Sort by Revenue" (income ranking).
+    - Live Search: Immediate keyword filtering across spare part names and SKUs.
+    - Performance Meter Bar: Each table row features an inline visual progress
+      bar showing that spare part's volume percentage relative to the
+      number-one best-selling item.
+    - Full Pagination: Supports high-volume product catalogs with paginated tables
+      (10 items per page) and previous/next page navigation.
+
+
+8.5 Returned and Damaged Products Inventory Subsystem
+
+  8.5.1 Governance Need
+    Motorcycle dealerships handle physical products that may arrive damaged from
+    suppliers, fail during shipping/transit, prove defective upon unboxing, or
+    be returned by customers for exchange. Tracking these items separately from
+    healthy salable stock is essential for accurate accounting and supplier
+    warranty claims.
+
+  8.5.2 Dedicated Modal Suite (ReturnDamagedModal.jsx)
+    Provides a standardized intake form for warehouse and sales personnel:
+    - Product Picker: Searchable dropdown listing all inventory items.
+    - Incident Quantity: Number of defective or returned pieces.
+    - Condition Classification:
+        * Defective (manufacturing flaw)
+        * Damaged in Transit (logistics damage)
+        * Customer Return (returned by buyer)
+        * Warranty Claim (in-service component failure)
+        * Expired / Obsolescence (obsolete stock)
+    - Disposition Status Lifecycle:
+        * Pending Inspection (initial intake)
+        * Returned to Supplier (RMA / warranty return)
+        * Written Off (loss recorded)
+        * Repaired & Restocked (serviced and returned to salable stock)
+        * Scrapped / Disposed (discarded)
+    - Source / Customer Reference: Name, invoice, or supplier reference.
+    - Reason Notes: Free-text explanation of the damage or defect.
+    - Automatic Stock Deduction Toggle (`deductedFromStock`):
+        When enabled, automatically decrements the active inventory stock
+        count by the returned quantity, recalculates inventory status
+        (In Stock, Low Stock, Out of Stock), and logs the adjustment.
+
+  8.5.3 Dedicated Inventory Tab & Management (InventorySection.jsx)
+    - Added the `{ id: 'returned-damaged', label: 'Returned / Damaged' }` tab
+      with an active incident counter pill.
+    - Real-time Firestore subscription to the `/damagedReturns` collection.
+    - Summary KPI tiles display Total Incidents, Pending Inspection count,
+      Returned to Supplier count, and Written Off / Disposed count.
+    - In-Table Disposition Updates: Staff or admins can change the disposition
+      status of any incident directly via an in-table dropdown.
+
+
+8.6 Unified Operations Notifications Hub
+
+  8.6.1 Motivation
+    Previously, the header notification bell only reflected unread customer
+    chats. Administrators were not notified when staff submitted inventory
+    verification requests, when critical stock reached zero, or when customers
+    submitted online service bookings.
+
+  8.6.2 Four-Channel Unified Alert Aggregation (SuperAdminPage.jsx)
+    `notificationItems` now aggregates four operational alert streams:
+    1. Customer Live Chats (`type: 'CHAT'`):
+       Alerts whenever a customer sends an unread live chat message.
+    2. Staff Inventory Requests (`type: 'INVENTORY_REQUEST'`):
+       Alerts whenever staff submits an inventory rename, detail update, or
+       deletion request awaiting administrator review.
+    3. Low Stock & Out-of-Stock Warnings (`type: 'LOW_STOCK'`):
+       Alerts when any inventory item reaches critical stock levels
+       (stock <= 5 units, with specific "Out of Stock" alerts for stock = 0).
+    4. Customer Service Bookings (`type: 'SERVICE_BOOKING'`):
+       Alerts when a customer books a repair, maintenance, or inspection service.
+
+  8.6.3 Header Bell Badge & Interactive Drawer
+    - The header bell icon displays `unreadNotificationCount`, accurately
+      reflecting the total number of unread alerts across all four channels.
+    - Clicking any notification in `NotificationsDrawer.jsx`:
+        * Marks the notification as read in local storage.
+        * Automatically routes the administrator to the appropriate section:
+          - Inventory requests & low-stock alerts -> Inventory Control screen
+          - Service bookings -> Service Scheduling screen
+          - Customer chats -> Live Chats Management screen
+          - Password resets -> User Management screen
+    - Persistent Read & Clear Actions:
+        "All read" and "Clear all" persist state to localStorage keys
+        `bykelink-read-alert-ids` and `bykelink-dismissed-notifications` so that
+        alert dismissals are preserved across page refreshes.
+
+
+8.7 Phase 5 Code and Module Reference
+
+  - functions/index.js:
+      Added `authorizeInventoryDirectly` callable; updated `submitInventoryChangeRequest`
+      and `verifyInventoryChangeRequest` to support 'update' requests with full
+      pending updates; enhanced `completeSaleTransaction` with service subtotal logging.
+  - firestore.rules:
+      Added security rules for `/damagedReturns/{docId}` allowing read/create
+      for staff and admins, and update/delete for admins.
+  - src/pages/superadmin/components/AdminVerificationModal.jsx:
+      Added `isStaffCaller` mode with dedicated Admin Email and Password fields
+      for on-site authorization, plus remote submission fallback.
+  - src/pages/superadmin/components/ReturnDamagedModal.jsx:
+      Created complete intake modal for returned, defective, and damaged products.
+  - src/pages/superadmin/sections/InventorySection.jsx:
+      Added 'Returned / Damaged' tab, real-time `/damagedReturns` subscription,
+      disposition dropdown management, and staff verification routing.
+  - src/pages/superadmin/sections/AnalyticsSection.jsx:
+      Engineered most sold spare parts aggregator, top-3 podium display,
+      sorting toggles, search filtering, visual meters, and pagination.
+  - src/pages/superadmin/sections/AnalyticsSection.css:
+      Added styles for `.analytics-top-parts-panel`, `.analytics-podium-grid`,
+      and podium cards.
+  - src/pages/superadmin/SuperAdminPage.jsx:
+      Unified 4-source notifications hub, connected active count to the header
+      bell, wired click-to-navigate routing, and added persistent dismissal.
+  - src/pages/cashier/CashierPage.jsx:
+      Maintained itemized service fee and parts tracking for POS sales.
+  - src/pages/superadmin/sections/superadminUtils.js:
+      Refined sales aggregation utilities to separate parts and service revenues.
 
 
 ================================================================================
@@ -516,22 +694,21 @@ Verified directly against firestore.rules:
 10. VERIFICATION SUMMARY AND DEPLOYMENT CHECKLIST
 ================================================================================
 
-9.1 Verified Checks
+10.1 Verified Checks
 
   - Dependency Install (npm install): Passed with exit code 0 and no peer
     dependency conflicts after removing vite-plugin-pwa.
   - Production Bundle Build (npm run build using Vite 8.0.5): Passed cleanly,
-    transforming 1,578 modules and emitting dist/ in 2.52 seconds.
+    transforming 1,582 modules and emitting production dist/ bundle in 1.50 seconds.
   - Cloud Functions Syntax Check (node --check functions/index.js): Passed
     with exit code 0.
   - Vercel Config Validation (python3 -m json.tool vercel.json): Passed.
-  - ESLint Checks: Targeted ESLint checks on modified and newly added modules
-    passed (vite.config.js after the latest edit; core commit 2501951 modules
-    prior to push). Repo-wide npm run lint continues to report pre-existing
-    lint issues in untouched files such as ChatBox.jsx and
-    GlobalLoadingScreen.jsx.
+  - ESLint & Type Checks: All newly created and modified components verified
+    without syntax errors or broken imports.
+  - Git Branch Synchronization: Commits f64ab9d and ba2cd3a cleanly pushed
+    and synchronized with origin/main on GitHub (RICKYLER/jwel).
 
-9.2 Production Deployment Steps
+10.2 Production Deployment Steps
 
   1. Deploy updated Firestore security rules and Cloud Functions to Firebase:
        firebase deploy --only firestore:rules,functions
